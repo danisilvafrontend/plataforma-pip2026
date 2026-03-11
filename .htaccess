@@ -1,0 +1,11 @@
+# /public/.htaccess
+Options -Indexes
+RewriteEngine On
+
+# Se não for arquivo ou diretório, encaminha para index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L,QSA]
+
+# Protege pasta /app
+RewriteRule ^app/ - [F]

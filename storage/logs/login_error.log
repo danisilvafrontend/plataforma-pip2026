@@ -1,0 +1,5 @@
+catch (Throwable $e) {
+  @file_put_contents(__DIR__.'/../storage/logs/login_error.log',
+    date('c').' | '.$e->getMessage().' in '.$e->getFile().':'.$e->getLine().PHP_EOL.$e->getTraceAsString().PHP_EOL, FILE_APPEND);
+  $errors[] = 'Erro interno. Tente novamente mais tarde.';
+}

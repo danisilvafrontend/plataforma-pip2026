@@ -1,0 +1,357 @@
+/* ===========================
+   blocos.css - estilos dos blocos
+   =========================== */
+
+/* Theme variables (adjust once to change look globally) */
+:root{
+  --thumb-min: 120px;        /* min thumbnail width */
+  --thumb-gap: 0.5rem;
+  --video-max-h: 220px;      /* default video max height */
+  --video-max-h-compact: 180px;
+  --card-gap: 1rem;
+  --muted: #6c757d;
+  --thumb-bg: #f8f9fa;
+  --desafio-bg: #f1f3f5;
+  --radius: .5rem;
+}
+
+/* General block */
+.card .apresentacao-quote{
+  font-size: 0.95rem;
+  margin: 0.5rem 0;
+}
+
+/* Logo */
+.apresentacao-logo{
+  max-height: 140px;
+  width: auto;
+  display: inline-block;
+}
+
+/* Small muted text */
+.small-muted{
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Meta badges */
+.meta-badge{
+  margin-right: .35rem;
+  margin-bottom: .35rem;
+  display: inline-block;
+}
+
+/* Video compact container (supports iframe[data-src] lazy load) */
+.video-compact{
+  max-height: var(--video-max-h);
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #000;
+  position: relative;
+}
+.video-compact iframe,
+.video-compact video{
+  height: 100%;
+  width: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+}
+/* visually indicate iframe not yet loaded */
+.video-compact iframe[data-src]{
+  opacity: 0;
+  transition: opacity .35s ease;
+}
+.video-compact iframe:not([data-src]){
+  opacity: 1;
+}
+
+/* Compact variant (use .compact on a parent to reduce sizes) */
+.compact .video-compact{ max-height: var(--video-max-h-compact); }
+
+/* Gallery grid: responsive, preserves aspect with object-fit */
+.gallery-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--thumb-min), 1fr));
+  gap: var(--thumb-gap);
+}
+.gallery-item{
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--thumb-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.gallery-item:hover,
+.gallery-item:focus{
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  outline: none;
+}
+.gallery-item img{
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Larger thumbnails on wider screens */
+@media (min-width: 768px){
+  .gallery-item img{ height: 180px; }
+  .gallery-grid{ gap: calc(var(--thumb-gap) * 1.2); }
+}
+
+/* Compact thumbnails */
+.compact .gallery-item img{ height: 120px; }
+
+/* Carousel image handling */
+.carousel-img{
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  background: #000;
+  display: block;
+}
+.carousel-item{
+  text-align: center;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modal image */
+.modal-img{
+  width: 100%;
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Carousel controls contrast */
+.carousel-control-prev-icon,
+.carousel-control-next-icon{
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+/* Buttons compact */
+.btn-sm{
+  padding: .35rem .6rem;
+  font-size: .85rem;
+}
+
+/* Spacing and responsive gaps */
+.card-body .row.g-3{ gap: var(--card-gap); }
+.card-body .text-start p{ margin-bottom: .5rem; }
+
+/* Lazy-loading images fallback */
+img[loading="lazy"]{
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Accessibility: visible focus for interactive gallery items */
+.gallery-item:focus,
+.gallery-item:active{
+  outline: 3px solid rgba(13,110,253,0.15);
+  outline-offset: 2px;
+}
+
+/* Avoid collisions when multiple carousels exist (IDs handled in markup) */
+[id^="galeriaCarousel"] .carousel-item img,
+[id*="galeriaCarousel"] .carousel-item img{
+  max-height: 420px;
+  object-fit: contain;
+}
+
+/* Small screens adjustments */
+@media (max-width: 420px){
+  .gallery-item img{ height: 120px; }
+  .video-compact{ max-height: 180px; }
+}
+
+/* Desafios (21) */
+.desafios-list{ display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.5rem; }
+.desafio-badge{
+  font-size:.85rem;
+  padding:.35rem .5rem;
+  border-radius:.35rem;
+  background: var(--desafio-bg);
+  color: #212529;
+  display:inline-block;
+}
+
+/* Empty block fallback */
+.alert-info .bi-images{ vertical-align: -0.125em; }
+
+/* Utility: narrow layout for very compact cards */
+.bloco-narrow .apresentacao-logo{ max-height: 100px; }
+.bloco-narrow .gallery-item img{ height: 100px; }
+
+
+/* ===========================
+   Etapa 6 - Financeiro
+   =========================== */
+
+/* Ícone e título */
+.card-header .bi-cash-stack {
+  color: #198754; /* verde para remeter a finanças */
+}
+
+/* Campos financeiros */
+.financeiro-item {
+  border: 1px solid #dee2e6;
+  border-radius: .35rem;
+  padding: .5rem .75rem;
+  margin-bottom: .5rem;
+  background-color: #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.financeiro-label {
+  font-size: .9rem;
+  font-weight: 500;
+  color: #495057;
+}
+
+.financeiro-value {
+  font-size: .9rem;
+  color: #212529;
+}
+
+/* Badge para valores destacados */
+.financeiro-badge {
+  font-size: .85rem;
+  padding: .35rem .6rem;
+  border-radius: .35rem;
+  background-color: #198754;
+  color: #fff;
+}
+
+/* Lista de fontes de receita */
+.fontes-list {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: .5rem;
+}
+.fontes-list li {
+  padding: .25rem .5rem;
+  background: #e9ecef;
+  border-radius: .25rem;
+  margin-bottom: .25rem;
+  font-size: .85rem;
+}
+
+/* Responsividade */
+@media (max-width: 576px) {
+  .financeiro-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .financeiro-value {
+    margin-top: .25rem;
+  }
+}
+
+/* ===========================
+   End blocos.css
+   =========================== */
+
+/* ===== Justified Gallery (thumbnails) ===== */
+.jg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.jg a {
+  flex: 0 0 auto;
+  display: block;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+}
+
+/* thumb sempre “miniatura”, nunca tamanho real */
+.jg img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #000;
+  object-fit: cover;   /* miniatura uniforme (corta um pouco) */
+}
+
+/* ===== Lightbox ===== */
+.jg-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;        /* acima do modal Bootstrap */
+  padding: 24px;
+}
+
+.jg-lightbox.is-open { display: flex; }
+
+.jg-lightbox .jg-full {
+  max-width: min(1200px, 92vw);
+  max-height: 86vh;
+  display: block;
+  border-radius: 10px;
+  background: #000;
+  box-shadow: 0 10px 40px rgba(0,0,0,.5);
+}
+
+.jg-lightbox .jg-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.jg-lightbox .jg-prev { left: 18px; }
+.jg-lightbox .jg-next { right: 18px; }
+
+.jg-lightbox .jg-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  border: 0;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 44px;
+}
+
+.jg-lightbox .jg-caption {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #ddd;
+  font-size: 13px;
+  user-select: none;
+}

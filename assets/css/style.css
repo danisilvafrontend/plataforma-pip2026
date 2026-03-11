@@ -1,0 +1,204 @@
+
+/* ========================================
+   CORES CUSTOMIZADAS DO BOOTSTRAP 5
+   ======================================== */
+
+:root {
+    /* Suas cores existentes */
+    --bs-primary: #026874 !important;
+    --bs-primary-rgb: 2,104,116 !important;
+    
+    --bs-secondary: #94A604 !important;
+    --bs-secondary-rgb: 148,166,4 !important;
+    
+    --bs-success: #D2DE32 !important;
+    --bs-success-rgb: 210,222,0 !important;
+    
+    --bs-danger: #dc3545 !important;
+    --bs-danger-rgb: 220, 53, 69 !important;
+    
+    --bs-info: #17a2b8 !important;
+    --bs-info-rgb: 23, 162, 184 !important;
+
+    /* Novas variáveis para os links */
+    --bs-link-color: var(--bs-primary) !important;       /* Cor normal */
+    --bs-link-hover-color: var(--bs-secondary) !important; /* Cor ao passar o mouse */
+    --bs-link-decoration: none !important;               /* Opcional: remove sublinhado padrão */
+}
+
+/* Scroll suave */
+html {
+  scroll-behavior: smooth;
+}
+
+/* cards vitrine */
+.card-logo {
+    max-height: 80px;       /* altura máxima */
+    object-fit: contain;    /* mantém proporção sem cortar */
+    margin: 0 auto;         /* centraliza */
+    display: block;
+}
+
+.card-frase {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;   /* limite de 3 linhas (Chrome/Safari) */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    /* Compatibilidade futura */
+    line-clamp: 3;           /* padrão (ainda experimental em alguns browsers) */
+    box-orient: vertical;
+    min-height: 4.5em;       /* garante altura uniforme */
+}
+
+html, body {
+  height: 100%;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+main {
+  flex: 1;
+}
+footer {
+  margin-top: auto;
+}
+
+/* Link ativo */
+.app-sidebar .nav-link.active {
+  background-color: rgba(2,104,116, 0.1);
+  color: #026874;
+  font-weight: 500;
+  border-radius: 0.25rem;
+}
+
+/* Subitens do menu */
+.app-sidebar .collapse .nav-link {
+  font-size: 0.9rem;
+  color: var(--bs-primary)!important;
+  padding-left: 0.5rem;
+}
+
+.app-sidebar .collapse .nav-link:hover {
+  background-color: rgba(2,104,116, 0.05);
+  border-radius: 0.25rem;
+}
+
+.app-sidebar .collapse .nav-link.active {
+  background-color: rgba(148,166,4, 0.15);
+  color: #026874;
+  border-left: 3px solid #026874;
+  padding-left: calc(0.5rem - 3px);
+}
+
+/* Ícone de seta rotaciona quando aberto */
+.app-sidebar [data-bs-toggle="collapse"][aria-expanded="true"] span {
+  transform: rotate(180deg);
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.app-sidebar [data-bs-toggle="collapse"] span {
+  transition: transform 0.2s ease;
+}
+
+/* Sobrescreve btn-outline-primary para usar suas cores */
+.btn-outline-primary {
+    --bs-btn-color: var(--bs-primary) !important;
+    --bs-btn-border-color: var(--bs-primary) !important;
+    --bs-btn-hover-color: #fff !important;
+    --bs-btn-hover-bg: var(--bs-primary) !important;
+    --bs-btn-hover-border-color: var(--bs-primary) !important;
+    --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb) !important;
+    --bs-btn-active-color: #fff !important;
+    --bs-btn-active-bg: var(--bs-primary) !important;
+    --bs-btn-active-border-color: var(--bs-primary) !important;
+    
+    /* Garante a cor do texto e borda no estado normal */
+    color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+}
+
+/* Estado Hover (ao passar o mouse) */
+.btn-outline-primary:hover {
+    color: #fff !important;
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+}
+
+/* Estado Ativo/Focado */
+.btn-outline-primary:active, 
+.btn-outline-primary.active, 
+.btn-outline-primary:focus {
+    color: #fff !important;
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.5) !important; /* Glow com sua cor */
+}
+
+/* Desabilitado */
+.btn-outline-primary:disabled,
+.btn-outline-primary.disabled {
+    color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    opacity: 0.5;
+}
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+}
+
+.categoria-option { 
+  border:1px solid #e9ecef; 
+  border-radius:8px; 
+  transition: box-shadow .15s, border-color .15s; 
+  padding-bottom:12px; 
+}
+.categoria-option:hover { 
+  box-shadow:0 2px 8px rgba(0,0,0,0.06); 
+}
+.categoria-option.selected { 
+  border-color:#0d6efd; 
+  box-shadow:0 0 0 0.25rem rgba(13,110,253,0.08); 
+}
+.categoria-option img { 
+  border-radius:6px; 
+}
+.visually-hidden { 
+  position:absolute !important; 
+  width:1px; 
+  height:1px; 
+  padding:0; 
+  margin:-1px; 
+  overflow:hidden; 
+  clip:rect(0,0,0,0); 
+  white-space:nowrap; border:0; 
+}
+.categoria-desc { 
+  min-height:44px; 
+}
+
+.eixo-option { 
+  border:1px solid #e9ecef; 
+  border-radius:8px; 
+  transition: box-shadow .15s, border-color .15s; 
+  padding-bottom:12px; 
+}
+.eixo-option:hover { 
+  box-shadow:0 2px 8px rgba(0,0,0,0.06); 
+}
+.eixo-option.selected { 
+  border-color:#0d6efd; 
+  box-shadow:0 0 0 0.25rem rgba(13,110,253,0.08); 
+}
+.eixo-option img { 
+  border-radius:6px; 
+}
+.eixo-desc { 
+  min-height:44px; 
+}
