@@ -37,13 +37,13 @@ $pdfs          = impacto_pdfs($impacto);
     <?php else: ?>
       <div class="row">
         <div class="col-md-6">
-          <h5><i class="bi bi-lightbulb-fill text-success me-1"></i> Intencionalidade <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></h5>
+          <h5><i class="bi bi-lightbulb-fill text-success me-1"></i> Intencionalidade <i class="bi bi-eye text-secondary me-1"></i></h5>
           <p class="mb-1"><span class="small-muted">Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio?</span></p>
           <?= !empty($impacto['intencionalidade']) ? '<div class="alert alert-light">'.nl2br(e($impacto['intencionalidade'])).'</div>' : '<div class="alert alert-secondary text-center">Não informado</div>'; ?>
         </div>
 
         <div class="col-md-6">
-          <h5><i class="bi bi-diagram-3-fill text-info me-1"></i> Tipo de Impacto <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></h5>
+          <h5><i class="bi bi-diagram-3-fill text-info me-1"></i> Tipo de Impacto <i class="bi bi-eye text-secondary me-1"></i></h5>
           <p class="mb-1"><span class="small-muted">Como você classificaria o tipo de impacto que seu negócio gera hoje?</span></p>
           <?= !empty($impacto['tipo_impacto']) ? '<div class="alert alert-light">'.nl2br(e($impacto['tipo_impacto'])).'</div>' : '<div class="alert alert-secondary text-center">Não informado</div>'; ?>
         </div>
@@ -58,7 +58,7 @@ $pdfs          = impacto_pdfs($impacto);
         </div>
 
         <div class="col-md-6">
-          <h5><i class="bi bi-geo-alt-fill text-warning me-1"></i> Alcance <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></h5>
+          <h5><i class="bi bi-geo-alt-fill text-warning me-1"></i> Alcance <i class="bi bi-eye text-secondary me-1"></i></h5>
           <p class="mb-1"><span class="small-muted">Beneficiários diretos nos últimos 2 anos</span></p>
           <?= !empty($impacto['alcance']) ? '<div class="alert alert-light">'.nl2br(e($impacto['alcance'])).'</div>' : '<div class="alert alert-secondary text-center">Não informado</div>'; ?>
         </div>
@@ -84,7 +84,7 @@ $pdfs          = impacto_pdfs($impacto);
         </div>
 
         <div class="col-md-6">
-          <h5><i class="bi bi-journal-text text-primary me-1"></i> Reporte <i class="bi bi-eye text-secondary me-1"></i></h5>
+          <h5><i class="bi bi-journal-text text-primary me-1"></i> Reporte <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></h5>
           <p class="mb-1"><span class="small-muted">Tipo de reporte ou prestação de contas do impacto</span></p>
           <?= !empty($impacto['reporte']) ? '<div class="alert alert-light">'.nl2br(e($impacto['reporte'])).'</div>' : '<div class="alert alert-secondary text-center">Não informado</div>'; ?>
 
@@ -119,7 +119,7 @@ $pdfs          = impacto_pdfs($impacto);
 
         
         <div class="col-12">
-          <h5><i class="bi bi-forward-fill text-warning me-1"></i> Próximos Passos <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></h5>
+          <h5><i class="bi bi-forward-fill text-warning me-1"></i> Próximos Passos <i class="bi bi-eye text-secondary me-1"></i></h5>
           <?= !empty($impacto['proximos_passos']) ? '<div class="alert alert-light border">'.nl2br(e($impacto['proximos_passos'])).'</div>' : '<div class="alert alert-secondary text-center">Não informado</div>'; ?>
         </div>
       </div>

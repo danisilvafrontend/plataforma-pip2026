@@ -30,6 +30,27 @@ foreach ($usuariosPages as $page) {
     }
 }
 
+// Relatórios
+$relatoriosPages = ['/admin/relatorios_negocios.php'];
+$isrelatoriosActive = false;
+foreach ($relatoriosPages as $page) {
+    if (strpos($currentPage, $page) !== false) {
+        $isrelatoriosActive = true;
+        break;
+    }
+}
+
+// Configurações
+$configPages = ['/admin/importar_negocios.php', '/admin/importar_empreendedores.php', '/admin/atribuir_negocio.php'];
+$isconfigActive = false;
+foreach ($configPages as $page) {
+    if (strpos($currentPage, $page) !== false) {
+        $isconfigActive = true;
+        break;
+    }
+}
+
+
 // dados do usuário (preenchidos na sessão ao logar)
 $userName = $_SESSION['user_name'] ?? 'Usuário';
 $userRole = $_SESSION['user_role'] ?? '';

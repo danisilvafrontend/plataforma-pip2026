@@ -91,7 +91,7 @@ $subareas_lista = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Etapa 4: ODS
 $stmt = $pdo->prepare("
-    SELECT icone_url 
+    SELECT icone_url, n_ods, nome 
     FROM ods 
     WHERE id = (SELECT ods_prioritaria_id FROM negocios WHERE id = ?)
 ");
@@ -99,7 +99,7 @@ $stmt->execute([$negocio_id]);
 $ods_prioritaria = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->prepare("
-    SELECT o.icone_url 
+    SELECT o.icone_url, n_ods, nome
     FROM ods o 
     INNER JOIN negocio_ods no ON o.id = no.ods_id 
     WHERE no.negocio_id = ? 

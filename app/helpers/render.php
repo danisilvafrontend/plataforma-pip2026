@@ -41,7 +41,7 @@ function render_email_from_db($subject, $bodyHtml, $vars = []) {
                     <img src="https://pip2026.dscriacaoweb.com.br/assets/images/icons/youtube.png" alt="Youtube" style="height:20px;margin:0 5px">
                 </a>
             </p>
-            <p style="margin-top:10px">Você está recebendo este e‑mail porque faz parte da nossa rede de empreendedores.</p>
+            <p style="margin-top:10px;">Você está recebendo este e-mail porque faz parte da rede Impactos Positivos.</p>
         </div>';
 
     return [

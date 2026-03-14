@@ -17,7 +17,7 @@
                     <p><strong>Nome Fantasia:</strong> <?= htmlspecialchars($negocio['nome_fantasia'] ?? 'Não informado') ?> <i class="bi bi-eye text-secondary me-1"></i></p>
                     <p><strong>Razão Social:</strong> <?= htmlspecialchars($negocio['razao_social'] ?? 'Não informado') ?> <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></p>
                     <p><strong>CNPJ/CPF:</strong> <?= formatCNPJ($negocio['cnpj_cpf'] ?? '') ?> <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></p>
-                    <p><strong>E-mail Comercial:</strong> <?= htmlspecialchars($negocio['email_comercial'] ?? 'Não informado') ?> <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></p>
+                    <p><strong>E-mail Comercial:</strong> <?= htmlspecialchars($negocio['email_comercial'] ?? 'Não informado') ?> <i class="bi bi-eye text-secondary me-1"></i></p>
                     <p><strong>Telefone Comercial:</strong> <?= htmlspecialchars($negocio['telefone_comercial'] ?? 'Não informado') ?> <i class="bi bi-eye-slash text-danger-emphasis me-1"></i></p>
                     <p><strong>Data Fundação:</strong> <?= formatDateBR($negocio['data_fundacao'] ?? '') ?> <i class="bi bi-eye text-secondary me-1"></i></p>
                     <p><strong>Endereço:</strong> <i class="bi bi-eye-slash text-danger-emphasis me-1"></i> <?= htmlspecialchars($negocio['rua'] ?? '') ?>, <?= htmlspecialchars($negocio['numero'] ?? '') ?> <?= !empty($negocio['complemento']) ? ' - ' . htmlspecialchars($negocio['complemento']) : '' ?> - <?= htmlspecialchars($negocio['cep'] ?? '') ?> <br>

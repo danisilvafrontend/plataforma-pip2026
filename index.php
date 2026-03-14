@@ -18,13 +18,15 @@ try {
         // Busca 8 negócios aleatórios publicados na vitrine
     $sqlNegocios = "
     SELECT n.id, n.nome_fantasia, n.categoria, n.municipio, n.estado,
-           a.frase_negocio, a.logo_negocio, o.icone_url
+           a.frase_negocio, a.logo_negocio, o.icone_url,
+           e.nome AS eixo_tematico_nome
     FROM negocios n
     LEFT JOIN negocio_apresentacao a ON a.negocio_id = n.id
     LEFT JOIN ods o ON o.id = n.ods_prioritaria_id
+    LEFT JOIN eixos_tematicos e ON e.id = n.eixo_principal_id
     WHERE n.publicado_vitrine = 1
     ORDER BY RAND()
-    LIMIT 8";
+    LIMIT 9";
 $stmtNegocios = $pdo->query($sqlNegocios);
 $negociosDestaque = $stmtNegocios->fetchAll(PDO::FETCH_ASSOC);
 

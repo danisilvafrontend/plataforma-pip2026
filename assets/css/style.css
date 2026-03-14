@@ -32,26 +32,17 @@ html {
 }
 
 /* cards vitrine */
-.card-logo {
-    max-height: 80px;       /* altura máxima */
+.card-logo {   
+    max-height: 100px;
+    width: 100%;
     object-fit: contain;    /* mantém proporção sem cortar */
     margin: 0 auto;         /* centraliza */
     display: block;
 }
 
-.card-frase {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;   /* limite de 3 linhas (Chrome/Safari) */
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-
-    /* Compatibilidade futura */
-    line-clamp: 3;           /* padrão (ainda experimental em alguns browsers) */
-    box-orient: vertical;
-    min-height: 4.5em;       /* garante altura uniforme */
+p.card-frase{
+  margin-bottom: 0;
 }
-
 html, body {
   height: 100%;
 }

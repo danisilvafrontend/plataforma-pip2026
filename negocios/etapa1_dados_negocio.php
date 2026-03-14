@@ -161,7 +161,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
     <div class="row">
       <div class="col-md-4 mb-3">
-          <label for="email_comercial" class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> E-mail Institucional/Comercial</label>
+          <label for="email_comercial" class="form-label"><i class="bi bi-eye text-secondary me-1"></i> E-mail Institucional/Comercial</label>
           <input type="email" name="email_comercial" id="email_comercial" class="form-control" 
                 value="<?= htmlspecialchars($negocio['email_comercial'] ?? '') ?>" 
                 placeholder="contato@seunegocio.com.br" maxlength="100">

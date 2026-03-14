@@ -68,7 +68,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         <!-- Exemplo: Intencionalidade -->
         <div class="mb-3">
             <label class="form-label">
-                <i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio?
+                <i class="bi bi-eye text-secondary me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio?
             </label>
 
             <?php
@@ -94,7 +94,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
         <!-- 2. Tipo de impacto -->
         <div class="mb-3">
-            <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje?</label>
+            <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje?</label>
             <select name="tipo_impacto" class="form-select" required>
                 <?php
                 $opcoesTipoImpacto = [
@@ -142,7 +142,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
         <!-- 4. Alcance -->
         <div class="mb-3">
-            <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos</label>
+            <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos</label>
             <select name="alcance" class="form-select" required>
                 <?php
                 $opcoesAlcance = ["1 a 50","51 a 100","101 a 200","201 a 500","Acima de 500"];
@@ -307,7 +307,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
         <!-- 10. Próximos passos -->
         <div class="mb-3">
-            <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto?</label>
+            <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto?</label>
             <small class="text-muted">Conte-nos como pretende escalar, medir ou qualificar ainda mais seu impacto nos próximos 12 a 24 meses (até 1000 caracteres).</small>
             <textarea name="proximos_passos" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['proximos_passos'] ?? '') ?></textarea>
         </div>

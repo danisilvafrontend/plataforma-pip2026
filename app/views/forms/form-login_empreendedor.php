@@ -1,31 +1,38 @@
-<?php if (!empty($_SESSION['login_error'])): ?>
-  <div class="alert alert-danger alert-dismissible fade show" role="alert">
-    <?= htmlspecialchars($_SESSION['login_error'], ENT_QUOTES, 'UTF-8') ?>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-  </div>
-  <?php unset($_SESSION['login_error']); ?>
-<?php endif; ?>
-
-<form method="post" action="/empreendedores/login_process.php">
-  <div class="mb-3">
-    <label class="form-label">E-mail</label>
-    <input type="email" name="email" class="form-control" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Senha</label>
-    <input type="password" name="senha" class="form-control" required>
-  </div>
-  <div class="mb-3">
-    <p class="text-end mt-2">
-      <a href="/../auth/forgot_password_form.php" class="link-secondary">Esqueci minha senha</a>
-    </p>
-  </div>
-  <div class="row mb-3">
-    <div class="col-6">      
-      <button type="submit" class="btn btn-success w-100">Entrar como Empreendedor</button>
-    </div>    
-    <div class="col-6">      
-      <a href="/../../empreendedores/register.php" type="submit" class="btn btn-success w-100">Cadastrar</a>
-    </div>  
-  </div>   
+<!-- app/views/forms/form-login_empreendedor.php -->
+<form action="/empreendedores/login_process.php" method="POST">
+    <div class="mb-3">
+        <label for="login_empreendedor" class="form-label fw-bold">E-mail de Cadastro</label>
+        <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-envelope text-muted"></i></span>
+            <input type="email" class="form-control" id="login_empreendedor" name="email" required placeholder="Digite seu e-mail">
+        </div>
+    </div>
+    
+    <div class="mb-3">
+        <label for="senha_empreendedor" class="form-label fw-bold">Senha</label>
+        <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-lock text-muted"></i></span>
+            <input type="password" class="form-control" id="senha_empreendedor" name="senha" required placeholder="Sua senha">
+            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="senha_empreendedor">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="lembrar_empreendedor" name="lembrar">
+            <label class="form-check-label text-muted" for="lembrar_empreendedor" style="font-size: 0.9rem;">Lembrar-me</label>
+        </div>
+        <a href="/../auth/forgot_password_form.php" class="text-decoration-none text-primary" style="font-size: 0.9rem;">Esqueceu a senha?</a>
+    </div>
+    
+    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold mb-3">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Acessar Painel de Empreendedor
+    </button>
+    
+    <div class="text-center">
+        <span class="text-muted" style="font-size: 0.9rem;">Tem um negócio de impacto?</span> 
+        <a href="/../../empreendedores/register.php" class="text-decoration-none fw-bold text-primary" style="font-size: 0.9rem;">Inscreva-se</a>
+    </div>
 </form>
