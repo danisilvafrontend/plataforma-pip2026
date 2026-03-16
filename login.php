@@ -9,7 +9,7 @@ include __DIR__ . '/app/views/public/header_public.php';
     <div class="col-lg-8">
       <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
-          <h2 class="h5 mb-0">Login</h2>
+          <h2 class="h5 mb-0">Selecione seu Perfil de Impacto, faça o login ou crie sua conta</h2>
         </div>
         <div class="card-body">
 
@@ -28,19 +28,19 @@ include __DIR__ . '/app/views/public/header_public.php';
             <li class="nav-item" role="presentation">
               <!-- Mudei data-bs-target para #pane-empreendedor -->
               <button class="nav-link active" id="empreendedor-tab" data-bs-toggle="tab" data-bs-target="#pane-empreendedor" type="button" role="tab" aria-controls="pane-empreendedor" aria-selected="true">
-                Login Negócio de Impacto
+                Negócio de Impacto
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <!-- Mudei data-bs-target para #pane-parceiro -->
               <button class="nav-link" id="parceiro-tab" data-bs-toggle="tab" data-bs-target="#pane-parceiro" type="button" role="tab" aria-controls="pane-parceiro" aria-selected="false">
-                Login Parceiro
+                Parceiro
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <!-- Mudei data-bs-target para #pane-sociedade -->
               <button class="nav-link" id="sociedade-tab" data-bs-toggle="tab" data-bs-target="#pane-sociedade" type="button" role="tab" aria-controls="pane-sociedade" aria-selected="false">
-                Login Sociedade Civil
+                Sociedade Civil
               </button>
             </li>
           </ul>
@@ -51,18 +51,36 @@ include __DIR__ . '/app/views/public/header_public.php';
             <!-- Empreendedor -->
             <!-- ID alterado para pane-empreendedor -->
             <div class="tab-pane fade show active" id="pane-empreendedor" role="tabpanel" aria-labelledby="empreendedor-tab">
+              <div class="alert alert-light border shadow-sm mb-4">
+                <p class="mb-0 text-muted small">
+                    <i class="bi bi-rocket-takeoff-fill text-primary me-2"></i>
+                    <strong>Empreendedor:</strong> Gerencie seu perfil, concorra ao Prêmio e coloque seu negócio no radar de parceiros e investidores.
+                </p>
+              </div>
               <?php include __DIR__ . '/app/views/forms/form-login_empreendedor.php'; ?>
             </div>
 
             <!-- Apoiador -->
             <!-- ID alterado para pane-parceiro -->
             <div class="tab-pane fade" id="pane-parceiro" role="tabpanel" aria-labelledby="parceiro-tab">
+              <div class="alert alert-light border shadow-sm mb-4">
+                <p class="mb-0 text-muted small">
+                    <i class="bi bi-diagram-3-fill text-primary me-2"></i>
+                    <strong>Parceiro:</strong> Acesse seu painel para descobrir, fomentar e apoiar negócios alinhados aos objetivos e valores da sua instituição.
+                </p>
+              </div>
               <?php include __DIR__ . '/app/views/forms/form-login_parceiro.php'; ?>
             </div>
 
             <!-- Comunidade Civil -->
             <!-- ID alterado para pane-sociedade -->
             <div class="tab-pane fade" id="pane-sociedade" role="tabpanel" aria-labelledby="sociedade-tab">
+              <div class="alert alert-light border shadow-sm mb-4">
+                <p class="mb-0 text-muted small">
+                    <i class="bi bi-people-fill text-primary me-2"></i>
+                    <strong>Sociedade Civil:</strong> Entre para votar nos negócios, dar visibilidade a quem transforma o mundo e descobrir formas de apoiar o ecossistema.
+                </p>
+              </div>
               <?php include __DIR__ . '/app/views/forms/form-login_sociedade.php'; ?>
             </div>
 

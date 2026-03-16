@@ -171,14 +171,27 @@ $eixos = $pdo->query("
             <div class="col-md-4 mb-4"> <!-- Coluna limpa, sem overflow -->
                 
                 <!-- O CARD: Aqui entram as classes position-relative e overflow-hidden -->
-                <div class="card d-flex justify-content-between h-100 p-3 shadow-sm position-relative overflow-hidden">
-                    
+                <div class="card d-flex justify-content-between h-100 p-3 shadow-sm position-relative overflow-hidden">                   
+
                     <!-- A Faixa Diagonal (Ajustada para textos longos) -->
+                     <?php
+                    $categoria = trim($n['categoria'] ?? '');
+
+                    $cores_categoria = [
+                        'Ideação' => 'rgba(255, 161, 0, 0.75)',
+                        'Operação' => 'rgba(76, 144, 177, 0.75)',
+                        'Tração/Escala' => 'rgba(36, 139, 101, 0.75)',
+                        'Dinamizador' => 'rgba(135, 32, 184, 0.75)'
+                    ];
+
+                    $cor_categoria = $cores_categoria[$categoria] ?? 'rgba(13, 110, 253, 0.75)';
+                    ?>
+                    <!-- A Faixa Diagonal -->
                     <div class="position-absolute" style="top: -5px; left: -5px; width: 130px; height: 130px; z-index: 10;">
-                        <div class="text-bg-primary bg-opacity-50 text-center shadow-sm text-uppercase d-flex align-items-center justify-content-center" 
-                            style="position: absolute; top: 30px; left: -40px; width: 180px; height: 30px; transform: rotate(-45deg); font-size: 0.6rem; font-weight: bold; line-height: 1;">
+                        <div class="text-white text-center shadow-sm text-uppercase d-flex align-items-center justify-content-center"
+                            style="position: absolute; top: 30px; left: -40px; width: 180px; height: 30px; transform: rotate(-45deg); font-size: 0.6rem; font-weight: bold; line-height: 1; background-color: <?= $cor_categoria ?>;">
                             <span class="d-inline-block px-2" style="max-width: 100%; white-space: normal;">
-                                <?= htmlspecialchars($n['categoria'] ?? '') ?>
+                                <?= htmlspecialchars($categoria) ?>
                             </span>
                         </div>
                     </div>

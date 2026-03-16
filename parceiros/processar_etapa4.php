@@ -1,8 +1,9 @@
 <?php
 session_start();
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
+
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -11,21 +12,25 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
-
-if (!isset($_SESSION['parceiro_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: /login.php");
+if (!isset($_SESSION['parceiro_id'])) {
+    header("Location: login.php");
     exit;
 }
 
 $parceiro_id = $_SESSION['parceiro_id'];
 
-// Captura as seleções (Arrays) e a string única (Alcance)
+// Captura as seleções (Arrays e as strings únicas)
 $ods = $_POST['ods'] ?? [];
 $eixos = $_POST['eixos'] ?? [];
 $maturidade = $_POST['maturidade'] ?? [];
 $setores = $_POST['setores'] ?? [];
 $perfil = $_POST['perfil'] ?? [];
 $alcance = $_POST['alcance'] ?? '';
+
+// Novas variáveis do Matchmaking
+$orcamento_anual = $_POST['orcamento_anual'] ?? '';
+$tipo_relacionamento = $_POST['tipo_relacionamento'] ?? '';
+$horizonte_engajamento = $_POST['horizonte_engajamento'] ?? '';
 
 // Codifica os arrays simples para JSON
 $eixos_json = json_encode($eixos, JSON_UNESCAPED_UNICODE);
@@ -36,18 +41,33 @@ $perfil_json = json_encode($perfil, JSON_UNESCAPED_UNICODE);
 try {
     $pdo->beginTransaction();
 
-    // 1. Processa a tabela auxiliar parceiro_interesses
-    $sql_int = "INSERT INTO parceiro_interesses (parceiro_id, eixos_interesse, maturidade_negocios, setores_interesse, perfil_impacto, alcance_impacto) 
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE 
-                eixos_interesse = VALUES(eixos_interesse),
-                maturidade_negocios = VALUES(maturidade_negocios),
-                setores_interesse = VALUES(setores_interesse),
-                perfil_impacto = VALUES(perfil_impacto),
-                alcance_impacto = VALUES(alcance_impacto)";
-                
+    // 1. Processa a tabela auxiliar parceiro_interesses (AGORA COM AS 3 NOVAS COLUNAS)
+    $sql_int = "
+        INSERT INTO parceiro_interesses 
+        (parceiro_id, eixos_interesse, maturidade_negocios, setores_interesse, perfil_impacto, alcance_impacto, orcamento_anual, tipo_relacionamento, horizonte_engajamento) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+        eixos_interesse = VALUES(eixos_interesse), 
+        maturidade_negocios = VALUES(maturidade_negocios), 
+        setores_interesse = VALUES(setores_interesse), 
+        perfil_impacto = VALUES(perfil_impacto), 
+        alcance_impacto = VALUES(alcance_impacto),
+        orcamento_anual = VALUES(orcamento_anual),
+        tipo_relacionamento = VALUES(tipo_relacionamento),
+        horizonte_engajamento = VALUES(horizonte_engajamento)
+    ";
     $stmt = $pdo->prepare($sql_int);
-    $stmt->execute([$parceiro_id, $eixos_json, $maturidade_json, $setores_json, $perfil_json, $alcance]);
+    $stmt->execute([
+        $parceiro_id, 
+        $eixos_json, 
+        $maturidade_json, 
+        $setores_json, 
+        $perfil_json, 
+        $alcance,
+        $orcamento_anual,
+        $tipo_relacionamento,
+        $horizonte_engajamento
+    ]);
 
     // 2. Processa as ODS (Remove as antigas e insere as novas)
     $pdo->prepare("DELETE FROM parceiro_ods WHERE parceiro_id = ?")->execute([$parceiro_id]);
@@ -67,9 +87,7 @@ try {
     $pdo->commit();
 
     // Redireciona para Etapa 5 (Uso da Plataforma)
-    $from = $_POST['from'] ?? '';
-    $destino = ($from === 'confirmacao') ? 'confirmacao.php' : 'etapa5_plataforma.php';
-    header("Location: " . $destino);
+    header("Location: etapa5_plataforma.php");
     exit;
 
 } catch (PDOException $e) {
