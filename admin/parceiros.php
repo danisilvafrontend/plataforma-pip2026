@@ -49,8 +49,8 @@ $stmtCount->execute($params);
 $totalRecords = $stmtCount->fetchColumn();
 $totalPages = ceil($totalRecords / $limit);
 
-// Busca final
-$sql = "SELECT id, nome_fantasia, cnpj, rep_nome, rep_email, status, etapa_atual, criado_em 
+// Busca final - ADICIONADO acordo_aceito
+$sql = "SELECT id, nome_fantasia, cnpj, rep_nome, rep_email, status, etapa_atual, criado_em, acordo_aceito 
         FROM parceiros $whereSql 
         ORDER BY criado_em DESC 
         LIMIT $limit OFFSET $offset";
@@ -158,17 +158,29 @@ include __DIR__ . '/../app/views/admin/header.php';
                 ?>
                 <tr>
                     <td class="text-muted small">#<?= $p['id'] ?></td>
-                    <td class="fw-bold text-primary"><?= htmlspecialchars($p['nome_fantasia']) ?></td>
+                    <td class="fw-bold text-primary">
+                        <?= htmlspecialchars($p['nome_fantasia']) ?>
+                        <?php if($p['acordo_aceito'] == 1): ?>
+                            <i class="bi bi-file-earmark-check-fill text-success ms-1" title="Carta-Acordo Assinada"></i>
+                        <?php endif; ?>
+                    </td>
                     <td><?= htmlspecialchars($p['cnpj']) ?></td>
                     <td>
                         <?= htmlspecialchars($p['rep_nome']) ?><br>
                         <small class="text-muted"><?= htmlspecialchars($p['rep_email']) ?></small>
                     </td>
                     <td><?= $badge ?></td>
-                    <td class="text-end">
+                    <td class="text-end text-nowrap">
                         
-                        <!-- Botão de ver Contrato / Visualizar -->
-                        <a href="visualizar_parceiro.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-secondary" title="Ver Cadastro Completo">
+                        <!-- NOVO BOTÃO: Visualizar Carta-Acordo -->
+                        <?php if($p['acordo_aceito'] == 1): ?>
+                        <a href="visualizar_carta_parceiro.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-success" title="Ver Carta-Acordo Assinada" target="_blank">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </a>
+                        <?php endif; ?>
+
+                        <!-- Botão de ver Cadastro Completo -->
+                        <a href="visualizar_parceiro.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-secondary ms-1" title="Ver Cadastro Completo">
                             <i class="bi bi-eye"></i>
                         </a>
                         
@@ -185,21 +197,6 @@ include __DIR__ . '/../app/views/admin/header.php';
       </tbody>
     </table>
   </div>
-  
-  <?php if ($totalPages > 1): ?>
-  <div class="card-footer bg-white py-3">
-    <nav>
-      <ul class="pagination pagination-sm justify-content-center mb-0">
-        <?php for($i=1; $i<=$totalPages; $i++): ?>
-            <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                <a class="page-link" href="?page=<?= $i ?>&nome=<?= urlencode($f_nome) ?>&cnpj=<?= urlencode($f_cnpj) ?>&status=<?= urlencode($f_status) ?>"><?= $i ?></a>
-            </li>
-        <?php endfor; ?>
-      </ul>
-    </nav>
-  </div>
-  <?php endif; ?>
-</div>
 
 <!-- Scripts locais -->
 <script>

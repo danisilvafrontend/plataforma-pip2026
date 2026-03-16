@@ -272,9 +272,14 @@ include __DIR__ . '/../app/views/public/header_public.php';
                             <?php endforeach; ?>
                         </div>
 
-                        <div class="d-flex justify-content-between mt-5 pt-3 border-top">
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <?php if (($_GET['from'] ?? '') === 'confirmacao'): ?>
+                                <button type="submit" name="acao" value="confirmacao" class="btn btn-outline-primary">
+                                    Salvar e voltar à revisão
+                                </button>
+                            <?php endif; ?>
                             <a href="etapa3_combinado.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
-                            <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold">Salvar e Avançar <i class="bi bi-arrow-right ms-2"></i></button>
+                            <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold">Salvar e Avançar</button>
                         </div>
                     </form>
 

@@ -1,5 +1,9 @@
 <?php
 session_start();
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -8,6 +12,7 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
+// Verifica o login do parceiro
 if (!isset($_SESSION['parceiro_id'])) {
     header("Location: /login.php");
     exit;
@@ -17,9 +22,12 @@ $parceiro_id = $_SESSION['parceiro_id'];
 
 // Busca todos os dados da Tabela principal de Parceiros e do Contrato
 $stmt = $pdo->prepare("
-    SELECT p.*, c.tipos_parceria, c.duracao_meses, c.escopo_atuacao, c.escopo_outro 
-    FROM parceiros p 
-    LEFT JOIN parceiro_contrato c ON p.id = c.parceiro_id 
+    SELECT p.*, 
+           c.tipos_parceria, c.natureza_parceria, c.escopo_atuacao, c.escopo_outro, 
+           c.nivel_engajamento, c.duracao_meses, c.oferece_premiacao, c.premio_descricao,
+           c.deseja_publicar, c.rede_impacto 
+    FROM parceiros p
+    LEFT JOIN parceiro_contrato c ON p.id = c.parceiro_id
     WHERE p.id = ?
 ");
 $stmt->execute([$parceiro_id]);
@@ -27,156 +35,216 @@ $parceiro = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Decodifica os JSONs
 $tipos = !empty($parceiro['tipos_parceria']) ? json_decode($parceiro['tipos_parceria'], true) : [];
-$escopo_array = !empty($parceiro['escopo_atuacao']) ? json_decode($parceiro['escopo_atuacao'], true) : [];
+$naturezas = !empty($parceiro['natureza_parceria']) ? json_decode($parceiro['natureza_parceria'], true) : [];
+$escopo = !empty($parceiro['escopo_atuacao']) ? json_decode($parceiro['escopo_atuacao'], true) : [];
+$publicacoes = !empty($parceiro['deseja_publicar']) ? json_decode($parceiro['deseja_publicar'], true) : [];
+$rede_impacto = $parceiro['rede_impacto'] ?? '';
 
 if (!is_array($tipos)) $tipos = [];
-if (!is_array($escopo_array)) $escopo_array = [];
+if (!is_array($naturezas)) $naturezas = [];
+if (!is_array($escopo)) $escopo = [];
+if (!is_array($publicacoes)) $publicacoes = [];
 
-include __DIR__ . '/../app/views/public/header_public.php'; 
+include __DIR__ . '/../app/views/public/header_public.php';
 ?>
 
 <div class="container py-5">
-    
-    <div class="text-center mb-5">
-        <h2 class="fw-bold mb-2">Revisão de Cadastro</h2>
-        <p class="text-muted">Por favor, revise todas as suas informações abaixo antes de gerar e assinar sua Carta-Acordo.</p>
-        
-        <div class="progress mx-auto mt-4" style="height: 10px; max-width: 500px; border-radius: 10px;">
-            <div class="progress-bar bg-success" role="progressbar" style="width: 98%" aria-valuenow="98" aria-valuemin="0" aria-valuemax="100"></div>
-        </div>
-        <small class="text-muted mt-2 d-block">Quase lá! Etapa de Revisão Final</small>
-    </div>
-
     <div class="row justify-content-center">
-        <div class="col-lg-10">
+        <div class="col-lg-8">
+            
+            <div class="text-center mb-5">
+                <h2 class="fw-bold text-dark mb-2">Revisão Final</h2>
+                <p class="text-muted">Por favor, revise as informações abaixo antes de gerar e assinar sua Carta-Acordo.</p>
+            </div>
 
-            <!-- BLOCO 0: DADOS CADASTRAIS INICIAIS (cadastro.php) -->
-            <div class="card shadow-sm border-0 mb-4 rounded-4">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold text-primary mb-0"><i class="bi bi-card-heading me-2"></i>Dados Cadastrais Iniciais</h5>
-                    <a href="editar_cadastro.php?from=confirmacao" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-pencil me-1"></i> Editar</a>
+            <!-- BLOCO 1: DADOS INSTITUCIONAIS -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+                    <h5 class="fw-bold text-primary mb-0">Etapa 1: Dados da Instituição</h5>
+                    <a href="etapa1_dados.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
                 </div>
                 <div class="card-body p-4">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="text-muted small mb-1">Razão Social</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($parceiro['razao_social'] ?? 'Não informado') ?></p>
+                            <strong class="text-muted d-block small">Nome Fantasia</strong>
+                            <span><?= htmlspecialchars($parceiro['nome_fantasia']) ?></span>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="text-muted small mb-1">Nome Fantasia</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($parceiro['nome_fantasia'] ?? 'Não informado') ?></p>
+                            <strong class="text-muted d-block small">Razão Social</strong>
+                            <span><?= htmlspecialchars($parceiro['razao_social']) ?></span>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="text-muted small mb-1">CNPJ</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($parceiro['cnpj'] ?? 'Não informado') ?></p>
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-muted d-block small">CNPJ</strong>
+                            <span><?= htmlspecialchars($parceiro['cnpj']) ?></span>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="text-muted small mb-1">Representante Legal</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($parceiro['rep_nome'] ?? 'Não informado') ?></p>
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-muted d-block small">Localização</strong>
+                            <span><?= htmlspecialchars($parceiro['cidade'] ?? '') ?> - <?= htmlspecialchars($parceiro['estado'] ?? '') ?></span>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="text-muted small mb-1">E-mail de Login</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($parceiro['email_login'] ?? 'Não informado') ?></p>
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-muted d-block small">Representante Legal</strong>
+                            <span><?= htmlspecialchars($parceiro['rep_nome']) ?> (<?= htmlspecialchars($parceiro['rep_cargo']) ?>)</span>
+                            <br><span class="small text-muted">CPF: <?= htmlspecialchars($parceiro['rep_cpf'] ?? 'Não informado') ?></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-muted d-block small">Contatos do Representante</strong>
+                            <span><?= htmlspecialchars($parceiro['rep_email']) ?></span><br>
+                            <span><?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?></span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- BLOCO 1: ENDEREÇO E CONTATOS (etapa1_dados.php) -->
-            <div class="card shadow-sm border-0 mb-4 rounded-4">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold text-primary mb-0"><i class="bi bi-geo-alt me-2"></i>Endereço e Contatos (Etapa 1)</h5>
-                    <a href="etapa1_dados.php?from=confirmacao" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-pencil me-1"></i> Editar</a>
+            <!-- BLOCO 2: TIPO E NATUREZA -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+                    <h5 class="fw-bold text-primary mb-0">Etapa 2: Tipo de Parceria</h5>
+                    <a href="etapa2_tipo.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
                 </div>
                 <div class="card-body p-4">
                     <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="text-muted small mb-1">Sede / Endereço</label>
-                            <p class="fw-semibold mb-0">
-                                <?= htmlspecialchars($parceiro['endereco_completo'] ?? '') ?> - 
-                                <?= htmlspecialchars($parceiro['cidade'] ?? '') ?>/<?= htmlspecialchars($parceiro['estado'] ?? '') ?>
-                                (CEP: <?= htmlspecialchars($parceiro['cep'] ?? '') ?>)
-                            </p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="text-muted small mb-1">E-mail do Representante</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($parceiro['rep_email'] ?? 'Não informado') ?></p>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="text-muted small mb-1">Celular / WhatsApp do Representante</label>
-                            <p class="fw-semibold mb-0"><?= htmlspecialchars($parceiro['rep_telefone'] ?? 'Não informado') ?></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- BLOCO 2 e 3: ESCOPO DO CONTRATO (etapa2_tipo e etapa3_combinado) -->
-            <div class="card shadow-sm border-0 mb-5 rounded-4">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold text-primary mb-0"><i class="bi bi-handshake me-2"></i>Escopo da Parceria</h5>
-                    <div>
-                        <a href="etapa2_tipo.php?from=confirmacao" class="btn btn-sm btn-outline-secondary rounded-pill px-3 me-1"><i class="bi bi-pencil me-1"></i> Tipos (Etapa 2)</a>
-                        <a href="etapa3_combinado.php?from=confirmacao" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-pencil me-1"></i> Escopo (Etapa 3)</a>
-                    </div>
-                </div>
-                <div class="card-body p-4">
-                    <div class="mb-4">
-                        <label class="text-muted small mb-2">Tipos de Parceria Oferecidos:</label>
-                        <div class="d-flex flex-wrap gap-2">
+                        <div class="col-md-6">
+                            <strong class="text-muted d-block small mb-2">Papéis selecionados:</strong>
                             <?php if(!empty($tipos)): ?>
-                                <?php foreach($tipos as $t): ?>
-                                    <span class="badge bg-light text-dark border py-2 px-3"><?= htmlspecialchars($t) ?></span>
-                                <?php endforeach; ?>
+                                <ul class="mb-0 ps-3">
+                                    <?php foreach($tipos as $t): ?>
+                                        <li><?= htmlspecialchars($t) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
                             <?php else: ?>
-                                <p class="text-muted mb-0">Nenhum tipo selecionado.</p>
+                                <span class="text-muted">Nenhum tipo selecionado.</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-md-6">
+                            <strong class="text-muted d-block small mb-2">Natureza dos recursos:</strong>
+                            <?php if(!empty($naturezas)): ?>
+                                <ul class="mb-0 ps-3">
+                                    <?php foreach($naturezas as $n): ?>
+                                        <li><?= htmlspecialchars($n) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php else: ?>
+                                <span class="text-muted">Nenhuma natureza selecionada.</span>
                             <?php endif; ?>
                         </div>
                     </div>
-                    
-                    <div class="mb-0 bg-light p-3 rounded-3 border">
-                        <label class="text-muted small fw-bold mb-2"><i class="bi bi-quote me-1"></i>Descrição do Apoio / Escopo de Atuação:</label>
+                </div>
+            </div>
+
+            <!-- BLOCO 3: O COMBINADO -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+                    <h5 class="fw-bold text-primary mb-0">Etapa 3: O Nosso Acordo</h5>
+                    <a href="etapa3_combinado.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-muted d-block small">Duração da Parceria</strong>
+                            <span><?= htmlspecialchars($parceiro['duracao_meses'] ?? 'Não informada') ?> meses</span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong class="text-muted d-block small">Nível de Engajamento</strong>
+                            <span><?= htmlspecialchars(ucfirst($parceiro['nivel_engajamento'] ?? 'Não informado')) ?></span>
+                        </div>
                         
-                        <div class="mb-3 d-flex flex-wrap gap-2">
-                            <?php if(!empty($escopo_array)): ?>
-                                <?php foreach($escopo_array as $esc): ?>
-                                    <span class="badge bg-primary text-white py-1 px-2"><?= htmlspecialchars($esc) ?></span>
-                                <?php endforeach; ?>
+                        <div class="col-12 mb-3">
+                            <strong class="text-muted d-block small mb-2">Escopo de Atuação:</strong>
+                            <?php if(!empty($escopo)): ?>
+                                <ul class="mb-1 ps-3">
+                                    <?php foreach($escopo as $e): ?>
+                                        <li><?= htmlspecialchars($e) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php else: ?>
+                                <span class="text-muted">Nenhum escopo selecionado.</span>
+                            <?php endif; ?>
+                            
+                            <?php if(!empty($parceiro['escopo_outro'])): ?>
+                                <div class="mt-2 p-2 bg-light rounded small">
+                                    <strong>Outro:</strong> <?= htmlspecialchars($parceiro['escopo_outro']) ?>
+                                </div>
                             <?php endif; ?>
                         </div>
 
-                        <?php if(!empty($parceiro['escopo_outro'])): ?>
-                            <p class="mb-3 text-dark" style="font-size: 0.95rem;">
-                                <strong>Detalhes adicionais:</strong><br>
-                                <?= nl2br(htmlspecialchars($parceiro['escopo_outro'])) ?>
-                            </p>
+                        <?php if(!empty($parceiro['oferece_premiacao'])): ?>
+                        <div class="col-12">
+                            <strong class="text-success d-block small mb-1"><i class="bi bi-gift me-1"></i> Premiação Oferecida:</strong>
+                            <div class="p-2 border border-success rounded bg-light small">
+                                <?= htmlspecialchars($parceiro['premio_descricao']) ?>
+                            </div>
+                        </div>
                         <?php endif; ?>
-
-                        <p class="mb-0 text-dark small border-top pt-2 mt-2">
-                            <strong>Duração da Parceria:</strong> <?= htmlspecialchars($parceiro['duracao_meses'] ?? 'Não informada') ?> meses
-                        </p>
                     </div>
                 </div>
             </div>
 
-            <!-- ALERTA E BOTÃO DE AVANÇAR -->
-            <div class="alert alert-warning border-warning shadow-sm d-flex align-items-center rounded-3 p-4 mb-4" role="alert">
-                <i class="bi bi-exclamation-triangle-fill fs-3 me-4 text-warning"></i>
-                <div>
-                    <h6 class="fw-bold mb-1 text-dark">Declaração de Veracidade</h6>
-                    <p class="mb-0 text-dark small">Declaro que as informações acima são verdadeiras e estou ciente de que elas serão utilizadas para gerar automaticamente a Carta-Acordo e firmar o vínculo com a plataforma.</p>
+            <!-- BLOCO 5: PLATAFORMA -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+                    <h5 class="fw-bold text-primary mb-0">Etapa 5: Uso da Plataforma</h5>
+                    <a href="etapa5_plataforma.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
+                </div>
+                <div class="card-body p-4">
+                    <strong class="text-muted d-block small mb-2">Deseja Publicar/Promover:</strong>
+                    <?php if(!empty($publicacoes)): ?>
+                        <ul class="mb-3 ps-3">
+                            <?php foreach($publicacoes as $pub): ?>
+                                <li><?= htmlspecialchars($pub) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else: ?>
+                        <p class="text-muted small">Nada selecionado.</p>
+                    <?php endif; ?>
+
+                    <strong class="text-muted d-block small mb-1">Participação na Rede de Impacto:</strong>
+                    <span>
+                        <?php 
+                            if($rede_impacto === 'sim') echo "Sim, quero participar";
+                            elseif($rede_impacto === 'nao') echo "Não";
+                            elseif($rede_impacto === 'avaliar_depois') echo "Avaliar depois";
+                            else echo "Não informado";
+                        ?>
+                    </span>
                 </div>
             </div>
 
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 border-top pt-4 gap-3">
-                <a href="etapa6_juridico.php" class="btn btn-outline-secondary btn-lg px-4 w-100 w-md-auto"><i class="bi bi-arrow-left me-2"></i> Voltar à Etapa 6</a>
-                
-                <a href="assinar_acordo.php" class="btn btn-success btn-lg px-5 fw-bold shadow-sm w-100 w-md-auto">
-                    Avançar para Assinatura <i class="bi bi-file-earmark-check ms-2"></i>
+            <!-- DECLARAÇÃO FINAL E ASSINATURA -->
+            <div class="card shadow-sm border-0 rounded-3 mb-5 bg-light">
+                <div class="card-body p-4 text-center">
+                    <div class="form-check d-inline-block text-start">
+                        <input class="form-check-input" type="checkbox" id="checkRevisao" required style="transform: scale(1.2); margin-right: 10px;">
+                        <label class="form-check-label fw-bold text-dark" for="checkRevisao">
+                            Declaro que as informações acima são verdadeiras e estou ciente de que elas serão utilizadas para gerar automaticamente a Carta-Acordo.
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mb-5">
+                <a href="etapa6_juridico.php" class="btn btn-outline-secondary btn-lg fw-bold">
+                    <i class="bi bi-arrow-left me-2"></i> Voltar
+                </a>
+                <a href="assinar_acordo.php" class="btn btn-success btn-lg px-5 fw-bold" id="btnAvancar" style="pointer-events: none; opacity: 0.5;">
+                    Avançar para Assinatura <i class="bi bi-arrow-right ms-2"></i>
                 </a>
             </div>
 
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('checkRevisao').addEventListener('change', function() {
+    const btn = document.getElementById('btnAvancar');
+    if(this.checked) {
+        btn.style.pointerEvents = 'auto';
+        btn.style.opacity = '1';
+    } else {
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.5';
+    }
+});
+</script>
 
 <?php include __DIR__ . '/../app/views/public/footer_public.php'; ?>

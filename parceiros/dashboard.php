@@ -96,7 +96,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                         <i class="bi bi-hourglass-split text-warning fs-1"></i>
                         <h5 class="fw-bold mt-2">Sua parceria está sendo avaliada</h5>
                         <p class="text-muted mb-0 mx-auto" style="max-width: 600px;">
-                            Nossa equipe está preparando sua Carta-Acordo. Assim que for aprovada, as funcionalidades da plataforma serão desbloqueadas.
+                            Nossa equipe está analisando sua Carta-Acordo. Assim que for aprovada, as funcionalidades da plataforma serão desbloqueadas.
                         </p>
                     </div>
                 </div>

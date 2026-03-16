@@ -45,11 +45,25 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
 
+            <!-- Seção: Documentação -->
+            <li class="nav-item mt-3">
+                <small class="text-muted text-uppercase fw-bold ms-3" style="font-size: 0.75rem;">Documentação</small>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link <?= (strpos($_SERVER['REQUEST_URI'], 'visualizar_minha_carta.php') !== false) ? 'active fw-bold text-primary' : 'text-dark' ?>" 
+                href="visualizar_minha_carta.php">
+                    <i class="bi bi-file-earmark-text me-2 <?= (strpos($_SERVER['REQUEST_URI'], 'visualizar_minha_carta.php') !== false) ? 'text-primary' : 'text-muted' ?>"></i>
+                    Minha Carta-Acordo
+                </a>
+            </li>
+
             <li class="nav-item mt-4">
                 <a class="nav-link rounded-3 px-3 py-2 text-danger fw-semibold" href="/logout.php">
                     <i class="bi bi-box-arrow-left me-2"></i> Sair da Conta
                 </a>
             </li>
+
         </ul>
     </div>
 </div>

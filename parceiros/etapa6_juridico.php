@@ -19,13 +19,25 @@ if (!isset($_SESSION['parceiro_id'])) {
 $parceiro_id = $_SESSION['parceiro_id'];
 
 // Busca os dados do contrato para ver se já há arquivos salvos e se os termos foram aceitos
-$stmt = $pdo->prepare("SELECT logo_url, manual_marca_url, termos_aceitos FROM parceiro_contrato WHERE parceiro_id = ?");
+$stmt = $pdo->prepare("
+    SELECT logo_url, manual_marca_url, termos_aceitos,
+           facebook_url, instagram_url, linkedin_url, youtube_url, autoriza_marca
+    FROM parceiro_contrato
+    WHERE parceiro_id = ?
+");
 $stmt->execute([$parceiro_id]);
 $contrato = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-$logo_atual = $contrato['logo_url'] ?? '';
-$manual_atual = $contrato['manual_marca_url'] ?? '';
+$logo_atual     = $contrato['logo_url'] ?? '';
+$manual_atual   = $contrato['manual_marca_url'] ?? '';
 $termos_aceitos = $contrato['termos_aceitos'] ?? 0;
+
+$facebook_url   = $contrato['facebook_url']  ?? '';
+$instagram_url  = $contrato['instagram_url'] ?? '';
+$linkedin_url   = $contrato['linkedin_url']  ?? '';
+$youtube_url    = $contrato['youtube_url']   ?? '';
+$autoriza_marca = $contrato['autoriza_marca'] ?? 0;
+
 
 include __DIR__ . '/../app/views/public/header_public.php'; 
 ?>
@@ -85,6 +97,66 @@ include __DIR__ . '/../app/views/public/header_public.php';
                             </div>
                         </div>
 
+                       <!-- REDES SOCIAIS -->
+                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-3">Redes sociais oficiais</h5>
+                        <p class="small text-muted mb-3">
+                        Informe apenas perfis institucionais da organização. Esses links poderão aparecer no seu perfil público na plataforma.
+                        </p>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-facebook text-primary me-1"></i> Facebook
+                                </label>
+                                <input type="url" name="facebook_url" class="form-control"
+                                    placeholder="https://www.facebook.com/suaempresa"
+                                    value="<?= htmlspecialchars($facebook_url) ?>">
+                                <div class="form-text">Página oficial da organização no Facebook.</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-instagram text-danger me-1"></i> Instagram
+                                </label>
+                                <input type="url" name="instagram_url" class="form-control"
+                                    placeholder="https://www.instagram.com/suaempresa"
+                                    value="<?= htmlspecialchars($instagram_url) ?>">
+                                <div class="form-text">Perfil institucional no Instagram.</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-linkedin text-primary me-1"></i> LinkedIn
+                                </label>
+                                <input type="url" name="linkedin_url" class="form-control"
+                                    placeholder="https://www.linkedin.com/company/suaempresa"
+                                    value="<?= htmlspecialchars($linkedin_url) ?>">
+                                <div class="form-text">Página da empresa no LinkedIn.</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-youtube text-danger me-1"></i> YouTube
+                                </label>
+                                <input type="url" name="youtube_url" class="form-control"
+                                    placeholder="https://www.youtube.com/@suaempresa"
+                                    value="<?= htmlspecialchars($youtube_url) ?>">
+                                <div class="form-text">Canal oficial da organização no YouTube.</div>
+                            </div>
+                        </div>
+
+                        <!-- AUTORIZAÇÃO DE USO DE IMAGEM/MARCA -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" name="autoriza_marca" id="autoriza_marca"
+                                value="1" <?= $autoriza_marca ? 'checked' : '' ?> required>
+                            <label class="form-check-label fw-bold" for="autoriza_marca">
+                                Declaro estar ciente e concordo com o uso da logomarca, banners, imagens, voz e textos 
+                                disponibilizados pela organização para fins institucionais da parceria Impactos Positivos.
+                            </label>
+                        </div>
+
+
+
                         <!-- TERMOS LEGAIS -->
                         <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-3">Termos de Parceria</h5>
                         
@@ -106,7 +178,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                     Salvar e voltar à revisão
                                 </button>
                             <?php endif; ?>
-                            <a href="etapa1_dados.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
+                            <a href="etapa5_plataforma.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
                             <button type="submit" class="btn btn-success btn-lg px-5 fw-bold"><i class="bi bi-check2-circle me-2"></i> Finalizar Cadastro</button>
                         </div>
                     </form>

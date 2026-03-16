@@ -134,7 +134,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                     Salvar e voltar à revisão
                                 </button>
                             <?php endif; ?>
-                            <a href="etapa1_dados.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
+                            <a href="etapa4_interesses.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
                             <button type="submit" class="btn btn-primary">
                                 Salvar e continuar
                             </button>

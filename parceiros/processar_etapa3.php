@@ -1,8 +1,8 @@
 <?php
 session_start();
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+ini_set('display_errors', 1);
 error_reporting(E_ALL);
+
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -18,11 +18,13 @@ if (!isset($_SESSION['parceiro_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $parceiro_id = $_SESSION['parceiro_id'];
 
-// Captura os dados
+// Captura os dados (ANTIGOS + NOVOS)
 $duracao_meses = $_POST['duracao_meses'] ?? '';
 $nivel_engajamento = $_POST['nivel_engajamento'] ?? '';
 $escopo_atuacao = $_POST['escopo_atuacao'] ?? [];
 $escopo_outro = trim($_POST['escopo_outro'] ?? '');
+$oferece_premiacao = !empty($_POST['oferece_premiacao']) ? 1 : 0;
+$premio_descricao = trim($_POST['premio_descricao'] ?? '');
 
 // Validações básicas
 if (empty($duracao_meses) || empty($nivel_engajamento) || (empty($escopo_atuacao) && empty($escopo_outro))) {
@@ -31,29 +33,47 @@ if (empty($duracao_meses) || empty($nivel_engajamento) || (empty($escopo_atuacao
     exit;
 }
 
+// Se marcou prêmio mas não descreveu, avisa
+if ($oferece_premiacao && empty($premio_descricao)) {
+    $_SESSION['erro_etapa3'] = "Se deseja oferecer premiação, descreva qual prêmio e seu valor.";
+    header("Location: etapa3_combinado.php");
+    exit;
+}
 // Codifica array para JSON
 $escopo_json = json_encode($escopo_atuacao, JSON_UNESCAPED_UNICODE);
 
 try {
-    // Como a tabela parceiro_contrato já foi criada na Etapa 2, usamos UPDATE direto
-    // Mas pra garantir, usamos ON DUPLICATE KEY UPDATE caso o usuário tenha pulado rotas
-    $sql_contrato = "INSERT INTO parceiro_contrato (parceiro_id, duracao_meses, nivel_engajamento, escopo_atuacao, escopo_outro) 
-                     VALUES (?, ?, ?, ?, ?)
-                     ON DUPLICATE KEY UPDATE 
-                     duracao_meses = VALUES(duracao_meses),
-                     nivel_engajamento = VALUES(nivel_engajamento),
-                     escopo_atuacao = VALUES(escopo_atuacao),
-                     escopo_outro = VALUES(escopo_outro)";
-                     
+    // INSERT/UPDATE com os NOVOS CAMPOS
+    $sql_contrato = "
+        INSERT INTO parceiro_contrato 
+        (parceiro_id, duracao_meses, nivel_engajamento, escopo_atuacao, escopo_outro, oferece_premiacao, premio_descricao) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE 
+            duracao_meses = VALUES(duracao_meses),
+            nivel_engajamento = VALUES(nivel_engajamento),
+            escopo_atuacao = VALUES(escopo_atuacao),
+            escopo_outro = VALUES(escopo_outro),
+            oferece_premiacao = VALUES(oferece_premiacao),
+            premio_descricao = VALUES(premio_descricao)
+    ";
+
     $stmt = $pdo->prepare($sql_contrato);
-    $stmt->execute([$parceiro_id, $duracao_meses, $nivel_engajamento, $escopo_json, $escopo_outro]);
+    $stmt->execute([
+        $parceiro_id, 
+        $duracao_meses, 
+        $nivel_engajamento, 
+        $escopo_json, 
+        $escopo_outro,
+        $oferece_premiacao,
+        $premio_descricao
+    ]);
 
     // Atualiza progresso
     $sql_progresso = "UPDATE parceiros SET etapa_atual = GREATEST(etapa_atual, 4) WHERE id = ?";
     $stmt = $pdo->prepare($sql_progresso);
     $stmt->execute([$parceiro_id]);
 
-    // Redireciona para a Etapa 4 (Mapeamento de Interesses e Perfil de Impacto)
+    // Redireciona para a Etapa 3 (Definição do Combinado)
     $from = $_POST['from'] ?? '';
     $destino = ($from === 'confirmacao') ? 'confirmacao.php' : 'etapa4_interesses.php';
     header("Location: " . $destino);
@@ -65,3 +85,4 @@ try {
     header("Location: etapa3_combinado.php");
     exit;
 }
+?>

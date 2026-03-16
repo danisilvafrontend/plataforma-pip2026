@@ -86,8 +86,10 @@ try {
 
     $pdo->commit();
 
-    // Redireciona para Etapa 5 (Uso da Plataforma)
-    header("Location: etapa5_plataforma.php");
+     // Redireciona para a Etapa 3 (Definição do Combinado)
+    $from = $_POST['from'] ?? '';
+    $destino = ($from === 'confirmacao') ? 'confirmacao.php' : 'etapa5_plataforma.php';
+    header("Location: " . $destino);
     exit;
 
 } catch (PDOException $e) {

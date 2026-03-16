@@ -20,7 +20,8 @@ if (!isset($_SESSION['parceiro_id'])) {
 $parceiro_id = $_SESSION['parceiro_id'];
 
 // Busca os dados do contrato para pré-preencher
-$stmt = $pdo->prepare("SELECT duracao_meses, escopo_atuacao, escopo_outro, nivel_engajamento FROM parceiro_contrato WHERE parceiro_id = ?");
+$stmt = $pdo->prepare("SELECT duracao_meses, escopo_atuacao, escopo_outro, nivel_engajamento, oferece_premiacao, premio_descricao FROM parceiro_contrato WHERE parceiro_id = ?");
+
 $stmt->execute([$parceiro_id]);
 $contrato = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -169,13 +170,38 @@ include __DIR__ . '/../app/views/public/header_public.php';
                             </div>
                         </div>
 
+                        <!-- NOVO BLOCO: PREMIAÇÃO -->
+                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-3">Premiação Impactos Positivos</h5>
+                        <p class="small text-muted mb-3">Deseja oferecer prêmio para os 4 ganhadores da Premiação do ano vigente?</p>
+
+                        <!-- Checkbox principal -->
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="oferece_premiacao" id="premio_check" 
+                                    value="1" <?= !empty($contrato['oferece_premiacao']) ? 'checked' : '' ?>>
+                                <label class="form-check-label fw-bold" for="premio_check">
+                                    Sim, oferecerei prêmio para os 4 ganhadores
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Campo condicional: Tipo e valor do prêmio -->
+                        <div class="col-12 mb-4" id="div_premio" style="<?= empty($contrato['oferece_premiacao']) ? 'display: none;' : '' ?>">
+                            <label class="form-label fw-semibold">Qual prêmio e valor de mercado?</label>
+                            <textarea class="form-control" name="premio_descricao" id="premio_descricao" rows="3" 
+                                    placeholder="Ex: 1h de consultoria em gestão ambiental - correspondente a R$1.000,00. Para cada vencedor." 
+                                    style="resize: vertical;"><?= htmlspecialchars($contrato['premio_descricao'] ?? '') ?></textarea>
+                            <div class="form-text">Descreva o prêmio e o valor estimado de mercado para cada um dos 4 vencedores.</div>
+                        </div>
+
+
                         <div class="d-flex gap-2 justify-content-end mt-4">
                             <?php if (($_GET['from'] ?? '') === 'confirmacao'): ?>
                                 <button type="submit" name="acao" value="confirmacao" class="btn btn-outline-primary">
                                     Salvar e voltar à revisão
                                 </button>
                             <?php endif; ?>
-                            <a href="etapa1_dados.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
+                            <a href="etapa2_combinado.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
                             <button type="submit" class="btn btn-primary">
                                 Salvar e continuar
                             </button>
@@ -223,5 +249,23 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 </script>
+
+<script>
+document.getElementById('premio_check').addEventListener('change', function() {
+    const divPremio = document.getElementById('div_premio');
+    const textarea = document.getElementById('premio_descricao');
+    
+    if (this.checked) {
+        divPremio.style.display = 'block';
+        textarea.required = true;
+        textarea.focus();
+    } else {
+        divPremio.style.display = 'none';
+        textarea.required = false;
+        textarea.value = '';
+    }
+});
+</script>
+
 
 <?php include __DIR__ . '/../app/views/public/footer_public.php'; ?>
