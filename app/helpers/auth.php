@@ -33,7 +33,7 @@ function is_admin(): bool {
 function require_admin_login(array $allowedRoles = ['superadmin', 'admin', 'juri']): void {
     if (empty($_SESSION['user_id'])) {
         // não autenticado
-        header('Location: /login.php');
+        header('Location: /admin-login.php');
         exit;
     }
 

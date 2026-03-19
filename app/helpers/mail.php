@@ -44,3 +44,27 @@ function send_mail($toEmail, $toName, $subject, $bodyHtml, $bodyAlt = '') {
         return false;
     }
 }
+
+/**
+ * Retorna a URL base do sistema dinamicamente (com http ou https).
+ * Funciona para o ambiente atual (Homologação, Produção ou Localhost).
+ */
+function get_base_url() {
+    // Verifica se está usando HTTPS
+    $isSecure = false;
+    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+        $isSecure = true;
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+        // Útil para balanceadores de carga na AWS
+        $isSecure = true;
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') {
+        $isSecure = true;
+    }
+
+    $protocolo = $isSecure ? "https" : "http";
+    
+    // Pega o domínio atual (seja staging.impactospositivos.com, vitrine... ou local)
+    $dominio = $_SERVER['HTTP_HOST'] ?? 'vitrine.impactospositivos.com'; // Fallback para produção se rodar via Cron/CLI
+
+    return $protocolo . "://" . $dominio;
+}

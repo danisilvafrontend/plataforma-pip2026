@@ -41,23 +41,23 @@ try {
         $where[] = "n.inscricao_completa = 1 AND (n.status_operacional != 'encerrado' OR n.status_operacional IS NULL)";
     } elseif ($filtro_status === 'andamento') {
         $where[] = "(n.inscricao_completa IS NULL OR n.inscricao_completa = 0) AND (n.status_operacional != 'encerrado' OR n.status_operacional IS NULL)";
+    } elseif ($filtro_status === 'analise') {
+        $where[] = "n.status_vitrine = 'em_analise'";
+    } elseif ($filtro_status === 'aprovado') {
+        $where[] = "n.status_vitrine = 'aprovado'";
     }
 
 
     // Monta a Query
-      $sql = "SELECT 
-            n.id, 
-            n.nome_fantasia, 
-            n.categoria, 
-            n.etapa_atual, 
-            n.inscricao_completa,
-            n.status_operacional,
-            CONCAT(TRIM(e.nome), ' ', TRIM(e.sobrenome)) AS empreendedor,
-            s.score_impacto, s.score_investimento, s.score_escala, s.score_geral
-        FROM negocios n
-        JOIN empreendedores e ON n.empreendedor_id = e.id
-        LEFT JOIN scores_negocios s ON n.id = s.negocio_id
-        ";
+      // Monta a Query
+$sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_completa, 
+        n.status_operacional, n.status_vitrine, n.publicado_vitrine, 
+        CONCAT(TRIM(e.nome), ' ', TRIM(e.sobrenome)) AS empreendedor, 
+        s.score_impacto, s.score_investimento, s.score_escala, s.score_geral 
+        FROM negocios n 
+        JOIN empreendedores e ON n.empreendedor_id = e.id 
+        LEFT JOIN scores_negocios s ON n.id = s.negocio_id ";
+
 
         if (!empty($where)) {
         $sql .= " WHERE " . implode(" AND ", $where);
@@ -326,15 +326,20 @@ include __DIR__ . '/../app/views/admin/header.php';
                                     <td><?= $n['score_impacto'] ?? '-' ?></td>
                                     <td><strong><?= $n['score_geral'] ?? '-' ?></strong></td>
                                     <td class="text-center">
-                                        <?php if (($n['status_operacional'] ?? '') === 'encerrado'): ?>
-                                            <span class="badge bg-danger rounded-pill">Encerrado</span>
-                                        <?php elseif (!empty($n['inscricao_completa'])): ?>
-                                            <span class="badge bg-success rounded-pill">Concluído</span>
+                                        <?php if ($n['status_operacional'] === 'encerrado'): ?>
+                                            <span class="badge bg-danger">Encerrado</span>
+                                        <?php elseif ($n['status_vitrine'] === 'aprovado' || $n['publicado_vitrine'] == 1): ?>
+                                            <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Aprovado e Publicado</span>
+                                        <?php elseif ($n['status_vitrine'] === 'em_analise'): ?>
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Aguardando Aprovação</span>
+                                        <?php elseif ($n['status_vitrine'] === 'rejeitado'): ?>
+                                            <span class="badge bg-danger"><i class="bi bi-x-circle-fill"></i> Rejeitado</span>
+                                        <?php elseif ($n['inscricao_completa'] == 1): ?>
+                                            <span class="badge bg-info text-dark">Preenchimento Concluído</span>
                                         <?php else: ?>
-                                            <span class="badge bg-warning text-dark rounded-pill">Em andamento</span>
+                                            <span class="badge bg-secondary">Em andamento</span>
                                         <?php endif; ?>
                                     </td>
-
                                     <td>
                                         <div class="d-flex gap-1 justify-content-center">
                                             <!-- Visualizar: todos -->

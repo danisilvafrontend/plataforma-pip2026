@@ -46,7 +46,10 @@ include __DIR__ . '/app/views/public/header_public.php';
     <h1 class="display-5 mb-3">Bem-vindo(a) ao Impactos Positivos</h1>
     <p class="lead text-muted mb-4">Conectando empreendedores de impacto, cursos, eventos e uma comunidade engajada.</p>
     <a class="btn btn-success btn-lg shadow-sm" href="/empreendedores/register.php">
-        <i class="bi bi-pencil-square"></i> FAÇA SUA INSCRIÇÃO AQUI!
+        <i class="bi bi-rocket-takeoff-fill me-2"></i> FAÇA SUA INSCRIÇÃO AQUI!
+    </a>
+    <a class="btn btn-primary btn-lg shadow-sm" href="/parceiros/cadastro.php">
+        <i class="bi bi-diagram-3-fill me-2"></i> SEJA UM PARCEIRO DE IMPACTO!
     </a>
   </div>
 </section>

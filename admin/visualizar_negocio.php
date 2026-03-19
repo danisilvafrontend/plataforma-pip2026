@@ -125,13 +125,21 @@ try {
     $documentos = [];
 }
 
+// Busca docs da etapa 9
+$stmt = $pdo->prepare("
+    SELECT * FROM negocios_documentos nd
+    WHERE nd.negocio_id = ?
+");
+$stmt->execute([$negocio_id]);
+$docs = $stmt->fetch(PDO::FETCH_ASSOC);
+
 // Inclui header do admin
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
 
 <div class="container my-5">
     <div class="row justify-content-center">
-        <div class="col-lg-10">
+        <div class="col-lg-12">
             <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa1.php'; ?>
             <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa2.php'; ?>
             <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa3.php'; ?>
@@ -140,11 +148,37 @@ include __DIR__ . '/../app/views/admin/header.php';
             <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa6.php'; ?>
             <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa7.php'; ?>
             <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa8.php'; ?>
+            <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa9.php'; ?>
         </div>
     </div>
 </div>
 
 <!-- Botões de ação para admin -->
+ <!-- NO FINAL do bloco_etapa9.php OU após bloco_etapa9 na visualizar_negocio.php -->
+<?php if ($negocio['status_vitrine'] === 'em_analise'): ?>
+<div class="alert alert-warning">
+    <h6 class="alert-heading mb-2">
+        <i class="bi bi-hourglass-split text-warning me-2"></i>
+        Aguardando Aprovação de Vitrine
+    </h6>
+    <p class="mb-3">
+        Este negócio foi enviado para análise. Verifique as documentações e aprove se tudo estiver OK.
+    </p>
+    <div class="d-flex gap-2">
+        <a href="/admin/aprovar_negocio.php?id=<?= $negocio_id ?>" 
+           class="btn btn-success btn-lg">
+            <i class="bi bi-check-circle me-2"></i>
+            APROVAR e Publicar na Vitrine
+        </a>
+        <a href="/admin/rejeitar_negocio.php?id=<?= $negocio_id ?>" 
+           class="btn btn-outline-danger btn-lg">
+            <i class="bi bi-x-circle me-2"></i>
+            Rejeitar Cadastro
+        </a>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="container my-4 text-center">
     <a href="/admin/negocios.php" class="btn btn-secondary">Voltar</a>
 </div>

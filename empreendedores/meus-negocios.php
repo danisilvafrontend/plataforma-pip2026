@@ -22,8 +22,15 @@ $pdo = new PDO(
 );
 
 // Busca todos os negócios do empreendedor logado
-$stmt = $pdo->prepare("SELECT id, nome_fantasia, categoria, etapa_atual, inscricao_completa, publicado_vitrine, status_operacional 
-                       FROM negocios WHERE empreendedor_id = ? ORDER BY id DESC");
+$stmt = $pdo->prepare("
+    SELECT id, nome_fantasia, categoria, etapa_atual, 
+           inscricao_completa, status_operacional, 
+           status_vitrine, publicado_vitrine 
+    FROM negocios 
+    WHERE empreendedor_id = ?
+    ORDER BY created_at DESC
+");
+
 
 
 $stmt->execute([$_SESSION['user_id']]);
@@ -83,6 +90,7 @@ if (isset($_GET['ok']) && $_GET['ok'] === 'publicado'): ?>
             <tr>
               <th>Nome Fantasia</th>
               <th>Categoria</th>
+              <th>Status Publicação</th>
               <th>Etapa Atual</th>
               <th>Status</th>
               <th>Ações</th>
@@ -99,7 +107,8 @@ if (isset($_GET['ok']) && $_GET['ok'] === 'publicado'): ?>
                   6 => 'Dados Financeiro e Modelo de Receita',
                   7 => 'Avaliação de Impacto',
                   8 => 'Visão de Futuro',
-                  9 => 'Revisão e Confirmação'
+                  9 => 'Documentação',
+                  10 => 'Revisão e Confirmação'
                 ];
 
                 $arquivosEtapas = [
@@ -111,13 +120,28 @@ if (isset($_GET['ok']) && $_GET['ok'] === 'publicado'): ?>
                   6 => 'etapa6_financeiro.php',
                   7 => 'etapa7_impacto.php',
                   8 => 'etapa8_visao.php',
-                  9 => 'confirmacao.php'
+                  9 => 'etapa9_documentacao.php',
+                  10 => 'confirmacao.php'
                 ];
               ?>
             <?php foreach ($negocios as $n): ?>
               <tr>
                 <td><?= htmlspecialchars($n['nome_fantasia']) ?></td>
                 <td><?= htmlspecialchars($n['categoria']) ?></td>
+                <td>
+                    <?php 
+                    $statusClass = match($n['status_vitrine']) {
+                        'aprovado' => 'bg-success',
+                        'em_analise' => 'bg-warning text-dark',
+                        'pendente' => 'bg-secondary',
+                        'rejeitado' => 'bg-danger',
+                        default => 'bg-light text-muted'
+                    };
+                    ?>
+                    <span class="badge <?= $statusClass ?>">
+                        <?= ucfirst($n['status_vitrine'] ?? 'pendente') ?>
+                    </span>
+                </td>
                 <td>
                   <!-- CORREÇÃO: Exibe texto personalizado se completo -->
                     <?php 
@@ -137,44 +161,47 @@ if (isset($_GET['ok']) && $_GET['ok'] === 'publicado'): ?>
                         <span class="badge bg-warning text-dark">Em andamento</span>
                     <?php endif; ?>
                 </td>
-                <td>
+                                <td>
                   <?php if ($n['inscricao_completa']): ?>
                       <!-- Visualizar/Editar (quando já está concluído) -->
                       <a href="/negocios/confirmacao.php?id=<?= $n['id'] ?>" class="btn btn-sm btn-info mb-1">Visualizar/Editar</a>
                       
-                      <!-- Lógica de Ocultar/Publicar Vitrine -->
-                      <?php if (($n['publicado_vitrine'] ?? 0) == 1): ?>
-                          <a href="/negocio.php?id=<?= $n['id'] ?>" target="_blank" class="btn btn-sm btn-success ms-1 mb-1">Ver na Vitrine</a>
-                          <!-- Botão de Remover -->
+                      <!-- Lógica de Ocultar/Republicar Vitrine -->
+                      <?php if (($n['publicado_vitrine'] ?? 0) == 1 && $n['status_operacional'] !== 'encerrado'): ?>
+                          <!-- Negócio Ativo e Publicado -->
+                          <a href="/vitrine/negocio.php?id=<?= $n['id'] ?>" target="_blank" class="btn btn-sm btn-success ms-1 mb-1">Ver na Vitrine</a>
+                          
+                          <!-- Botão de Ocultar (Encerra o negócio) -->
                           <form action="/negocios/publicar.php" method="post" class="d-inline-block ms-1 mb-1" onsubmit="return confirm('Tem certeza que deseja ocultar seu negócio da vitrine pública? Seus dados não serão perdidos.');">
                               <input type="hidden" name="negocio_id" value="<?= $n['id'] ?>">
                               <input type="hidden" name="acao" value="remover">
-                              <!-- Botão que abre o modal de Remover -->
-                              <button type="button" class="btn btn-sm btn-outline-danger ms-1 mb-1" title="Ocultar da Vitrine" onclick="abrirModalOcultar(<?= $n['id'] ?>)">
-                                  <i class="bi bi-eye-slash"></i> Ocultar</button>
-
+                              <input type="hidden" name="motivo" value="encerrado">
+                              <button type="submit" class="btn btn-sm btn-outline-danger" title="Ocultar da Vitrine">
+                                  <i class="bi bi-eye-slash"></i> Ocultar
+                              </button>
                           </form>
-                      <?php else: ?>
-                          <!-- Botão de Publicar -->
+
+                      <?php elseif ($n['status_operacional'] === 'encerrado' && $n['status_vitrine'] === 'aprovado'): ?>
+                          <!-- Negócio foi ocultado (encerrado), mas já tinha sido aprovado antes -->
                           <form action="/negocios/publicar.php" method="post" class="d-inline-block ms-1 mb-1">
                               <input type="hidden" name="negocio_id" value="<?= $n['id'] ?>">
-                              <input type="hidden" name="acao" value="publicar">
-                              <button type="submit" class="btn btn-sm btn-success" title="Publicar na Vitrine">
-                                  <i class="bi bi-globe"></i> Publicar na Vitrine
+                              <input type="hidden" name="acao" value="republicar">
+                              <button type="submit" class="btn btn-sm btn-success" title="Republicar na Vitrine">
+                                  <i class="bi bi-arrow-repeat"></i> Republicar na Vitrine
                               </button>
                           </form>
                       <?php endif; ?>
 
-                  <?php elseif ($n['etapa_atual'] == 9): ?>
-                      <!-- Revisão e Confirmação -->
+                  <?php elseif ($n['etapa_atual'] >= 10): ?>
+                      <!-- Revisão e Confirmação (Aguardando enviar para aprovação ou já em análise) -->
                       <a href="/negocios/confirmacao.php?id=<?= $n['id'] ?>" class="btn btn-sm btn-warning">
                           Revisão e Confirmação
                       </a>
                   <?php else: ?>
                       <!-- Botão Continuar -->
-                      <a href="/negocios/<?= $arquivosEtapas[$n['etapa_atual']] ?>?id=<?= $n['id'] ?>"  
+                      <a href="/negocios/<?= $arquivosEtapas[$n['etapa_atual']] ?? 'etapa1_dados.php' ?>?id=<?= $n['id'] ?>"  
                         class="btn btn-sm btn-primary">
-                        Continuar na Etapa <?= $etapas[$n['etapa_atual']] ?>
+                        Continuar na Etapa <?= $etapas[$n['etapa_atual']] ?? $n['etapa_atual'] ?>
                       </a>
 
                       <!-- Dropdown para editar etapas anteriores (MANTIDO!) -->
@@ -186,7 +213,7 @@ if (isset($_GET['ok']) && $_GET['ok'] === 'publicado'): ?>
                               <?php for ($num = 1; $num <= $n['etapa_atual']; $num++): ?>
                                   <li>
                                       <a class="dropdown-item" href="/negocios/editar_etapa<?= $num ?>.php?id=<?= $n['id'] ?>">
-                                          <?= $num ?> - <?= $etapas[$num] ?> (Editar)
+                                          <?= $num ?> - <?= $etapas[$num] ?? "Etapa $num" ?> (Editar)
                                       </a>
                                   </li>
                               <?php endfor; ?>
@@ -194,6 +221,7 @@ if (isset($_GET['ok']) && $_GET['ok'] === 'publicado'): ?>
                       </div>
                   <?php endif; ?>
               </td>
+
             </tr>
             <?php endforeach; ?>
           </tbody>

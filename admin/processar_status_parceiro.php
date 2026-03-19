@@ -55,7 +55,7 @@ try {
 
     // SE FOI APROVADO, DISPARA O E-MAIL COM HEADER E FOOTER
     if ($novo_status === 'ativo' && !empty($parceiro['rep_email'])) { // No form o option é value="ativo"
-        $subject = 'Sua parceria com a Plataforma Impactos Positivos foi ativada';
+        $subject = 'Sua parceria com a Plataforma Impactos Positivos foi Aprovada';
         
         $bodyHtml = '
             <p>Olá, {{nome}}!</p>
@@ -64,6 +64,12 @@ try {
 
             <p>A partir de agora, sua organização passa a integrar oficialmente a rede da Plataforma Impactos Positivos.</p>
 
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{{link_painel}}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                    Acessar Meu Painel
+                </a>
+            </p>
+            
             <p>Em breve, vocês poderão acompanhar as próximas orientações, ativações e oportunidades da parceria.</p>
 
             <p>Se precisar de apoio, nossa equipe está à disposição.</p>
@@ -75,6 +81,7 @@ try {
             'nome' => $parceiro['rep_nome'] ?: $parceiro['nome_fantasia'],
             'organizacao' => $parceiro['nome_fantasia'] ?: $parceiro['razao_social'],
             'email' => $parceiro['rep_email'],
+            'link_painel' => get_base_url() . '/parceiros/dashboard.php',
             'ano' => date('Y')
         ]);
 

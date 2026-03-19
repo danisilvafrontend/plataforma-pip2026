@@ -218,6 +218,7 @@ $desafios_map = [
             <?php endif; ?>
         </div>
         <!-- Fim row Info Adicionais-->
+         
         <!-- Desafios-->
         <div class="row mb-3 mb-2">
             <div class="col-12">
@@ -282,6 +283,7 @@ $desafios_map = [
                     <?php endif; ?>
                 </div>
             </div>
+        </div>
         </div>
         <!-- Fim row - Desafios -->
 

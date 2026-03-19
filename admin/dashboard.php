@@ -134,6 +134,7 @@ try {
         <div class="d-flex gap-2">
           <a href="/admin/administradores.php" class="btn btn-outline-primary">Administradores</a>
           <a href="/admin/empreendedores.php" class="btn btn-outline-primary">Empreendedores</a>
+          <a href="/admin/parceiros.php" class="btn btn-outline-primary">Parceiros</a>
           <a href="/admin/usuarios.php" class="btn btn-outline-primary">Usuários</a>
           <a href="/admin/negocios.php" class="btn btn-outline-primary">Negócios</a>
         </div>

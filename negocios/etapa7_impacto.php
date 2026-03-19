@@ -265,14 +265,14 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         
                <!-- 9. Resultados -->
         <div class="mb-3">
-            <label class="form-label fw-bold"><i class="bi bi-graph-up-arrow text-secondary me-1"></i> Quais são os resultados de impacto mais relevantes alcançados até hoje?</label>
+            <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> Quais são os resultados de impacto mais relevantes alcançados até hoje?</label>
             <small class="text-muted d-block mb-2">Descreva brevemente os principais resultados (até 1000 caracteres).</small>
             <textarea name="resultados" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['resultados'] ?? '') ?></textarea>
 
             <div class="row mt-4">
                 <!-- Links externos -->
                 <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold"><i class="bi bi-link-45deg text-secondary me-1"></i> Links externos (máx. 4)</label>
+                    <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> Links externos (máx. 4)</label>
                     
                     <div class="alert alert-info py-2 px-3 small mb-3">
                         <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de links:</strong> vídeos institucionais, apresentações (Pitch Deck no Canva/Google Slides), matérias na mídia, ou painéis interativos de resultados.
@@ -294,7 +294,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                 <!-- PDFs -->
                 <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> PDFs (máx. 4, até 5MB cada)</label>
+                    <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> PDFs (máx. 4, até 5MB cada)</label>
                     
                     <div class="alert alert-info py-2 px-3 small mb-3">
                         <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de PDFs:</strong> relatórios de impacto anuais, certificados, dossiês de resultados ou documentos de validação do negócio.

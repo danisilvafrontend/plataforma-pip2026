@@ -199,7 +199,7 @@ if ($modo === 'cadastro') {
     // Atualiza etapa e vai para confirmar
     $stmt = $pdo->prepare("UPDATE negocios SET etapa_atual = 9, updated_at = NOW() WHERE id = ? AND empreendedor_id = ?");
     $stmt->execute([$negocio_id, $_SESSION['user_id']]);
-    header("Location: /negocios/confirmacao.php?id=" . $negocio_id);
+    header("Location: /negocios/etapa9_documentacao.php?id=" . $negocio_id);
     exit;
 } else {
     // Edição: volta para Meus Negócios

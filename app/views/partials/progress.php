@@ -9,7 +9,8 @@ $etapas = [
   6 => 'Dados Financeiro e Modelo de Receita',
   7 => 'Avaliação de Impacto',
   8 => 'Visão de Futuro',
-  9 => 'Revisão e confirmação'
+  9 => 'Documentação',
+  10 => 'Revisão e confirmação'
 ];
 ?>
 

@@ -144,6 +144,13 @@ try {
 } catch (Throwable $e) {
     $documentos = [];
 }
+// Busca docs da etapa 9
+$stmt = $pdo->prepare("
+    SELECT * FROM negocios_documentos nd
+    WHERE nd.negocio_id = ?
+");
+$stmt->execute([$negocio_id]);
+$docs = $stmt->fetch(PDO::FETCH_ASSOC);
 
 /* -------------------------
    Partials (8 blocos)
@@ -159,6 +166,7 @@ $partials = [
     'etapa6' => $base_partials . '/bloco_etapa6.php',
     'etapa7' => $base_partials . '/bloco_etapa7.php',
     'etapa8' => $base_partials . '/bloco_etapa8.php',
+    'etapa9' => $base_partials . '/bloco_etapa9.php'
 ];
 
 // Inclui header do layout do empreendedor
@@ -181,6 +189,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <?php include __DIR__ . '/blocos-cadastros/bloco_etapa6.php'; ?>
             <?php include __DIR__ . '/blocos-cadastros/bloco_etapa7.php'; ?>
             <?php include __DIR__ . '/blocos-cadastros/bloco_etapa8.php'; ?>
+            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa9.php'; ?>
 
         </div>
     </div>
@@ -204,7 +213,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         <form action="/negocios/publicar.php" method="post" class="d-inline-block ms-2">
             <input type="hidden" name="negocio_id" value="<?= e($negocio_id) ?>">
             <input type="hidden" name="acao" value="publicar">
-            <button type="submit" class="btn btn-success">Publicar Negócio na Vitrine</button>
+            <button type="submit" class="btn btn-success">Enviar Cadastro para Avaliação</button>
         </form>
     <?php endif; ?>
 </div>
