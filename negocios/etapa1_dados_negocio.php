@@ -318,6 +318,28 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <input type="url" name="outros_links" id="outros_links" class="form-control" placeholder="https://...">
         </div>
     </div>
+    
+    <!-- NOVO BLOCO: INTERESSE EM MARKETPLACE -->
+    <div class="card bg-light border-0 mb-4 p-3 rounded-3 border-start border-4 border-primary shadow-sm">
+        <h5 class="fw-bold text-dark mb-2"><i class="bi bi-shop text-primary me-2"></i>Marketplace Impactos Positivos</h5>
+        <p class="text-muted small mb-3">Estamos desenvolvendo um marketplace exclusivo para conectar negócios de impacto com compradores e parceiros do ecossistema. Você tem interesse em comercializar seus produtos/serviços nele no futuro?</p>
+        
+        <div class="d-flex gap-4">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="interesse_marketplace" id="mkp_sim" value="Sim" required <?= (isset($negocio['interesse_marketplace']) && $negocio['interesse_marketplace'] === 'Sim') ? 'checked' : '' ?>>
+                <label class="form-check-label fw-semibold" style="cursor: pointer;" for="mkp_sim">
+                    Sim, tenho interesse
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="interesse_marketplace" id="mkp_nao" value="Não" required <?= (isset($negocio['interesse_marketplace']) && $negocio['interesse_marketplace'] === 'Não') ? 'checked' : '' ?>>
+                <label class="form-check-label fw-semibold" style="cursor: pointer;" for="mkp_nao">
+                    Não, no momento não
+                </label>
+            </div>
+        </div>
+    </div>
+
     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
         <a href="/empreendedores/dashboard.php" class="btn btn-secondary me-md-2">Cancelar</a>
         <button type="submit" name="acao" value="salvar" class="btn btn-primary">Salvar e Avançar</button>

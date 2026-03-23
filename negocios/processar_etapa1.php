@@ -52,7 +52,7 @@ $facebook        = trim($_POST['facebook'] ?? '');
 $tiktok          = trim($_POST['tiktok'] ?? '');
 $youtube         = trim($_POST['youtube'] ?? '');
 $outros_links    = trim($_POST['outros_links'] ?? '');
-
+$interesse_marketplace = $_POST['interesse_marketplace'] ?? null;
 
 // --------- Validações ---------
 $errors = [];
@@ -143,6 +143,9 @@ foreach ($urls as $k => $u) {
         $errors[] = "URL inválida em {$k}. Use http:// ou https://";
     }
 }
+if (empty($interesse_marketplace) || !in_array($interesse_marketplace, ['Sim', 'Não'])) {
+    $errors[] = "Por favor, responda se tem interesse no futuro marketplace.";
+}
 if (!empty($errors)) {
     $_SESSION['errors_etapa1'] = $errors;
     $redirect = ($modo === 'cadastro')
@@ -155,87 +158,47 @@ if (!empty($errors)) {
 
 // --------- INSERT ---------
 try {
-    if ($modo === 'cadastro') {
-        $sql = "INSERT INTO negocios 
-            (empreendedor_id, nome_fantasia, razao_social, categoria, cnpj_cpf, formato_legal, formato_outros, 
-             email_comercial, telefone_comercial, data_fundacao, setor, rua, numero, complemento, cep, 
-             municipio, estado, pais, site, linkedin, instagram, facebook, tiktok, youtube, outros_links, 
-             etapa_atual, inscricao_completa)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
+        if ($modo === 'cadastro') {
+        $sql = "INSERT INTO negocios (
+                    empreendedor_id, nome_fantasia, razao_social, categoria, cnpj_cpf,
+                    formato_legal, formato_outros, email_comercial, telefone_comercial, data_fundacao, setor,
+                    rua, numero, complemento, cep, municipio, estado, pais,
+                    site, linkedin, instagram, facebook, tiktok, youtube, outros_links, interesse_marketplace,
+                    etapa_atual, inscricao_completa
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
-            $_SESSION['user_id'], 
-            $nome_fantasia, 
-            $razao_social, 
-            $categoria, 
-            $cnpj_cpf,
-            $formato_legal, 
-            $formato_outros, 
-            $email_comercial,      // Adicionado aqui
-            $telefone_comercial,   // Adicionado aqui
-            $data_fundacao, 
-            $setor, 
-            $rua, 
-            $numero, 
-            $complemento,
-            $cep, 
-            $municipio, 
-            $estado, 
-            $pais, 
-            $site, 
-            $linkedin, 
-            $instagram, 
-            $facebook,
-            $tiktok, 
-            $youtube, 
-            $outros_links, 
-            1, 
-            0
+            $_SESSION['user_id'], $nome_fantasia, $razao_social, $categoria, $cnpj_cpf,
+            $formato_legal, $formato_outros, $email_comercial, $telefone_comercial, $data_fundacao, $setor,
+            $rua, $numero, $complemento, $cep, $municipio, $estado, $pais,
+            $site, $linkedin, $instagram, $facebook, $tiktok, $youtube, $outros_links, $interesse_marketplace,
+            1, 0
         ]);
+
         
         $id = (int)$pdo->lastInsertId();
         $_SESSION['negocio_id'] = $id;
         $pdo->prepare("UPDATE negocios SET etapa_atual = 2 WHERE id = ?")->execute([$id]);
         
-    } else {
-        $sql = "UPDATE negocios SET
-            nome_fantasia=?, razao_social=?, categoria=?, cnpj_cpf=?, formato_legal=?, formato_outros=?, 
-            email_comercial=?, telefone_comercial=?, data_fundacao=?, setor=?, rua=?, numero=?, 
-            complemento=?, cep=?, municipio=?, estado=?, pais=?, site=?, linkedin=?, instagram=?, 
-            facebook=?, tiktok=?, youtube=?, outros_links=?
-            WHERE id=? AND empreendedor_id=?";
-            
+        } else {
+        $sql = "UPDATE negocios SET 
+                    nome_fantasia=?, razao_social=?, categoria=?, cnpj_cpf=?,
+                    formato_legal=?, formato_outros=?, email_comercial=?, telefone_comercial=?, data_fundacao=?, setor=?,
+                    rua=?, numero=?, complemento=?, cep=?, municipio=?, estado=?, pais=?,
+                    site=?, linkedin=?, instagram=?, facebook=?, tiktok=?, youtube=?, outros_links=?, interesse_marketplace=?
+                WHERE id=? AND empreendedor_id=?";
+        
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
-            $nome_fantasia, 
-            $razao_social, 
-            $categoria, 
-            $cnpj_cpf, 
-            $formato_legal, 
-            $formato_outros, 
-            $email_comercial,      // Adicionado aqui
-            $telefone_comercial,   // Adicionado aqui
-            $data_fundacao,
-            $setor, 
-            $rua, 
-            $numero, 
-            $complemento, 
-            $cep, 
-            $municipio, 
-            $estado, 
-            $pais,
-            $site, 
-            $linkedin, 
-            $instagram, 
-            $facebook, 
-            $tiktok, 
-            $youtube, 
-            $outros_links,
-            $id, 
-            $_SESSION['user_id']
+            $nome_fantasia, $razao_social, $categoria, $cnpj_cpf,
+            $formato_legal, $formato_outros, $email_comercial, $telefone_comercial, $data_fundacao, $setor,
+            $rua, $numero, $complemento, $cep, $municipio, $estado, $pais,
+            $site, $linkedin, $instagram, $facebook, $tiktok, $youtube, $outros_links, $interesse_marketplace,
+            $id, $_SESSION['user_id']
         ]);
     }
+
 
 
     // --------- Score Investimento (parcial: estágio) ---------

@@ -20,7 +20,7 @@ if (!isset($_SESSION['parceiro_id'])) {
 $parceiro_id = $_SESSION['parceiro_id'];
 
 // Busca os dados do contrato para pré-preencher
-$stmt = $pdo->prepare("SELECT duracao_meses, escopo_atuacao, escopo_outro, nivel_engajamento, oferece_premiacao, premio_descricao FROM parceiro_contrato WHERE parceiro_id = ?");
+$stmt = $pdo->prepare("SELECT escopo_atuacao, escopo_outro, nivel_engajamento, oferece_premiacao, premio_descricao FROM parceiro_contrato WHERE parceiro_id = ?");
 
 $stmt->execute([$parceiro_id]);
 $contrato = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -29,7 +29,6 @@ $contrato = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 $escopo_salvo = !empty($contrato['escopo_atuacao']) ? json_decode($contrato['escopo_atuacao'], true) : [];
 if (!is_array($escopo_salvo)) $escopo_salvo = [];
 
-$duracao = isset($contrato['duracao_meses']) ? (string)$contrato['duracao_meses'] : '';
 $nivel = $contrato['nivel_engajamento'] ?? '';
 $escopo_outro = $contrato['escopo_outro'] ?? '';
 
@@ -67,32 +66,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
                     <form method="POST" action="processar_etapa3.php">
                     <input type="hidden" name="from" value="<?= htmlspecialchars($_GET['from'] ?? '') ?>">
     
-                        <!-- DURAÇÃO -->
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-2">Duração da Parceria</h5>
-                        
-                        <div class="row mb-4">
-                            <?php 
-                            $duracao_opcoes = [
-                                '6' => '6 meses',
-                                '12' => '12 meses',
-                                '24' => '24 meses',
-                                'projeto' => 'Projeto Específico'
-                            ];
-                            foreach ($duracao_opcoes as $val => $label): 
-                                $checked = ((string)$duracao === (string)$val) ? 'checked' : '';
-
-                            ?>
-                                <div class="col-md-3 col-6 mb-2">
-                                    <div class="form-check custom-radio-card border rounded p-2 text-center">
-                                        <input class="form-check-input d-none" type="radio" name="duracao_meses" value="<?= $val ?>" id="dur_<?= $val ?>" <?= $checked ?> required>
-                                        <label class="form-check-label w-100 fw-medium m-0 py-1" style="cursor:pointer;" for="dur_<?= $val ?>">
-                                            <?= $label ?>
-                                        </label>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-
                         <!-- NÍVEL DE ENGAJAMENTO -->
                         <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-3">Nível de Engajamento</h5>
                         

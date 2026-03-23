@@ -19,7 +19,6 @@ if (!isset($_SESSION['parceiro_id']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
 $parceiro_id = $_SESSION['parceiro_id'];
 
 // Captura os dados (ANTIGOS + NOVOS)
-$duracao_meses = $_POST['duracao_meses'] ?? '';
 $nivel_engajamento = $_POST['nivel_engajamento'] ?? '';
 $escopo_atuacao = $_POST['escopo_atuacao'] ?? [];
 $escopo_outro = trim($_POST['escopo_outro'] ?? '');
@@ -27,8 +26,8 @@ $oferece_premiacao = !empty($_POST['oferece_premiacao']) ? 1 : 0;
 $premio_descricao = trim($_POST['premio_descricao'] ?? '');
 
 // Validações básicas
-if (empty($duracao_meses) || empty($nivel_engajamento) || (empty($escopo_atuacao) && empty($escopo_outro))) {
-    $_SESSION['erro_etapa3'] = "Por favor, preencha a Duração, o Nível de Engajamento e ao menos um Escopo de Atuação.";
+if (empty($nivel_engajamento) || (empty($escopo_atuacao) && empty($escopo_outro))) {
+    $_SESSION['erro_etapa3'] = "Por favor, preencha o Nível de Engajamento e ao menos um Escopo de Atuação.";
     header("Location: etapa3_combinado.php");
     exit;
 }
@@ -44,23 +43,19 @@ $escopo_json = json_encode($escopo_atuacao, JSON_UNESCAPED_UNICODE);
 
 try {
     // INSERT/UPDATE com os NOVOS CAMPOS
-    $sql_contrato = "
-        INSERT INTO parceiro_contrato 
-        (parceiro_id, duracao_meses, nivel_engajamento, escopo_atuacao, escopo_outro, oferece_premiacao, premio_descricao) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        $sql_contrato = "INSERT INTO parceiro_contrato 
+        (parceiro_id, nivel_engajamento, escopo_atuacao, escopo_outro, oferece_premiacao, premio_descricao) 
+        VALUES (?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE 
-            duracao_meses = VALUES(duracao_meses),
-            nivel_engajamento = VALUES(nivel_engajamento),
-            escopo_atuacao = VALUES(escopo_atuacao),
-            escopo_outro = VALUES(escopo_outro),
-            oferece_premiacao = VALUES(oferece_premiacao),
-            premio_descricao = VALUES(premio_descricao)
-    ";
-
+        nivel_engajamento = VALUES(nivel_engajamento),
+        escopo_atuacao = VALUES(escopo_atuacao),
+        escopo_outro = VALUES(escopo_outro),
+        oferece_premiacao = VALUES(oferece_premiacao),
+        premio_descricao = VALUES(premio_descricao)";
+    
     $stmt = $pdo->prepare($sql_contrato);
     $stmt->execute([
         $parceiro_id, 
-        $duracao_meses, 
         $nivel_engajamento, 
         $escopo_json, 
         $escopo_outro,

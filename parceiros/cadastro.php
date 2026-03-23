@@ -24,15 +24,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Dados do Representante
     $rep_nome = trim($_POST['rep_nome'] ?? '');
     $rep_cpf = preg_replace('/[^0-9]/', '', $_POST['rep_cpf'] ?? ''); // Limpa a máscara do CPF
+    $rep_data_nascimento = $_POST['rep_data_nascimento'] ?? ''; // Nova captura da data
     
     // Acesso à Plataforma
     $email_login = trim($_POST['email_login'] ?? '');
     $senha = $_POST['senha'] ?? '';
     $senha_confirmar = $_POST['senha_confirmar'] ?? '';
 
+    // Validação de Idade (Maior de 18 anos)
+    $idade = 0;
+    if (!empty($rep_data_nascimento)) {
+        $nascimento = new DateTime($rep_data_nascimento);
+        $hoje = new DateTime();
+        $idade = $hoje->diff($nascimento)->y;
+    }
+
     // Validações Básicas
-    if (empty($razao_social) || empty($nome_fantasia) || empty($cnpj) || empty($rep_nome) || empty($rep_cpf) || empty($email_login) || empty($senha)) {
+    if (empty($razao_social) || empty($nome_fantasia) || empty($cnpj) || empty($rep_nome) || empty($rep_cpf) || empty($rep_data_nascimento) || empty($email_login) || empty($senha)) {
         $erro = "Por favor, preencha todos os campos obrigatórios.";
+    } elseif ($idade < 18) {
+        $erro = "O representante legal deve ser maior de 18 anos para assinar a carta-acordo.";
     } elseif (!filter_var($email_login, FILTER_VALIDATE_EMAIL)) {
         $erro = "Formato de e-mail inválido.";
     } elseif ($senha !== $senha_confirmar) {
@@ -41,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erro = "A senha deve ter pelo menos 8 caracteres.";
     } elseif (!isValidCPF($rep_cpf)) { // Função que você já tem no helpers/functions.php
         $erro = "CPF do representante inválido.";
-    } elseif (!isValidCNPJ($cnpj)) { // Assumindo que você tem isValidCNPJ no helpers, se não tiver, me avise!
+    } elseif (!isValidCNPJ($cnpj)) { // Assumindo que você tem isValidCNPJ no helpers
         $erro = "CNPJ inválido.";
     } else {
         try {
@@ -79,18 +90,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $sql = "INSERT INTO parceiros (
                     razao_social, nome_fantasia, cnpj, 
-                    rep_nome, rep_cpf, rep_email,
+                    rep_nome, rep_cpf, rep_data_nascimento, rep_email,
                     email_login, senha_hash, 
                     etapa_atual, status, criado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'em_cadastro', NOW())";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'em_cadastro', NOW())";
                 
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
                     $razao_social, $nome_fantasia, $cnpj, 
-                    $rep_nome, $rep_cpf, $email_login, // Usamos o e-mail de login como e-mail do representante provisoriamente
+                    $rep_nome, $rep_cpf, $rep_data_nascimento, $email_login, // Incluindo a data aqui
                     $email_login, $senha_hash
                 ]);
-
                 
                 $novo_parceiro_id = $pdo->lastInsertId();
 
@@ -153,15 +163,22 @@ include __DIR__ . '/../app/views/public/header_public.php';
                         <h5 class="fw-bold mb-3 border-bottom pb-2 pt-2">Representante Legal</h5>
                         <p class="small text-muted mb-3">A pessoa que possui poderes para assinar a carta-acordo da parceria.</p>
                         
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nome Completo *</label>                                
+                            <input type="text" name="rep_nome" class="form-control" required value="<?= htmlspecialchars($_POST['rep_nome'] ?? '') ?>">
+                        </div>
+
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Nome Completo *</label>                                
-                                <input type="text" name="rep_nome" class="form-control" required value="<?= htmlspecialchars($_POST['rep_nome'] ?? '') ?>">
-                            </div>
                             <div class="col-md-6 mb-4">
                                 <label class="form-label fw-semibold">CPF do Representante *</label>
                                 <input type="text" name="rep_cpf" class="form-control cpf_mask" placeholder="000.000.000-00" required value="<?= htmlspecialchars($_POST['rep_cpf'] ?? '') ?>">
                                 <div class="form-text" style="font-size: 0.7rem;">Um CPF só pode ter um perfil na plataforma.</div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-semibold">Data de Nascimento *</label>
+                                <!-- Uso do max com PHP para limitar o calendário para 18 anos atrás a partir de hoje -->
+                                <input type="date" name="rep_data_nascimento" class="form-control" max="<?= date('Y-m-d', strtotime('-18 years')) ?>" required value="<?= htmlspecialchars($_POST['rep_data_nascimento'] ?? '') ?>">
+                                <div class="form-text" style="font-size: 0.7rem;">O representante deve ser maior de idade.</div>
                             </div>
                         </div>
 

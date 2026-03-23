@@ -24,7 +24,7 @@ $parceiro_id = $_SESSION['parceiro_id'];
 $stmt = $pdo->prepare("
     SELECT p.*, 
            c.tipos_parceria, c.natureza_parceria, c.escopo_atuacao, c.escopo_outro, 
-           c.nivel_engajamento, c.duracao_meses, c.oferece_premiacao, c.premio_descricao,
+           c.nivel_engajamento, c.oferece_premiacao, c.premio_descricao,
            c.deseja_publicar, c.rede_impacto 
     FROM parceiros p
     LEFT JOIN parceiro_contrato c ON p.id = c.parceiro_id
@@ -139,11 +139,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                 </div>
                 <div class="card-body p-4">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <strong class="text-muted d-block small">Duração da Parceria</strong>
-                            <span><?= htmlspecialchars($parceiro['duracao_meses'] ?? 'Não informada') ?> meses</span>
-                        </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
                             <strong class="text-muted d-block small">Nível de Engajamento</strong>
                             <span><?= htmlspecialchars(ucfirst($parceiro['nivel_engajamento'] ?? 'Não informado')) ?></span>
                         </div>

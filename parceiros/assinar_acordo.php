@@ -26,7 +26,7 @@ $parceiro_id = $_SESSION['parceiro_id'];
 // Busca TODOS os dados para o contrato
 $stmt = $pdo->prepare("
     SELECT p.*, 
-           c.tipos_parceria, c.natureza_parceria, c.duracao_meses, c.nivel_engajamento,
+           c.tipos_parceria, c.natureza_parceria, c.nivel_engajamento,
            c.escopo_atuacao, c.escopo_outro, c.oferece_premiacao, c.premio_descricao,
            c.facebook_url, c.instagram_url, c.linkedin_url, c.youtube_url, c.autoriza_marca
     FROM parceiros p
@@ -56,12 +56,12 @@ $natureza_str = implode(', ', $natureza_parceria);
 $escopo_str = implode(', ', $escopo_atuacao);
 
 // Cálculo das datas
-$duracao_meses = $parceiro['duracao_meses'] ?? 12;
+$ano_vigente = date('Y');
 $data_assinatura = date('Y-m-d H:i:s');
-$data_vencimento = date('Y-m-d H:i:s', strtotime("+{$duracao_meses} months"));
-
+$data_vencimento = $ano_vigente . '-12-31 23:59:59'; // Sempre até o fim do ano
 $data_assinatura_br = date('d/m/Y');
-$data_vencimento_br = date('d/m/Y', strtotime($data_vencimento));
+$data_vencimento_br = '31/12/' . $ano_vigente;
+
 
 
 // PROCESSA A ASSINATURA (POST)
