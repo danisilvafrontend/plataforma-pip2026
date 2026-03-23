@@ -58,56 +58,70 @@ try {
         SET status_vitrine = 'aprovado', 
             publicado_vitrine = 1,
             publicado_em = NOW(),
-            etapa_atual = 'publicado'
+            etapa_atual = '12'
         WHERE id = ?
     ");
     $stmtUpdate->execute([$negocio_id]);
 
-    // PREPARA E ENVIA O E-MAIL (Mesmo formato dos parceiros)
+        // PREPARA E ENVIA O E-MAIL (Mesmo formato dos parceiros)
     $emailDestino = !empty($dados['empreendedor_email']) ? $dados['empreendedor_email'] : $dados['email_comercial'];
 
     if (!empty($emailDestino)) {
         $subject = 'Seu negócio foi aprovado na Vitrine Impactos Positivos!';
         
-        $bodyHtml = '
-            <p>Olá, {{nome}}!</p>
+        $link_vitrine = get_base_url() . '/negocio.php?id=' . $negocio_id;
+        $nome_empreendedor = $dados['empreendedor_nome'] ?: 'Empreendedor';
+        $nome_negocio = $dados['nome_fantasia'];
+        
+        $bodyHtml = "
+            <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; padding: 30px; background-color: #ffffff;'>
+                
+                <div style='text-align: center; margin-bottom: 25px;'>
+                    <h2 style='color: #28a745; margin: 10px 0 0 0;'>Seu negócio foi aprovado!</h2>
+                </div>
 
-            <p>Temos uma ótima notícia: o cadastro do seu negócio <strong>{{negocio}}</strong> foi analisado e <strong>aprovado</strong> por nossa equipe.</p>
+                <p style='font-size: 16px;'>Olá, <strong>{$nome_empreendedor}</strong>!</p>
+                
+                <p>Temos uma ótima notícia para você: o cadastro do seu negócio <strong>{$nome_negocio}</strong> foi analisado cuidadosamente e <strong>aprovado</strong> pela nossa equipe.</p>
+                
+                <div style='background-color: #f8f9fa; border-left: 4px solid #28a745; padding: 15px; margin: 25px 0; border-radius: 4px;'>
+                    <p style='margin: 0; font-size: 15px;'>
+                        Seu negócio já está publicado e visível na vitrine oficial da <strong>Plataforma Impactos Positivos</strong>. Agora, ele está pronto para ser descoberto por parceiros, investidores e pela nossa comunidade!
+                    </p>
+                </div>
 
-            <p>Ele já está publicado e visível na vitrine da Plataforma Impactos Positivos.</p>
+                <p style='text-align: center; margin: 35px 0;'>
+                    <a href='{$link_vitrine}' style='background-color: #28a745; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(40,167,69,0.2);'>Visualizar Meu Negócio na Vitrine</a>
+                </p>
 
-            <p style="text-align: center; margin: 30px 0;">
-                <a href="{{link_vitrine}}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Ver meu negócio na vitrine</a>
-            </p>
+                <h4 style='color: #444; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 30px;'>Próximos passos:</h4>
+                <ul style='color: #555; padding-left: 20px;'>
+                    <li style='margin-bottom: 10px;'><strong>Compartilhe:</strong> Use o link da sua vitrine para mostrar seu impacto nas redes sociais.</li>
+                    <li style='margin-bottom: 10px;'><strong>Mantenha atualizado:</strong> Lembre-se de atualizar seus dados e resultados de impacto periodicamente para atrair mais oportunidades.</li>
+                </ul>
 
-            <p>Continue mantendo seus dados atualizados para atrair mais parceiros e oportunidades.</p>
+                <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;'>
+                
+                <p style='color: #666; font-size: 14px; margin-bottom: 5px;'>Se precisar de apoio ao longo da sua jornada, nossa equipe está à disposição.</p>
+                <p style='color: #666; font-size: 14px; margin-top: 0;'>Um abraço,<br><strong>Equipe Impactos Positivos</strong></p>
+            </div>
+        ";
 
-            <p>Se precisar de apoio, nossa equipe está à disposição.</p>
+        // Headers padrão que você usa no resto do sistema
+        $headers  = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type: text/html; charset=utf-8\r\n";
+        $headers .= "From: Plataforma Impactos Positivos <nao-responda@dscriacaoweb.com.br>\r\n";
 
-            <p>Abraços,<br>Equipe Impactos Positivos</p>
-        ';
-
-        // Renderiza o email substituindo as variáveis {{...}}
-                $rendered = render_email_from_db($subject, $bodyHtml, [
-            'nome' => $dados['empreendedor_nome'] ?: 'Empreendedor',
-            'negocio' => $dados['nome_fantasia'],
-            'email' => $emailDestino,
-            'link_vitrine' => get_base_url() . '/negocio.php?id=' . $negocio_id, // DINÂMICO ✅
-            'ano' => date('Y')
-        ]);
-
-
-        $bodyAlt = strip_tags($rendered['bodyHtml']);
-
-        // Função de envio oficial do sistema
+        // Envio nativo padronizado
         send_mail(
             $emailDestino,
-            $dados['empreendedor_nome'] ?: 'Empreendedor',
-            $rendered['subject'],
-            $rendered['bodyHtml'],
-            $bodyAlt
+            $nome_empreendedor,
+            $subject,
+            $bodyHtml,
+            $headers // O 5º parâmetro é o header, não o bodyAlt
         );
     }
+
 
     $pdo->commit();
 
@@ -117,9 +131,10 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    error_log("Erro ao aprovar negócio ID $negocio_id: " . $e->getMessage());
-    $_SESSION['erro'] = "Erro interno ao tentar aprovar o negócio.";
+    // Salvamos a mensagem original do erro para você ver o que quebrou!
+    $_SESSION['erro'] = "Erro Real: " . $e->getMessage();
 }
+
 
 header("Location: /admin/visualizar_negocio.php?id=" . $negocio_id);
 exit;

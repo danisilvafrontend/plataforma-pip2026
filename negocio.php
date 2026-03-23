@@ -236,11 +236,55 @@ $galeria = gallery_from_apresentacao($apresentacao);
 
 
                     <!-- Compartilhar -->
-                    <h6 class="fw-bold border-bottom pb-2">Compartilhar</h6>
-                    <div class="d-flex gap-1">
-                        <a href="https://api.whatsapp.com/send?text=Confira este negócio de impacto: <?= urlencode('https://seusite.com.br/negocio.php?id='.$negocio['id']) ?>" target="_blank" class="btn btn-outline-success btn-sm flex-fill"><i class="bi bi-whatsapp"></i></a>
-                        <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?= urlencode('https://seusite.com.br/negocio.php?id='.$negocio['id']) ?>" target="_blank" class="btn btn-outline-primary btn-sm flex-fill"><i class="bi bi-linkedin"></i></a>
+                    <?php 
+                        // Cria a URL dinâmica para o compartilhamento
+                        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+                        $link_compartilhar = $protocol . $_SERVER['HTTP_HOST'] . '/negocio.php?id=' . $negocio['id'];
+                        
+                        // Textos de compartilhamento
+                        $titulo_negocio = htmlspecialchars($negocio['nome_fantasia']);
+                        $texto_whats = "Conheça o negócio de impacto: {$titulo_negocio}! Acesse a Plataforma Impactos Positivos para saber mais: {$link_compartilhar}";
+                        $texto_email = "Gostaria de compartilhar este negócio de impacto incrível que encontrei na Plataforma Impactos Positivos:\n\n{$titulo_negocio}\n\nConfira todos os detalhes aqui: {$link_compartilhar}";
+                    ?>
+
+                    <div class="mt-4 mb-3">
+                        <h6 class="fw-bold border-bottom pb-2">
+                            <i class="bi bi-share me-1"></i> Gostou deste negócio?
+                        </h6>
+                        <p class="small text-muted mb-2">Compartilhe essa iniciativa e ajude a impulsionar o impacto positivo!</p>
+                        
+                        <div class="d-flex gap-2">
+                            <!-- WhatsApp -->
+                            <a href="https://api.whatsapp.com/send?text=<?= urlencode($texto_whats) ?>" 
+                               target="_blank" rel="noopener noreferrer" 
+                               class="btn btn-outline-success btn-sm flex-fill" title="Compartilhar no WhatsApp">
+                               <i class="bi bi-whatsapp"></i>
+                            </a>
+                            
+                            <!-- LinkedIn -->
+                            <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?= urlencode($link_compartilhar) ?>" 
+                               target="_blank" rel="noopener noreferrer" 
+                               class="btn btn-outline-primary btn-sm flex-fill" title="Compartilhar no LinkedIn">
+                               <i class="bi bi-linkedin"></i>
+                            </a>
+
+                            <!-- Facebook -->
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=<?= urlencode($link_compartilhar) ?>" 
+                               target="_blank" rel="noopener noreferrer" 
+                               class="btn btn-outline-primary btn-sm flex-fill" title="Compartilhar no Facebook" style="color: #1877F2; border-color: #1877F2;">
+                               <i class="bi bi-facebook"></i>
+                            </a>
+
+                            <!-- E-mail -->
+                            <a href="mailto:?subject=<?= rawurlencode("Conheça o negócio de impacto: {$titulo_negocio}") ?>&body=<?= rawurlencode($texto_email) ?>" 
+                               class="btn btn-outline-secondary btn-sm flex-fill" title="Enviar por E-mail">
+                               <i class="bi bi-envelope"></i>
+                            </a>
+
+
+                        </div>
                     </div>
+
 
                 </div>
 

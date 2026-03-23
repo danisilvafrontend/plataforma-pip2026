@@ -1,5 +1,8 @@
 <?php
 session_start();
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -15,293 +18,339 @@ if (!isset($_SESSION['parceiro_id'])) {
 }
 
 $parceiro_id = $_SESSION['parceiro_id'];
-$mensagem = '';
-$tipo_msg = '';
+$sucesso = '';
+$erro = '';
 
-// PROCESSAMENTO DO FORMULÁRIO DE EDIÇÃO (Se for POST)
+// 1. Garante que o parceiro já tem um registro na tabela de perfil
+$stmt = $pdo->prepare("SELECT id FROM parceiros_perfil WHERE parceiro_id = ?");
+$stmt->execute([$parceiro_id]);
+if (!$stmt->fetch()) {
+    $pdo->prepare("INSERT INTO parceiros_perfil (parceiro_id) VALUES (?)")->execute([$parceiro_id]);
+}
+
+// 2. Processa o Formulário de Salvamento
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Dados Institucionais
-    $nome_fantasia = trim($_POST['nome_fantasia'] ?? '');
-    $razao_social = trim($_POST['razao_social'] ?? '');
-    $cep = trim($_POST['cep'] ?? '');
-    $endereco_completo = trim($_POST['endereco_completo'] ?? '');
-    $cidade = trim($_POST['cidade'] ?? '');
-    $estado = trim($_POST['estado'] ?? '');
-    $telefone_institucional = trim($_POST['telefone_institucional'] ?? '');
-    $site = trim($_POST['site'] ?? '');
-    $linkedin_institucional = trim($_POST['linkedin_institucional'] ?? '');
+    $slogan = trim($_POST['slogan'] ?? '');
+    $setor_atuacao = trim($_POST['setor_atuacao'] ?? '');
+    $descricao_institucional = trim($_POST['descricao_institucional'] ?? '');
+    $ano_fundacao = !empty($_POST['ano_fundacao']) ? (int)$_POST['ano_fundacao'] : null;
+    $porte_empresa = trim($_POST['porte_empresa'] ?? '');
+    $compromisso_impacto = trim($_POST['compromisso_impacto'] ?? '');
     
-    // Representante Legal
-    $rep_nome = trim($_POST['rep_nome'] ?? '');
-    $rep_cargo = trim($_POST['rep_cargo'] ?? '');
-    $rep_email = trim($_POST['rep_email'] ?? '');
-    $rep_telefone = trim($_POST['rep_telefone'] ?? '');
-    $rep_email_optin = isset($_POST['rep_email_optin']) ? 1 : 0;
-    $rep_whatsapp_optin = isset($_POST['rep_whatsapp_optin']) ? 1 : 0;
-    
-    // Contato Operacional
-    $op_nome = trim($_POST['op_nome'] ?? '');
-    $op_cargo = trim($_POST['op_cargo'] ?? '');
-    $op_email = trim($_POST['op_email'] ?? '');
-    $op_telefone = trim($_POST['op_telefone'] ?? '');
-    $op_email_optin = isset($_POST['op_email_optin']) ? 1 : 0;
-    $op_whatsapp_optin = isset($_POST['op_whatsapp_optin']) ? 1 : 0;
+    // Tratamento das tags
+    $tags_str = trim($_POST['tags_especialidades'] ?? '');
+    $tags_array = array_filter(array_map('trim', explode(',', $tags_str)));
+    $tags_json = json_encode($tags_array);
 
-    // Validação básica
-    if (empty($nome_fantasia) || empty($razao_social) || empty($rep_nome) || empty($rep_email)) {
-        $mensagem = "Preencha os campos obrigatórios (Nome Fantasia, Razão Social e Nome/Email do Representante).";
-        $tipo_msg = "danger";
-    } else {
-        try {
-            $sql = "UPDATE parceiros SET 
-                    nome_fantasia = ?, razao_social = ?, cep = ?, endereco_completo = ?, 
-                    cidade = ?, estado = ?, telefone_institucional = ?, site = ?, linkedin_institucional = ?,
-                    rep_nome = ?, rep_cargo = ?, rep_email = ?, rep_telefone = ?, rep_email_optin = ?, rep_whatsapp_optin = ?,
-                    op_nome = ?, op_cargo = ?, op_email = ?, op_telefone = ?, op_email_optin = ?, op_whatsapp_optin = ?
-                    WHERE id = ?";
+    $email_publico = trim($_POST['email_publico'] ?? '');
+    $whatsapp_publico = trim($_POST['whatsapp_publico'] ?? '');
+    $linkedin_url = trim($_POST['linkedin_url'] ?? '');
+    $instagram_url = trim($_POST['instagram_url'] ?? '');
+    
+    $perfil_publicado = isset($_POST['perfil_publicado']) ? 1 : 0;
+
+    // --- LÓGICA DE UPLOAD DA IMAGEM DE CAPA ---
+    $imagem_capa_url = $_POST['imagem_capa_atual'] ?? ''; // Mantém a antiga se não enviar nova
+    
+    if (isset($_FILES['imagem_capa']) && $_FILES['imagem_capa']['error'] === UPLOAD_ERR_OK) {
+        $file_tmp = $_FILES['imagem_capa']['tmp_name'];
+        $file_name = $_FILES['imagem_capa']['name'];
+        $file_size = $_FILES['imagem_capa']['size'];
+        
+        $max_size = 10 * 1024 * 1024; // 10MB
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
+        
+        $ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        
+        if ($file_size > $max_size) {
+            $erro = "A imagem de capa deve ter no máximo 10MB.";
+        } elseif (!in_array($ext, $allowed_exts)) {
+            $erro = "Formato de imagem inválido. Use JPG, PNG ou WEBP.";
+        } else {
+            // Garante que o diretório existe
+            $upload_dir = __DIR__ . '/../uploads/parceiros/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
             
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([
-                $nome_fantasia, $razao_social, $cep, $endereco_completo, 
-                $cidade, $estado, $telefone_institucional, $site, $linkedin_institucional,
-                $rep_nome, $rep_cargo, $rep_email, $rep_telefone, $rep_email_optin, $rep_whatsapp_optin,
-                $op_nome, $op_cargo, $op_email, $op_telefone, $op_email_optin, $op_whatsapp_optin,
+            // Gera nome único para não sobrescrever
+            $new_filename = 'capa_parceiro_' . $parceiro_id . '_' . time() . '.' . $ext;
+            $destination = $upload_dir . $new_filename;
+            
+            if (move_uploaded_file($file_tmp, $destination)) {
+                // Caminho relativo que será salvo no banco e lido pelo HTML
+                $imagem_capa_url = '/uploads/parceiros/' . $new_filename;
+            } else {
+                $erro = "Falha ao salvar a imagem no servidor.";
+            }
+        }
+    }
+
+    if (empty($erro)) {
+        try {
+            $sql = "UPDATE parceiros_perfil SET 
+                    imagem_capa_url = ?, slogan = ?, setor_atuacao = ?, descricao_institucional = ?, 
+                    ano_fundacao = ?, porte_empresa = ?, compromisso_impacto = ?, 
+                    tags_especialidades = ?, email_publico = ?, whatsapp_publico = ?, 
+                    linkedin_url = ?, instagram_url = ?, perfil_publicado = ?
+                    WHERE parceiro_id = ?";
+                    
+            $stmtUpdate = $pdo->prepare($sql);
+            $stmtUpdate->execute([
+                $imagem_capa_url, $slogan, $setor_atuacao, $descricao_institucional, 
+                $ano_fundacao, $porte_empresa, $compromisso_impacto, 
+                $tags_json, $email_publico, $whatsapp_publico, 
+                $linkedin_url, $instagram_url, $perfil_publicado,
                 $parceiro_id
             ]);
+            
+            $sucesso = "Perfil atualizado com sucesso!";
+            
+            // Força a recarregar a variável $perfil na tela atual para mostrar a imagem nova imediatamente
+            $stmt = $pdo->prepare("SELECT * FROM parceiros_perfil WHERE parceiro_id = ?");
+            $stmt->execute([$parceiro_id]);
+            $perfil = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Atualiza o nome na sessão
-            $_SESSION['parceiro_nome'] = $nome_fantasia;
-
-            $mensagem = "Perfil atualizado com sucesso!";
-            $tipo_msg = "success";
-
-        } catch (PDOException $e) {
-            $mensagem = "Erro ao atualizar perfil. Tente novamente.";
-            $tipo_msg = "danger";
-            error_log("Erro em editar_perfil_parceiro: " . $e->getMessage());
+        } catch (Exception $e) {
+            $erro = "Erro ao salvar os dados: " . $e->getMessage();
         }
     }
 }
 
-// BUSCA OS DADOS ATUAIS PARA PREENCHER O FORMULÁRIO
-$stmt = $pdo->prepare("SELECT * FROM parceiros WHERE id = ?");
-$stmt->execute([$parceiro_id]);
-$parceiro = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$parceiro) {
-    die("Parceiro não encontrado.");
+// 3. Busca os dados atuais para preencher o formulário
+$stmt = $pdo->prepare("SELECT * FROM parceiros_perfil WHERE parceiro_id = ?");
+$stmt->execute([$parceiro_id]);
+$perfil = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Converte JSON de tags de volta para string com vírgulas para o input
+$tags_atuais = '';
+if (!empty($perfil['tags_especialidades'])) {
+    $decodificado = json_decode($perfil['tags_especialidades'], true);
+    if (is_array($decodificado)) {
+        $tags_atuais = implode(', ', $decodificado);
+    }
 }
+
+// Busca logo e site da tabela parceiros_contrato e parceiros (apenas visualização)
+$stmtMain = $pdo->prepare("SELECT p.nome_fantasia, c.logo_url FROM parceiros p LEFT JOIN parceiro_contrato c ON p.id = c.parceiro_id WHERE p.id = ?");
+
+$stmtMain->execute([$parceiro_id]);
+$dadosMain = $stmtMain->fetch(PDO::FETCH_ASSOC);
 
 include __DIR__ . '/../app/views/public/header_public.php'; 
 ?>
 
 <div class="container py-5">
     <div class="row">
-        <!-- SIDEBAR -->
-        <div class="col-lg-3 col-md-4 mb-4 mb-md-0">
-            <?php include __DIR__ . '/../app/views/parceiros/sidebar.php'; ?>
+        <!-- Sidebar do Perfil -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-sm rounded-4 text-center p-4 sticky-top" style="top: 20px;">
+                <?php if (!empty($dadosMain['logo_url'])): ?>
+                    <img src="<?= htmlspecialchars($dadosMain['logo_url']) ?>" alt="Logo" class="rounded-circle img-thumbnail mb-3 mx-auto" style="width: 120px; height: 120px; object-fit: cover;">
+                <?php else: ?>
+                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 120px; height: 120px;">
+                        <i class="bi bi-building fs-1 text-white"></i>
+                    </div>
+                <?php endif; ?>
+                
+                <h5 class="fw-bold mb-1"><?= htmlspecialchars($dadosMain['nome_fantasia']) ?></h5>
+                <p class="small text-muted mb-3">Parceiro Oficial</p>
+                
+                <div class="d-grid gap-2">
+                    <!-- O link da vitrine vai depender da sua URL real -->
+                    <a href="/perfil_parceiro.php?id=<?= $parceiro_id ?>" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-eye me-1"></i> Ver na Vitrine
+                    </a>
+                    <a href="dashboard.php" class="btn btn-light btn-sm text-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Voltar ao Painel
+                    </a>
+                </div>
+            </div>
         </div>
 
-        <!-- CONTEÚDO PRINCIPAL -->
-        <div class="col-lg-9 col-md-8">            
-    
-            <div class="d-flex justify-content-between align-items-center mb-4">
+        <!-- Formulário de Edição -->
+        <div class="col-lg-9">
+            
+            <div class="d-flex justify-content-between align-items-end mb-4">
                 <div>
-                    <h2 class="fw-bold mb-1">Editar Perfil</h2>
-                    <p class="text-muted mb-0">Atualize as informações de contato da sua organização.</p>
+                    <h2 class="fw-bold text-dark mb-1">Meu Perfil Público</h2>
+                    <p class="text-muted mb-0">Preencha as informações que serão exibidas na vitrine da plataforma para atrair conexões e negócios.</p>
                 </div>
-                <a href="dashboard.php" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i> Voltar ao Painel</a>
             </div>
 
-            <?php if ($mensagem): ?>
-                <div class="alert alert-<?= $tipo_msg ?> alert-dismissible fade show" role="alert">
-                    <i class="bi <?= $tipo_msg == 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' ?> me-2"></i>
-                    <?= htmlspecialchars($mensagem) ?>
+            <?php if ($sucesso): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($sucesso) ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="">
-                <div class="card shadow-sm border-0 rounded-3 mb-4">
-                    <div class="card-body p-4 p-md-5">
-                        
-                        <!-- DADOS INSTITUCIONAIS -->
-                        <h5 class="fw-bold mb-4 border-bottom pb-2 text-primary"><i class="bi bi-building me-2"></i> Dados da Instituição</h5>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Nome Fantasia *</label>
-                                <input type="text" name="nome_fantasia" class="form-control" required value="<?= htmlspecialchars($parceiro['nome_fantasia'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Razão Social *</label>
-                                <input type="text" name="razao_social" class="form-control" required value="<?= htmlspecialchars($parceiro['razao_social'] ?? '') ?>">
-                            </div>
-                        </div>
+            <?php if ($erro): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($erro) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
 
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label text-muted">CNPJ (Não editável)</label>
-                                <input type="text" class="form-control bg-light" readonly value="<?= htmlspecialchars($parceiro['cnpj'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Telefone Institucional</label>
-                                <input type="text" name="telefone_institucional" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['telefone_institucional'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Site</label>
-                                <input type="url" name="site" class="form-control" value="<?= htmlspecialchars($parceiro['site'] ?? '') ?>">
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold">LinkedIn Institucional</label>
-                            <input type="url" name="linkedin_institucional" class="form-control" value="<?= htmlspecialchars($parceiro['linkedin_institucional'] ?? '') ?>">
-                        </div>
+            <form method="POST" action="" enctype="multipart/form-data">
 
-                        <!-- ENDEREÇO -->
-                        <h6 class="fw-bold mt-4 mb-3 text-secondary">Endereço Institucional</h6>
-                        
-                        <div class="row">
-                            <!-- IDs alinhados com o scripts.js global para o ViaCEP -->
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label fw-semibold">CEP</label>
-                                <input type="text" name="cep" id="cep" class="form-control" value="<?= htmlspecialchars($parceiro['cep'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-9 mb-3">
-                                <label class="form-label fw-semibold">Endereço Completo</label>
-                                <input type="text" name="endereco_completo" id="rua" class="form-control" value="<?= htmlspecialchars($parceiro['endereco_completo'] ?? '') ?>">
-                            </div>
+                
+                <!-- Visibilidade do Perfil -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4 border-start border-4 <?= ($perfil['perfil_publicado'] ?? 0) ? 'border-success' : 'border-secondary' ?>">
+                    <div class="card-body p-4 d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="fw-bold mb-1">Visibilidade do Perfil</h5>
+                            <p class="small text-muted mb-0">Ative esta opção apenas quando seu perfil estiver completo e pronto para ser visto.</p>
                         </div>
-
-                        <div class="row mb-5">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Cidade</label>
-                                <input type="text" name="cidade" id="municipio" class="form-control" value="<?= htmlspecialchars($parceiro['cidade'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Estado (UF)</label>
-                                <input type="text" name="estado" id="estado" class="form-control" value="<?= htmlspecialchars($parceiro['estado'] ?? '') ?>">
-                            </div>
-                        </div>
-
-                        <!-- REPRESENTANTE LEGAL -->
-                        <h5 class="fw-bold mb-4 border-bottom pb-2 text-primary"><i class="bi bi-person-badge me-2"></i> Representante Legal</h5>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Nome Completo *</label>
-                                <input type="text" name="rep_nome" class="form-control" required value="<?= htmlspecialchars($parceiro['rep_nome'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Cargo</label>
-                                <input type="text" name="rep_cargo" class="form-control" value="<?= htmlspecialchars($parceiro['rep_cargo'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">E-mail do Representante *</label>
-                                <input type="email" name="rep_email" class="form-control" required value="<?= htmlspecialchars($parceiro['rep_email'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="rep_email_optin" name="rep_email_optin" value="1" <?= (!empty($parceiro['rep_email_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="rep_email_optin">Aceito receber atualizações via e-mail</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Telefone / Celular</label>
-                                <input type="text" name="rep_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="rep_whatsapp_optin" name="rep_whatsapp_optin" value="1" <?= (!empty($parceiro['rep_whatsapp_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="rep_whatsapp_optin">Aceito receber novidades via WhatsApp</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- CONTATO OPERACIONAL -->
-                        <h5 class="fw-bold mb-4 border-bottom pb-2 text-primary mt-5"><i class="bi bi-person-workspace me-2"></i> Contato Operacional</h5>
-                        
-                        <div class="form-check mb-4">
-                            <input class="form-check-input" type="checkbox" id="mesmo_contato">
-                            <label class="form-check-label text-muted" for="mesmo_contato">
-                                Copiar dados do Representante Legal
-                            </label>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Nome Operacional</label>
-                                <input type="text" name="op_nome" id="op_nome" class="form-control" value="<?= htmlspecialchars($parceiro['op_nome'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Cargo</label>
-                                <input type="text" name="op_cargo" id="op_cargo" class="form-control" value="<?= htmlspecialchars($parceiro['op_cargo'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">E-mail</label>
-                                <input type="email" name="op_email" id="op_email" class="form-control" value="<?= htmlspecialchars($parceiro['op_email'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="op_email_optin" name="op_email_optin" value="1" <?= (!empty($parceiro['op_email_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="op_email_optin">Aceito receber atualizações via e-mail</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Telefone</label>
-                                <input type="text" name="op_telefone" id="op_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['op_telefone'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="op_whatsapp_optin" name="op_whatsapp_optin" value="1" <?= (!empty($parceiro['op_whatsapp_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="op_whatsapp_optin">Aceito receber novidades via WhatsApp</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5 pt-3 border-top">
-                            <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold"><i class="bi bi-floppy me-2"></i> Salvar Alterações</button>
+                        <div class="form-check form-switch fs-4">
+                            <input class="form-check-input" type="checkbox" role="switch" id="perfil_publicado" name="perfil_publicado" value="1" <?= ($perfil['perfil_publicado'] ?? 0) ? 'checked' : '' ?>>
                         </div>
                     </div>
                 </div>
+
+                <!-- 1. Identidade e Setor -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom p-4">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-person-badge text-primary me-2"></i> Identidade e Setor</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        
+                        <!-- Upload de Capa -->
+                        <div class="mb-4 bg-light p-3 rounded border">
+                            <label class="form-label fw-bold text-dark mb-2"><i class="bi bi-image me-1"></i> Imagem de Capa do Perfil</label>
+                            
+                            <?php if (!empty($perfil['imagem_capa_url'])): ?>
+                                <div class="mb-3">
+                                    <div class="w-100 rounded" style="height: 120px; background-image: url('<?= htmlspecialchars($perfil['imagem_capa_url']) ?>'); background-size: cover; background-position: center;"></div>
+                                    <small class="text-muted d-block mt-1">Capa atual. Envie um novo arquivo para substituir.</small>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <input type="file" name="imagem_capa" class="form-control form-control-sm" accept=".jpg, .jpeg, .png, .webp">
+                            <!-- Campo oculto para não perder a capa se o usuário só editar outro texto e não enviar foto nova -->
+                            <input type="hidden" name="imagem_capa_atual" value="<?= htmlspecialchars($perfil['imagem_capa_url'] ?? '') ?>">
+                            
+                            <div class="form-text mt-2"><i class="bi bi-info-circle"></i> Formatos aceitos: JPG, PNG ou WEBP (Max: 10MB). Recomendamos proporção horizontal (ex: 1920x400).</div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold text-muted small">Slogan / Frase de Impacto</label>
+                                <input type="text" name="slogan" class="form-control" placeholder="Ex: Inovação para um futuro sustentável" value="<?= htmlspecialchars($perfil['slogan'] ?? '') ?>" maxlength="100">
+                                <div class="form-text">Uma frase curta que resume o propósito da sua empresa (máx 100 caracteres).</div>
+                            </div>
+                            <!-- Restante dos campos do setor iguais... -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted small">Ano de Fundação</label>
+                                <input type="number" name="ano_fundacao" class="form-control" placeholder="Ex: 2015" value="<?= htmlspecialchars($perfil['ano_fundacao'] ?? '') ?>" min="1900" max="<?= date('Y') ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted small">Porte da Empresa</label>
+                                <select name="porte_empresa" class="form-select">
+                                    <option value="">Selecione...</option>
+                                    <option value="1-10" <?= ($perfil['porte_empresa'] ?? '') === '1-10' ? 'selected' : '' ?>>1 a 10 colaboradores</option>
+                                    <option value="11-50" <?= ($perfil['porte_empresa'] ?? '') === '11-50' ? 'selected' : '' ?>>11 a 50 colaboradores</option>
+                                    <option value="51-200" <?= ($perfil['porte_empresa'] ?? '') === '51-200' ? 'selected' : '' ?>>51 a 200 colaboradores</option>
+                                    <option value="200+" <?= ($perfil['porte_empresa'] ?? '') === '200+' ? 'selected' : '' ?>>Mais de 200 colaboradores</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-muted small">Setor de Atuação</label>
+                                <input type="text" name="setor_atuacao" class="form-control" placeholder="Ex: Tecnologia, Consultoria, Varejo" value="<?= htmlspecialchars($perfil['setor_atuacao'] ?? '') ?>">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- 2. Sobre a Empresa -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom p-4">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-file-text text-primary me-2"></i> Sobre a Organização</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-muted small">Descrição Institucional</label>
+                            <textarea name="descricao_institucional" class="form-control" rows="5" placeholder="Conte um pouco da história da empresa, o que fazem, seus valores e diferenciais..."><?= htmlspecialchars($perfil['descricao_institucional'] ?? '') ?></textarea>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-muted small">Nosso Compromisso com Impacto</label>
+                            <textarea name="compromisso_impacto" class="form-control" rows="3" placeholder="Quais ações sociais ou ambientais sua empresa realiza internamente ou externamente?"><?= htmlspecialchars($perfil['compromisso_impacto'] ?? '') ?></textarea>
+                            <div class="form-text">Isso é muito valorizado pelos empreendedores da plataforma!</div>
+                        </div>
+
+                        <div>
+                            <label class="form-label fw-semibold text-muted small">Especialidades / Soluções Oferecidas</label>
+                            <input type="text" name="tags_especialidades" class="form-control" placeholder="Ex: Software B2B, Logística Reversa, Mentorias, Assessoria Jurídica" value="<?= htmlspecialchars($tags_atuais) ?>">
+                            <div class="form-text">Separe as especialidades por vírgula.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Contatos Públicos e Redes -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-bottom p-4">
+                        <h5 class="fw-bold mb-0"><i class="bi bi-link-45deg text-primary me-2"></i> Contato Público e Redes</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="alert alert-info border-0 small bg-info-subtle mb-4">
+                            <i class="bi bi-info-circle-fill me-2"></i> Os dados abaixo ficarão visíveis para o público. Use contatos comerciais que possam receber leads.
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-muted small">E-mail Comercial Público</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" name="email_publico" class="form-control" placeholder="contato@suaempresa.com.br" value="<?= htmlspecialchars($perfil['email_publico'] ?? '') ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-muted small">WhatsApp Comercial</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-whatsapp text-success"></i></span>
+                                    <input type="text" name="whatsapp_publico" class="form-control wpp_mask" placeholder="(00) 00000-0000" value="<?= htmlspecialchars($perfil['whatsapp_publico'] ?? '') ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-muted small">Página do LinkedIn</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-linkedin text-primary"></i></span>
+                                    <input type="url" name="linkedin_url" class="form-control" placeholder="https://linkedin.com/company/suaempresa" value="<?= htmlspecialchars($perfil['linkedin_url'] ?? '') ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-muted small">Perfil do Instagram</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-instagram text-danger"></i></span>
+                                    <input type="url" name="instagram_url" class="form-control" placeholder="https://instagram.com/suaempresa" value="<?= htmlspecialchars($perfil['instagram_url'] ?? '') ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botão Salvar -->
+                <div class="d-flex justify-content-end mb-5">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold shadow-sm">
+                        <i class="bi bi-floppy me-2"></i> Salvar Perfil
+                    </button>
+                </div>
+
             </form>
         </div>
     </div>
 </div>
 
-
-
-
-<!-- Scripts -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<!-- Máscara JQuery para o WhatsApp (opcional, requer JQuery carregado no Header/Footer) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script>
-    $(document).ready(function(){
-        // Máscara de telefone
-        var SPMaskBehavior = function (val) {
-            return val.replace(/\D/g, '').length === 11 ? '(00) 00000-0000' : '(00) 0000-00009';
-        },
-        spOptions = {
-            onKeyPress: function(val, e, field, options) {
-                field.mask(SPMaskBehavior.apply({}, arguments), options);
-            }
-        };
-        $('.phone_mask').mask(SPMaskBehavior, spOptions);
-
-        // Copiar dados do Representante para Operacional
-        $('#mesmo_contato').change(function() {
-            if($(this).is(':checked')) {
-                $('#op_nome').val($('input[name="rep_nome"]').val());
-                $('#op_cargo').val($('input[name="rep_cargo"]').val());
-                $('#op_email').val($('input[name="rep_email"]').val());
-                $('#op_telefone').val($('input[name="rep_telefone"]').val());
-                
-                $('#op_email_optin').prop('checked', $('#rep_email_optin').is(':checked'));
-                $('#op_whatsapp_optin').prop('checked', $('#rep_whatsapp_optin').is(':checked'));
-            } else {
-                $('#op_nome').val('');
-                $('#op_cargo').val('');
-                $('#op_email').val('');
-                $('#op_telefone').val('');
-                
-                $('#op_email_optin').prop('checked', false);
-                $('#op_whatsapp_optin').prop('checked', false);
-            }
-        });
-    });
+    if (typeof jQuery !== 'undefined') {
+        $('.wpp_mask').mask('(00) 00000-0000');
+    }
 </script>
 
 <?php include __DIR__ . '/../app/views/public/footer_public.php'; ?>

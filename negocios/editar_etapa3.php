@@ -59,9 +59,19 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-4">Editar Etapa 3 - Eixo Temático</h1>
-        <a href="/empreendedores/meus-negocios.php" class="btn btn-secondary">← Voltar aos negócios</a>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <!-- Título à esquerda -->
+      <h1 class="mb-4">Editar Etapa 3 - Eixo Temático</h1>
+      
+      <!-- Botões à direita -->
+      <div class="d-flex gap-2">
+          <a href="/negocios/confirmacao.php?id=<?= htmlspecialchars($_GET['id'] ?? 0) ?>" class="btn btn-warning">
+              <i class="bi bi-card-checklist me-1"></i> Voltar para revisão
+          </a>
+          <a href="/empreendedores/meus-negocios.php" class="btn btn-secondary">
+              <i class="bi bi-arrow-left me-1"></i> Voltar aos negócios
+          </a>
+      </div>
     </div>
     <?php
     include __DIR__ . '/../app/views/partials/intro_text_eixo_tematico.php';

@@ -162,37 +162,37 @@ include __DIR__ . '/../app/views/public/header_public.php';
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES) ?>">
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label">Nome</label>
+                <label class="form-label">Nome *</label>
                 <input type="text" name="nome" class="form-control" required>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Sobrenome</label>
+                <label class="form-label">Sobrenome *</label>
                 <input type="text" name="sobrenome" class="form-control" required>
               </div>
             </div>
 
             <div class="row mb-3">
               <div class="col-md-6">
-              <label class="form-label">CPF</label>
+              <label class="form-label">CPF *</label>
               <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00" required>
               </div>
               <div class="col-md-6">
-              <label class="form-label">E-mail</label>
+              <label class="form-label">E-mail *</label>
               <input type="email" name="email" class="form-control" required>
               </div>
             </div>
 
             <div class="row mb-3">
               <div class="col-md-4">
-                <label class="form-label">Celular</label>
+                <label class="form-label">Celular *</label>
                 <input type="text" name="celular" class="form-control" placeholder="(11) 90000-0000" required>
               </div>
               <div class="col-md-4">
-                <label class="form-label">Data de nascimento</label>
+                <label class="form-label">Data de nascimento *</label>
                 <input type="date" name="data_nascimento" class="form-control" required>
               </div>
               <div class="col-md-4">
-                <label class="form-label">Gênero</label>
+                <label class="form-label">Gênero *</label>
                 <select name="genero" class="form-select" required>
                   <option value="">Selecione</option>
                   <option>Masculino</option>
@@ -204,7 +204,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
             </div>
 
             <div class="mb-3">
-              <label class="form-label">País</label>
+              <label class="form-label">País *</label>
               <select id="pais" name="pais" class="form-select" required>
                 <option value="" selected>Selecione</option>
 
@@ -285,7 +285,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
             </div>
 
             <div class="mb-3" id="estado-wrapper">
-                <label class="form-label">Estado</label>
+                <label class="form-label">Estado *</label>
                 <select id="estado" name="estado" class="form-select">
                     <option value="">Selecione o estado</option>
                     <option value="Acre">Acre</option>
@@ -319,22 +319,22 @@ include __DIR__ . '/../app/views/public/header_public.php';
             </div>
 
             <div class="mb-3" id="cidade-wrapper">
-                <label class="form-label">Cidade</label>
+                <label class="form-label">Cidade *</label>
                 <input type="text" id="cidade" name="cidade" class="form-control" placeholder="Digite sua cidade">
             </div>
 
             <div class="mb-3 d-none" id="regiao-wrapper">
-                <label class="form-label">Região/Província</label>
+                <label class="form-label">Região/Província *</label>
                 <input type="text" name="regiao" class="form-control" placeholder="Digite sua região/província">
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Cargo na organização</label>
+              <label class="form-label">Cargo na organização *</label>
               <input type="text" name="cargo" class="form-control" required>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Como ficou sabendo do Prêmio?</label>
+              <label class="form-label">Como ficou sabendo do Prêmio? *</label>
               <select name="origem_conhecimento" class="form-select" required>
                 <option value="">Selecione</option>
                 <option>Redes sociais</option>
@@ -348,7 +348,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Você é o fundador?</label>              
+              <label class="form-label">Você é o fundador? *</label>              
               <small class="text-muted">Se houver mais de uma pessoa fundadora, você poderá adicionar até 5 cofundadores/as no cadastro de negócios de impacto.</small>
               <select name="eh_fundador" id="eh_fundador" class="form-select" required>
                 <option value="">Selecione</option>
@@ -359,7 +359,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
 
             <div id="fundador-extra" class="border rounded p-3 mb-3 d-none">
               <div class="mb-3">
-                <label class="form-label">Formação</label>
+                <label class="form-label">Formação *</label>
                 <select name="formacao" id="formacao" class="form-select">
                   <option value="">Selecione</option>
                   <option>Ensino Fundamental Incompleto</option>
@@ -377,7 +377,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Etnia/Raça</label>
+                <label class="form-label">Etnia/Raça *</label>
                 <select name="etnia" id="etnia" class="form-select">
                   <option value="">Selecione</option>
                   <option>Branco(a)</option>
@@ -411,12 +411,12 @@ include __DIR__ . '/../app/views/public/header_public.php';
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Senha</label>
+              <label class="form-label">Senha *</label>
               <input type="password" name="senha" class="form-control" required minlength="8">
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Confirmar senha</label>
+              <label class="form-label">Confirmar senha *</label>
               <input type="password" name="senha_confirm" class="form-control" required minlength="8">
             </div>
 

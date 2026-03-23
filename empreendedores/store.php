@@ -181,6 +181,7 @@ $body = render_email_template(
         'nome' => $data['nome'],
         'sobrenome' => $data['sobrenome'],
         'email' => $data['email'],
+        'base_url' => get_base_url()
     ]
 );
 

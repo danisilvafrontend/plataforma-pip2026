@@ -414,7 +414,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php'; ?>
             <i class="bi bi-eye text-secondary me-1"></i>
             Descreva brevemente as principais inovações do seu negócio (máx. 300 caracteres)
         </label>
-        <textarea name="descricaoinovacao" id="descricaoinovacao" class="form-control" rows="3" maxlength="300"></textarea>
+        <textarea name="descricao_inovacao" id="descricao_inovacao" class="form-control" rows="3" maxlength="300"></textarea>
         <small class="text-muted">
             Foque no que é realmente novo: tecnologia, forma de operar, modelo de negócio, impacto ou financiamento.
         </small>

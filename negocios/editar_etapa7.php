@@ -51,9 +51,19 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
 <div class="container my-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <!-- Título à esquerda -->
         <h1 class="mb-4">Etapa 7 - Avaliação de Impacto</h1>
-        <a href="/empreendedores/meus-negocios.php" class="btn btn-secondary">← Voltar aos negócios</a>
+        
+        <!-- Botões à direita -->
+        <div class="d-flex gap-2">
+            <a href="/negocios/confirmacao.php?id=<?= htmlspecialchars($_GET['id'] ?? 0) ?>" class="btn btn-warning">
+                <i class="bi bi-card-checklist me-1"></i> Voltar para revisão
+            </a>
+            <a href="/empreendedores/meus-negocios.php" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Voltar aos negócios
+            </a>
+        </div>
     </div>
     
     <?php
@@ -73,24 +83,34 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
             <?php
             $opcoesIntencionalidade = [
-                "Lucro com impacto intencional integrado ao modelo. A geração de receita está diretamente ligada à solução de um problema social ou ambiental. O impacto positivo faz parte central do modelo de negócio e é intencional.",
-                "Missão de impacto como prioridade principal. A razão de existir do negócio é gerar impacto social e/ou ambiental. A sustentabilidade financeira é importante, mas serve principalmente para viabilizar a missão.",
-                "Lucro como foco principal, com impacto secundário. O principal objetivo do negócio é o retorno financeiro. O impacto positivo pode existir, mas não é o foco central nem está estruturado como parte estratégica do modelo."
+                "integrado" => "Lucro com impacto intencional integrado ao modelo. A geração de receita está diretamente ligada à solução de um problema social ou ambiental. O impacto positivo faz parte central do modelo de negócio e é intencional.",
+                
+                "prioridade" => "Missão de impacto como prioridade principal. A razão de existir do negócio é gerar impacto social e/ou ambiental. A sustentabilidade financeira é importante, mas serve principalmente para viabilizar a missão.",
+                
+                "secundario" => "Lucro como foco principal, com impacto secundário. O principal objetivo do negócio é o retorno financeiro. O impacto positivo pode existir, mas não é o foco central nem está estruturado como parte estratégica do modelo."
             ];
 
-            foreach ($opcoesIntencionalidade as $op) {
-                $checked = ($impacto['intencionalidade'] ?? '') === $op ? 'checked' : '';
+            foreach ($opcoesIntencionalidade as $chave => $texto) {
+                $valorSalvo = $impacto['intencionalidade'] ?? '';
+                
+                // Verifica se o banco tem a chave ("integrado") OU se tem pelo menos o começo do texto antigo
+                // Isso impede que quebras de linha ou cortes estraguem a verificação
+                $checked = '';
+                if ($valorSalvo === $chave || (!empty($valorSalvo) && strpos($texto, substr($valorSalvo, 0, 20)) !== false)) {
+                    $checked = 'checked';
+                }
                 ?>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="radio"
-                        name="intencionalidade" value="<?= htmlspecialchars($op) ?>"
-                        id="<?= md5($op) ?>" <?= $checked ?> required>
-                    <label class="form-check-label" for="<?= md5($op) ?>">
-                        <?= nl2br($op) ?>
+                        name="intencionalidade" value="<?= $chave ?>"
+                        id="intenc_<?= $chave ?>" <?= $checked ?> required>
+                    <label class="form-check-label" for="intenc_<?= $chave ?>">
+                        <?= $texto ?>
                     </label>
                 </div>
             <?php } ?>
         </div>
+
 
         <!-- 2. Tipo de impacto -->
         <div class="mb-3">

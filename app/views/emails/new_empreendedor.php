@@ -50,7 +50,7 @@
     </p>
 
     <p style="text-align: center;">
-      <a href="https://pip2026.dscriacaoweb.com.br/empreendedores/dashboard.php" class="btn">
+      <a href="<?= htmlspecialchars($base_url) ?>/empreendedores/dashboard.php" class="btn">
         Acessar minha conta
       </a>
     </p>

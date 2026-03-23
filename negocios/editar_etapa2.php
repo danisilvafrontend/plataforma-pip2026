@@ -96,9 +96,19 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-4">Editar Etapa 2 - Fundadores</h1>
-        <a href="/empreendedores/meus-negocios.php" class="btn btn-secondary">← Voltar aos negócios</a>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <!-- Título à esquerda -->
+      <h1 class="mb-4">Editar Etapa 2 - Fundadores</h1>
+      
+      <!-- Botões à direita -->
+      <div class="d-flex gap-2">
+          <a href="/negocios/confirmacao.php?id=<?= htmlspecialchars($_GET['id'] ?? 0) ?>" class="btn btn-warning">
+              <i class="bi bi-card-checklist me-1"></i> Voltar para revisão
+          </a>
+          <a href="/empreendedores/meus-negocios.php" class="btn btn-secondary">
+              <i class="bi bi-arrow-left me-1"></i> Voltar aos negócios
+          </a>
+      </div>
     </div>
     
     <?php
@@ -331,7 +341,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Nome Completo</label>
+                                    <label class="form-label">Nome Completo *</label>
                                     <div class="row">
                                         <div class="col-8">
                                             <input type="text" class="form-control" name="cofundador[<?= $index ?>][nome]" 
@@ -344,7 +354,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">CPF</label>
+                                    <label class="form-label">CPF *</label>
                                     <input type="text" class="form-control cpf-mask" name="cofundador[<?= $index ?>][cpf]" 
                                            value="<?= htmlspecialchars($cofundador['cpf'] ?? ''); ?>">
                                 </div>
@@ -352,12 +362,12 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                             <div class="row g-3 mt-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Email</label>
+                                    <label class="form-label">Email *</label>
                                     <input type="email" class="form-control" name="cofundador[<?= $index ?>][email]" 
                                            value="<?= htmlspecialchars($cofundador['email'] ?? ''); ?>">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Telefone</label>
+                                    <label class="form-label">Telefone *</label>
                                     <input type="text" class="form-control tel-mask" name="cofundador[<?= $index ?>][celular]" 
                                            value="<?= htmlspecialchars($cofundador['celular'] ?? ''); ?>">
                                 </div>

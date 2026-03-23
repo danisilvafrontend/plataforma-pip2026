@@ -55,11 +55,22 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
 <div class="container my-5">
-    <h1 class="mb-4">Etapa 9 - Editar Documentação</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <!-- Título à esquerda -->
+        <h1 class="mb-4">Etapa 9 - Editar Documentação</h1>
+        
+        <!-- Botões à direita -->
+        <div class="d-flex gap-2">
+            <a href="/negocios/confirmacao.php?id=<?= htmlspecialchars($_GET['id'] ?? 0) ?>" class="btn btn-warning">
+                <i class="bi bi-card-checklist me-1"></i> Voltar para revisão
+            </a>
+            <a href="/empreendedores/meus-negocios.php" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Voltar aos negócios
+            </a>
+        </div>
+    </div>
 
     <?php
-        $etapaAtual = 9;
-        include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_documentacao.php';
     ?>
 

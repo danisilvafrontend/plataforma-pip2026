@@ -201,7 +201,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                     Salvar e voltar à revisão
                                 </button>
                             <?php endif; ?>
-                            <a href="etapa2_combinado.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
+                            <a href="etapa2_tipo.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
                             <button type="submit" class="btn btn-primary">
                                 Salvar e continuar
                             </button>

@@ -22,10 +22,14 @@ $nomeAmb = !empty($docs['certidao_ambiental_path'])
       <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
     </strong>
     <?php 
+        // Verifica se quem está acessando é o Admin
         $ehAdmin = (strpos($_SERVER['REQUEST_URI'], '/admin/') !== false);
-        $somenteLeitura = isset($somenteLeitura) && $somenteLeitura === true;
         
-        if (!$ehAdmin && !$somenteLeitura && !empty($docs)): 
+        // Verifica se o negócio está bloqueado para edição (aprovado)
+        $statusAprovado = (isset($negocio['status_vitrine']) && $negocio['status_vitrine'] === 'aprovado');
+        
+        // Se NÃO for admin E o negócio NÃO estiver aprovado, mostra o botão para o Empreendedor
+        if (!$ehAdmin && !$statusAprovado): 
     ?>
         <a href="/negocios/editar_etapa9.php?id=<?= $negocio_id ?? $negocio['id'] ?? 0 ?>" 
            class="btn btn-sm btn-outline-primary">
@@ -33,6 +37,9 @@ $nomeAmb = !empty($docs['certidao_ambiental_path'])
         </a>
     <?php endif; ?>
   </div>
+
+
+
 
   <div class="card-body">
     <?php if (empty($docs['certidao_trabalhista_path']) && empty($docs['certidao_ambiental_path'])): ?>

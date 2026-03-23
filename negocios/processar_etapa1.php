@@ -269,18 +269,55 @@ try {
     ");
     $stmt->execute([$id, $scoreInvestimento]);
 
-   // --------- Redirecionamento ---------
+// --------- Redirecionamento Inteligente ---------
 $modo = $_POST['modo'] ?? 'cadastro';
 
+// Busca o status de andamento do negócio
+$stmtProgresso = $pdo->prepare("SELECT etapa_atual, inscricao_completa FROM negocios WHERE id = ?");
+$stmtProgresso->execute([$id]);
+$progresso = $stmtProgresso->fetch(PDO::FETCH_ASSOC);
+
 if ($modo === 'cadastro') {
-    // Cadastro: avança para a etapa 2
+    // Fluxo normal: avança para a PRÓXIMA etapa
+    // *No processar_etapa1, a próxima é etapa2_fundadores*
     header("Location: /negocios/etapa2_fundadores.php?id=" . $id);
     exit;
 } else {
-    // Edição: volta para Meus Negócios
-    header("Location: /empreendedores/meus-negocios.php");
-    exit;
+    // Modo Edição: Para onde enviamos o usuário agora?
+    
+    if (!empty($progresso['inscricao_completa'])) {
+        // Se já completou tudo, volta para a tela de revisão
+        header("Location: /negocios/confirmacao.php?id=" . $id);
+        exit;
+    } else {
+        // Se ainda está em andamento, volta para a etapa onde ele tinha parado
+        
+        // Mapeamento de rotas com base no número da etapa
+        $rotas_etapas = [
+            1 => '/negocios/etapa1_dados_negocio.php',
+            2 => '/negocios/etapa2_fundadores.php',
+            3 => '/negocios/etapa3_eixo_tematico.php',
+            4 => '/negocios/etapa4_ods.php',    
+            5 => '/negocios/etapa5_apresentacao.php',
+            6 => '/negocios/etapa6_financeiro.php',
+            7 => '/negocios/etapa7_impacto.php',
+            8 => '/negocios/etapa8_visao.php',
+            9 => '/negocios/etapa9_documentacao.php',
+            10 => '/negocios/confirmacao.php'
+        ];
+
+        $etapaParada = (int)($progresso['etapa_atual'] ?? 1);
+        
+        // Se a etapa estiver mapeada, redireciona pra ela, se não volta pra meus-negocios
+        if (isset($rotas_etapas[$etapaParada])) {
+            header("Location: " . $rotas_etapas[$etapaParada] . "?id=" . $id);
+        } else {
+            header("Location: /empreendedores/meus-negocios.php");
+        }
+        exit;
+    }
 }
+
 
 } catch (PDOException $e) {
     $_SESSION['errors_etapa1'] = ["Erro ao salvar: " . $e->getMessage()];

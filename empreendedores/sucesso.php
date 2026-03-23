@@ -36,7 +36,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
           <hr>
           <p>Um e-mail de confirmação foi enviado para <strong><?= htmlspecialchars($email) ?></strong>.</p>
-          <a href="/empreendedores/dashboard.php" class="btn btn-primary">Ir para o painel</a>
+          <a href="/empreendedores/dashboard.php" class="btn btn-primary">Faça o login e Acesse seu Painel</a>
         </div>
 
       </div>

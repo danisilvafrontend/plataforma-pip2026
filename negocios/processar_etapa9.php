@@ -113,27 +113,78 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$negocio_id, $cert_trab_path, $cert_amb_path]);
 
-    // Atualiza etapa_atual para 10 (confirmação)
-    $stmt = $pdo->prepare("UPDATE negocios SET etapa_atual = GREATEST(etapa_atual, 10), updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$negocio_id]);
-
-    // Decide destino baseado no modo
+        // --------- Redirecionamento Inteligente ---------
     $modo = $_POST['modo'] ?? 'cadastro';
-    if ($modo === 'editar') {
-        // Edição: volta para meus negócios com sucesso
-        $_SESSION['sucesso'] = "Documentação atualizada com sucesso!";
-        header("Location: /empreendedores/meus-negocios.php");
-    } else {
-        // Cadastro: vai para confirmação
+
+    // Busca o status de andamento do negócio
+    $stmtProgresso = $pdo->prepare("SELECT etapa_atual, inscricao_completa FROM negocios WHERE id = ?");
+    $stmtProgresso->execute([$negocio_id]);
+    $progresso = $stmtProgresso->fetch(PDO::FETCH_ASSOC);
+
+    if ($modo === 'cadastro') {
+        // Modo Cadastro: Atualiza etapa para 10 se for menor que isso
+        $etapaAtualNoBanco = (int)($progresso['etapa_atual'] ?? 1);
+        
+        if ($etapaAtualNoBanco < 10) {
+            $stmtUpdate = $pdo->prepare("
+                UPDATE negocios 
+                SET etapa_atual = 10, updated_at = NOW() 
+                WHERE id = ? AND empreendedor_id = ?
+            ");
+            $stmtUpdate->execute([$negocio_id, $_SESSION['user_id']]);
+        }
+
+        // Cadastro: vai para confirmação final (que é a etapa 10)
         header("Location: /negocios/confirmacao.php?id=" . $negocio_id);
+        exit;
+        
+    } else {
+        // Modo Edição (Voltou aqui só para alterar um arquivo)
+        $_SESSION['sucesso'] = "Documentação atualizada com sucesso!";
+        
+        if (!empty($progresso['inscricao_completa'])) {
+            // Se já completou tudo (já passou da confirmação antes), volta pra lá
+            header("Location: /negocios/confirmacao.php?id=" . $negocio_id);
+            exit;
+        } else {
+            // Como a etapa 9 é a última, e ele já estava editando, o mais lógico
+            // é mandar para a etapa onde ele tinha parado no geral, ou confirmação.
+            $rotas_etapas = [
+                1 => '/negocios/etapa1_dados_negocio.php',
+                2 => '/negocios/etapa2_fundadores.php',
+                3 => '/negocios/etapa3_eixo_tematico.php',
+                4 => '/negocios/etapa4_ods.php',    
+                5 => '/negocios/etapa5_apresentacao.php',
+                6 => '/negocios/etapa6_financeiro.php',
+                7 => '/negocios/etapa7_impacto.php',
+                8 => '/negocios/etapa8_visao.php',
+                9 => '/negocios/etapa9_documentacao.php',
+                10 => '/negocios/confirmacao.php'
+            ];
+
+            $etapaParada = (int)($progresso['etapa_atual'] ?? 10);
+            
+            if (isset($rotas_etapas[$etapaParada])) {
+                header("Location: " . $rotas_etapas[$etapaParada] . "?id=" . $negocio_id);
+            } else {
+                header("Location: /empreendedores/meus-negocios.php");
+            }
+            exit;
+        }
     }
-    exit;
 
 } catch (PDOException $e) {
+    // Trata erro de salvar a etapa 9
     error_log("Erro ao salvar documentação (Etapa 9) do negócio $negocio_id: " . $e->getMessage());
-    $_SESSION['erro_etapa9'] = "Erro ao salvar a documentação. Tente novamente.";
-    $redirect = ($_POST['modo'] ?? 'cadastro') === 'edicao' ? 'editar_etapa9.php' : 'etapa9_documentacao.php';
-    header("Location: $redirect");
+    $_SESSION['erro'] = "Erro ao salvar a documentação. Tente novamente."; // Ajustado de erro_etapa9 para o padrão $_SESSION['erro']
+    
+    // Resolve pra onde jogar em caso de erro
+    $modo = $_POST['modo'] ?? 'cadastro';
+    $redirectUrl = ($modo === 'editar') 
+        ? "/negocios/editar_etapa9.php?id=" . $negocio_id 
+        : "/negocios/etapa9_documentacao.php?id=" . $negocio_id;
+        
+    header("Location: " . $redirectUrl);
     exit;
 }
 ?>

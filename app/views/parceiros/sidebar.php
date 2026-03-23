@@ -19,9 +19,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </li>
             
             <li class="nav-item mt-2">
-                <a class="nav-link rounded-3 px-3 py-2 <?= $current_page == 'editar_perfil.php' ? 'active bg-primary text-white' : 'text-dark' ?>" 
-                   href="/parceiros/editar_perfil.php">
-                    <i class="bi bi-person-badge me-2"></i> Editar Perfil
+                <a class="nav-link rounded-3 px-3 py-2 <?= $current_page == 'editar_dados.php' ? 'active bg-primary text-white' : 'text-dark' ?>" 
+                   href="/parceiros/editar_dados.php">
+                    <i class="bi bi-person-badge me-2"></i> Editar Dados
                 </a>
             </li>
 
@@ -32,15 +32,31 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
 
+            <?php 
+            // Verifica se o parceiro está com status aprovado/ativo para liberar o perfil
+            $stmt_status = $pdo->prepare("SELECT status FROM parceiros WHERE id = ?");
+            $stmt_status->execute([$_SESSION['parceiro_id']]);
+            $status_parceria = $stmt_status->fetchColumn();
+
+            if ($status_parceria === 'ativo' || $status_parceria === 'aprovado'): 
+            ?>
+                <li class="nav-item">
+                    <a class="nav-link <?= (basename($_SERVER['PHP_SELF']) == 'editar_perfil.php') ? 'active' : '' ?>" href="editar_perfil.php">
+                        <i class="bi bi-person-lines-fill me-2"></i> Meu Perfil Público
+                    </a>
+                </li>
+            <?php endif; ?>
+
+
             <!-- Os itens abaixo você pode criar no futuro -->
             <li class="nav-item mt-2">
-                <a class="nav-link rounded-3 px-3 py-2 text-dark" href="/parceiros/oportunidades.php">
+                <a class="nav-link rounded-3 px-3 py-2 text-dark disabled" aria-disabled="true" href="#" >
                     <i class="bi bi-megaphone me-2"></i> Oportunidades
                 </a>
             </li>
             
             <li class="nav-item">
-                <a class="nav-link rounded-3 px-3 py-2 text-dark" href="/parceiros/rede_impacto.php">
+                <a class="nav-link rounded-3 px-3 py-2 text-dark disabled" aria-disabled="true" href="#">
                     <i class="bi bi-people me-2"></i> Rede de Impacto
                 </a>
             </li>

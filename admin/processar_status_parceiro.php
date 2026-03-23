@@ -57,25 +57,42 @@ try {
     if ($novo_status === 'ativo' && !empty($parceiro['rep_email'])) { // No form o option é value="ativo"
         $subject = 'Sua parceria com a Plataforma Impactos Positivos foi Aprovada';
         
-        $bodyHtml = '
-            <p>Olá, {{nome}}!</p>
+            $bodyHtml = '
+            <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; padding: 30px; background-color: #ffffff;">
+                
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <h2 style="color: #0d6efd; margin: 10px 0 0 0;">Parceria Ativada com Sucesso!</h2>
+                </div>
 
-            <p>Temos uma ótima notícia: a parceria da organização <strong>{{organizacao}}</strong> foi ativada em nossa plataforma.</p>
+                <p style="font-size: 16px;">Olá, <strong>{{nome}}</strong>!</p>
+                
+                <p>Temos uma ótima notícia: a parceria da organização <strong>{{organizacao}}</strong> foi oficializada e ativada em nossa plataforma.</p>
+                
+                <div style="background-color: #e9f2ff; border-left: 4px solid #0d6efd; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 15px; color: #084298;">
+                        A partir de agora, vocês integram oficialmente a rede da <strong>Plataforma Impactos Positivos</strong>. Juntos, vamos fortalecer e impulsionar negócios que transformam a sociedade e o meio ambiente.
+                    </p>
+                </div>
 
-            <p>A partir de agora, sua organização passa a integrar oficialmente a rede da Plataforma Impactos Positivos.</p>
+                <p style="text-align: center; margin: 35px 0;">
+                    <a href="{{link_painel}}" style="background-color: #0d6efd; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(13,110,253,0.2);">
+                        Acessar Meu Painel de Parceiro
+                    </a>
+                </p>
 
-            <p style="text-align: center; margin: 30px 0;">
-                <a href="{{link_painel}}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
-                    Acessar Meu Painel
-                </a>
-            </p>
-            
-            <p>Em breve, vocês poderão acompanhar as próximas orientações, ativações e oportunidades da parceria.</p>
+                <h4 style="color: #444; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 30px;">O que acontece agora?</h4>
+                <ul style="color: #555; padding-left: 20px;">
+                    <li style="margin-bottom: 10px;">Através do seu painel, você terá acesso a orientações, andamento da parceria e próximos passos.</li>
+                    <li style="margin-bottom: 10px;">Em breve, nossa equipe entrará em contato para alinhar as primeiras ações conjuntas e oportunidades mapeadas.</li>
+                </ul>
 
-            <p>Se precisar de apoio, nossa equipe está à disposição.</p>
-
-            <p>Abraços,<br>Equipe Impactos Positivos</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                
+                <p style="color: #666; font-size: 14px; margin-bottom: 5px;">Se precisar de apoio ou quiser tirar alguma dúvida, nossa equipe está à total disposição.</p>
+                <p style="color: #666; font-size: 14px; margin-top: 0;">Um grande abraço,<br><strong>Equipe Impactos Positivos</strong></p>
+            </div>
         ';
+
 
         $rendered = render_email_from_db($subject, $bodyHtml, [
             'nome' => $parceiro['rep_nome'] ?: $parceiro['nome_fantasia'],

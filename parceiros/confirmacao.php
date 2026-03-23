@@ -209,24 +209,32 @@ include __DIR__ . '/../app/views/public/header_public.php';
                 </div>
             </div>
 
-            <!-- DECLARAÇÃO FINAL E ASSINATURA -->
-            <div class="card shadow-sm border-0 rounded-3 mb-5 bg-light">
-                <div class="card-body p-4 text-center">
-                    <div class="form-check d-inline-block text-start">
-                        <input class="form-check-input" type="checkbox" id="checkRevisao" required style="transform: scale(1.2); margin-right: 10px;">
-                        <label class="form-check-label fw-bold text-dark" for="checkRevisao">
-                            Declaro que as informações acima são verdadeiras e estou ciente de que elas serão utilizadas para gerar automaticamente a Carta-Acordo.
+            <!-- DECLARAÇÃO FINAL E INSTRUÇÕES -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4 bg-light border-start border-4 border-warning">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-3">
+                        <i class="bi bi-info-circle-fill text-warning me-2"></i> Próximo Passo: Geração da Carta-Acordo
+                    </h6>
+                    <p class="small text-muted mb-4">
+                        Ao avançar, o sistema irá gerar o documento oficial da <strong>Carta-Acordo de Parceria</strong> utilizando os dados que você acabou de revisar. <br>
+                        <strong>Fique tranquilo(a):</strong> você ainda poderá ler o documento completo e verificar todas as cláusulas na próxima tela <strong>antes</strong> de realizar a assinatura digital.
+                    </p>
+                    
+                    <div class="form-check d-inline-block text-start p-3 bg-white border rounded w-100 shadow-sm">
+                        <input class="form-check-input ms-1" type="checkbox" id="checkRevisao" required style="transform: scale(1.2); margin-top: 5px; cursor: pointer;">
+                        <label class="form-check-label fw-bold text-dark ms-2" for="checkRevisao" style="cursor: pointer;">
+                            Declaro que as informações acima foram revisadas e são verdadeiras, e desejo gerar a minuta da Carta-Acordo.
                         </label>
                     </div>
                 </div>
             </div>
 
-            <div class="d-flex justify-content-between mb-5">
-                <a href="etapa6_juridico.php" class="btn btn-outline-secondary btn-lg fw-bold">
-                    <i class="bi bi-arrow-left me-2"></i> Voltar
+            <div class="d-flex justify-content-between mb-5 flex-wrap gap-3">
+                <a href="etapa6_juridico.php" class="btn btn-outline-secondary btn-lg fw-bold px-4">
+                    <i class="bi bi-arrow-left me-2"></i> Voltar e Editar
                 </a>
-                <a href="assinar_acordo.php" class="btn btn-success btn-lg px-5 fw-bold" id="btnAvancar" style="pointer-events: none; opacity: 0.5;">
-                    Avançar para Assinatura <i class="bi bi-arrow-right ms-2"></i>
+                <a href="assinar_acordo.php" class="btn btn-primary btn-lg px-5 fw-bold text-white shadow-sm" id="btnAvancar" style="pointer-events: none; opacity: 0.5;">
+                    <i class="bi bi-file-earmark-text me-2"></i> Gerar e Ler Carta-Acordo <i class="bi bi-arrow-right ms-2"></i>
                 </a>
             </div>
 
@@ -240,11 +248,15 @@ document.getElementById('checkRevisao').addEventListener('change', function() {
     if(this.checked) {
         btn.style.pointerEvents = 'auto';
         btn.style.opacity = '1';
+        // Efeito de pulso rápido para incentivar o clique
+        btn.classList.add('animate__animated', 'animate__pulse');
+        setTimeout(() => btn.classList.remove('animate__animated', 'animate__pulse'), 1000);
     } else {
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.5';
     }
 });
 </script>
+
 
 <?php include __DIR__ . '/../app/views/public/footer_public.php'; ?>

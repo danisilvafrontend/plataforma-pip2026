@@ -79,33 +79,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aceito'])) {
         $stmtContrato = $pdo->prepare("UPDATE parceiro_contrato SET data_assinatura = ?, data_vencimento = ? WHERE parceiro_id = ?");
         $stmtContrato->execute([$data_assinatura, $data_vencimento, $parceiro_id]);
 
-                        // 3. E-mail pros admins
+        // 3. E-mail pros admins
         $stmtAdmins = $pdo->query("SELECT nome, email FROM users WHERE role IN ('superadmin', 'admin') AND status = 'ativo'");
         $admins = $stmtAdmins->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($admins)) {
             $subject = "Nova Carta-Acordo Assinada: " . $parceiro['nome_fantasia'];
-            $body = "
-                <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;'>
-                    <h2 style='color: #0d6efd;'>Nova Assinatura Recebida!</h2>
+            $link_admin = get_base_url() . "/admin/parceiros.php";
+                $body = "
+                <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; padding: 30px; background-color: #ffffff;'>
+                    
+                    <h2 style='color: #0d6efd; border-bottom: 2px solid #e9f2ff; padding-bottom: 10px; margin-top: 0;'>
+                        Nova Assinatura Recebida
+                    </h2>
+                    
                     <p>Olá, Equipe Impactos Positivos,</p>
-                    <p>A organização <strong>{$parceiro['nome_fantasia']}</strong> (CNPJ: {$parceiro['cnpj']}) acaba de assinar a Carta-Acordo digitalmente.</p>
-                    <p><strong>Dados da Assinatura:</strong><br>
-                    Representante: {$parceiro['rep_nome']}<br>
-                    Data: " . date('d/m/Y H:i:s') . "<br>
-                    IP: {$_SERVER['REMOTE_ADDR']}</p>
-                    <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
-                    <p style='font-size: 13px; color: #777;'>Acesse o painel administrativo para visualizar o documento e ativar a parceria.</p>
+                    <p>A organização abaixo acaba de assinar a Carta-Acordo digitalmente e aguarda a ativação da parceria na plataforma.</p>
+                    
+                    <div style='background-color: #f8f9fa; padding: 20px; border-left: 4px solid #0d6efd; margin: 25px 0; border-radius: 4px;'>
+                        <h4 style='margin: 0 0 15px 0; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;'>Detalhes do Parceiro</h4>
+                        <p style='margin: 0 0 8px 0;'><strong>Organização:</strong> {$parceiro['nome_fantasia']}</p>
+                        <p style='margin: 0 0 8px 0;'><strong>CNPJ:</strong> {$parceiro['cnpj']}</p>
+                        
+                        <h4 style='margin: 20px 0 10px 0; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;'>Dados da Assinatura</h4>
+                        <p style='margin: 0 0 8px 0;'><strong>Representante Legal:</strong> {$parceiro['rep_nome']}</p>
+                        <p style='margin: 0 0 8px 0;'><strong>Data e Hora:</strong> " . date('d/m/Y \à\s H:i:s') . "</p>
+                        <p style='margin: 0 0 0 0;'><strong>IP Registrado:</strong> {$_SERVER['REMOTE_ADDR']}</p>
+                    </div>
+
+                    <div style='background-color: #fff3cd; color: #842029; padding: 12px 15px; border: 1px solid #f5c2c7; border-radius: 5px; font-size: 14px; margin-bottom: 25px;'>
+                        <strong>Próximo passo:</strong> Verifique o documento assinado no painel e clique em \"Ativar Parceria\" para liberar o acesso da organização.
+                    </div>
+                    
+                    <p style='text-align: center; margin: 35px 0;'>
+                        <a href='{$link_admin}' style='background-color: #0d6efd; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(13,110,253,0.2);'>
+                            Acessar Painel e Ativar
+                        </a>
+                    </p>
+                    
+                    <hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;'>
+                    <p style='font-size: 12px; color: #999; text-align: center; margin: 0;'>
+                        Este é um aviso automático do sistema Impactos Positivos.<br>
+                        " . date('Y') . " © Todos os direitos reservados.
+                    </p>
                 </div>
             ";
+
             
             $headers  = "MIME-Version: 1.0\r\n";
             $headers .= "Content-type: text/html; charset=utf-8\r\n";
             $headers .= "From: Plataforma Impactos Positivos <nao-responda@dscriacaoweb.com.br>\r\n";
 
             foreach ($admins as $admin) {
-                // Tenta enviar usando função mail nativa (segura e sem depender de helpers não importados)
-                @mail($admin['email'], $subject, $body, $headers);
+                // Usa a função send_mail com o nome correto do admin vindo do banco
+                send_mail($admin['email'], $admin['nome'], $subject, $body, $headers);
             }
         }
 

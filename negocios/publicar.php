@@ -99,14 +99,34 @@ try {
         $assunto = "Novo negócio aguardando aprovação: " . $negocio['nome_fantasia'];
         $linkAdmin = get_base_url() . "/admin/visualizar_negocio.php?id=" . $negocioId;
         $mensagem = "
-            <h2>Novo Negócio Enviado para Aprovação</h2>
-            <p><strong>Negócio:</strong> {$negocio['nome_fantasia']}</p>
-            <p><strong>Categoria:</strong> {$negocio['categoria']}</p>
-            <p><strong>ID:</strong> {$negocioId}</p>
-            <p><a href='{$linkAdmin}' class='btn btn-primary'>Verificar agora no Painel</a></p>
-            <p>AINDA É SÓ UM TESTE</P>
-            <hr>
-            <p><small>Enviado em: " . date('d/m/Y H:i') . "</small></p>
+            <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;'>
+                <h2 style='color: #d63384; border-bottom: 2px solid #f8d7da; padding-bottom: 10px;'>Novo Negócio Aguardando Avaliação</h2>
+                
+                <p>Olá, Equipe Impactos Positivos,</p>
+                <p>O empreendedor concluiu todas as etapas e enviou o negócio abaixo para publicação na vitrine:</p>
+                
+                <div style='background-color: #f8f9fa; padding: 15px; border-left: 4px solid #d63384; margin: 20px 0; border-radius: 4px;'>
+                    <p style='margin: 0 0 5px 0;'><strong>Nome Fantasia:</strong> {$negocio['nome_fantasia']}</p>
+                    <p style='margin: 0 0 5px 0;'><strong>Categoria:</strong> {$negocio['categoria']}</p>
+                    <p style='margin: 0;'><strong>ID do Sistema:</strong> {$negocioId}</p>
+                </div>
+
+                <div style='background-color: #fff3cd; color: #842029; padding: 15px; border: 1px solid #f5c2c7; border-radius: 5px; margin-bottom: 25px;'>
+                    <strong><span style='font-size: 16px;'>⚠️ Atenção Necessária:</span></strong><br>
+                    Antes de aprovar e publicar o negócio, é obrigatório verificar a autenticidade e validade dos documentos legais enviados na Etapa 9:
+                    <ul style='margin-top: 8px; margin-bottom: 0;'>
+                        <li>Certidão Negativa de Débitos Trabalhistas (CNDT)</li>
+                        <li>Certidão Negativa de Multas Ambientais (CNMA)</li>
+                    </ul>
+                </div>
+
+                <p style='text-align: center; margin: 30px 0;'>
+                    <a href='{$linkAdmin}' style='background-color: #d63384; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Acessar Perfil e Analisar Documentos</a>
+                </p>
+                
+                <hr style='border: none; border-top: 1px solid #eee; margin: 20px 0;'>
+                <p style='font-size: 12px; color: #777; text-align: center;'>Enviado em: " . date('d/m/Y \à\s H:i') . "</p>
+            </div>
         ";
 
         // Prepara os headers para o mail() nativo
@@ -116,8 +136,8 @@ try {
 
         // Loop sobre os emails diretamente
         foreach ($admins as $emailAdmin) {
-            // $emailAdmin já é a string do email (ex: "admin@pip.com")
-            @mail($emailAdmin, $assunto, $mensagem, $headers);
+            // Usa a sua função de e-mail centralizada do mail.php
+            send_mail($emailAdmin, 'Administrador PIP', $assunto, $mensagem, $headers);
         }
     }
 

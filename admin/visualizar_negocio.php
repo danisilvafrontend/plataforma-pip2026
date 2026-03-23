@@ -153,6 +153,26 @@ include __DIR__ . '/../app/views/admin/header.php';
     </div>
 </div>
 
+<div class="container my-5">
+    <!-- Adicione isto aqui: -->
+    <?php if (isset($_SESSION['erro'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <?= htmlspecialchars($_SESSION['erro']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php unset($_SESSION['erro']); ?>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['sucesso'])): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <?= htmlspecialchars($_SESSION['sucesso']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php unset($_SESSION['sucesso']); ?>
+    <?php endif; ?>
+    <!-- Fim da adição -->
+
+
 <!-- Botões de ação para admin -->
  <!-- NO FINAL do bloco_etapa9.php OU após bloco_etapa9 na visualizar_negocio.php -->
 <?php if ($negocio['status_vitrine'] === 'em_analise'): ?>

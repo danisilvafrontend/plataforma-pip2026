@@ -16,6 +16,38 @@ function desafio_valor(array $ap, string $campo): string {
     if (!isset($ap[$campo]) || $ap[$campo] === '' || $ap[$campo] === null) return '-';
     return htmlspecialchars((string)$ap[$campo]);
 }
+/**
+ * Transforma qualquer link do YouTube (watch, youtu.be, shorts) em link de Embed
+ */
+if (!function_exists('embedYouTube')) {
+    function embedYouTube(string $url): string {
+        $video_id = '';
+        // Padrão 1: youtu.be/ID
+        if (preg_match('/youtu\.be\/([^\&\?\/]+)/', $url, $matches)) {
+            $video_id = $matches[1];
+        } 
+        // Padrão 2: youtube.com/watch?v=ID
+        elseif (preg_match('/youtube\.com\/.*v=([^\&\?\/]+)/', $url, $matches)) {
+            $video_id = $matches[1];
+        } 
+        // Padrão 3: youtube.com/embed/ID
+        elseif (preg_match('/youtube\.com\/embed\/([^\&\?\/]+)/', $url, $matches)) {
+            $video_id = $matches[1];
+        }
+        // Padrão 4: youtube.com/shorts/ID
+        elseif (preg_match('/youtube\.com\/shorts\/([^\&\?\/]+)/', $url, $matches)) {
+            $video_id = $matches[1];
+        }
+        
+        // Se achou um ID, retorna o link de embed formatado corretamente
+        if (!empty($video_id)) {
+            return "https://www.youtube.com/embed/" . $video_id;
+        }
+        
+        // Se não conseguir converter, retorna a URL original (mas provável que não funcione no iframe)
+        return htmlspecialchars($url);
+    }
+}
 
 /**
  * Mapa legível dos 21 desafios (mesma ordem do formulário)
@@ -104,24 +136,39 @@ $desafios_map = [
             <!-- Coluna direita: vídeos, textos e desafios -->
             <div class="col-lg-8 col-md-7">
                 <div class="row">
-                    <!-- Vídeos -->
+                                        <!-- Vídeos -->
                     <?php if (!empty($apresentacao['video_pitch_url'])): ?>
-                        <div class="col-12 col-md-6">
-                            <h5 class="mb-2"><i class="bi bi-play-circle me-1"></i> Pitch (visualização) <i class="bi bi-eye text-secondary me-1"></i></h5>
-                            <div class="video-compact shadow-sm mb-2">
-                                <iframe src="<?= embedYouTube($apresentacao['video_pitch_url']) ?>" title="Pitch Video" allowfullscreen class="rounded" loading="lazy"></iframe>
-                            </div>
+                        <div class="col-md-6 mb-4">
+                            <h5 class="mb-2"><i class="bi bi-play-circle me-1"></i> Pitch do Negócio <i class="bi bi-eye text-secondary me-1"></i></h5>
+                            <a href="<?= htmlspecialchars($apresentacao['video_pitch_url']) ?>" 
+                               class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center py-2 shadow-sm" 
+                               target="_blank"
+                               rel="noopener noreferrer">
+                                <i class="bi bi-youtube fs-3 me-3"></i>
+                                <div class="text-start lh-sm">
+                                    <span class="d-block fw-bold">Ver Vídeo Pitch</span>
+                                    <small style="font-size: 0.75rem;">Assistir no YouTube</small>
+                                </div>
+                            </a>
                         </div>
                     <?php endif; ?>
 
                     <?php if (!empty($apresentacao['apresentacao_video_url'])): ?>
-                        <div class="col-12 col-md-6">
-                            <h5 class="mb-2"><i class="bi bi-camera-video me-1"></i> Vídeo Institucional <i class="bi bi-eye text-secondary me-1"></i></h5>
-                            <div class="video-compact shadow-sm mb-2">
-                                <iframe src="<?= embedYouTube($apresentacao['apresentacao_video_url']) ?>" title="Vídeo Institucional" allowfullscreen class="rounded" loading="lazy"></iframe>
-                            </div>
+                        <div class="col-md-6 mb-4">
+                            <h5 class="mb-2"><i class="bi bi-camera-video me-1"></i> Institucional <i class="bi bi-eye text-secondary me-1"></i></h5>
+                            <a href="<?= htmlspecialchars($apresentacao['apresentacao_video_url']) ?>" 
+                               class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center py-2 shadow-sm" 
+                               target="_blank"
+                               rel="noopener noreferrer">
+                                <i class="bi bi-youtube fs-3 me-3"></i>
+                                <div class="text-start lh-sm">
+                                    <span class="d-block fw-bold">Ver Institucional</span>
+                                    <small style="font-size: 0.75rem;">Assistir no YouTube</small>
+                                </div>
+                            </a>
                         </div>
                     <?php endif; ?>
+
 
                     <!-- Tipo solução / Programas / Inovação -->
                     <div class="col-12">

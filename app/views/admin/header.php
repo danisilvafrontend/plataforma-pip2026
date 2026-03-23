@@ -149,10 +149,6 @@ $userRole = $_SESSION['user_role'] ?? '';
                   href="/admin/empreendedores.php">Empreendedores</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link py-1 <?= strpos($currentPage, '/admin/parceiros.php') !== false ? 'active' : '' ?>" 
-                  href="/admin/parceiros.php">Parceiros</a>
-              </li>
-              <li class="nav-item">
                 <a class="nav-link py-1 <?= strpos($currentPage, '/admin/usuarios.php') !== false ? 'active' : '' ?>" 
                   href="/admin/usuarios.php">Usuários</a>
               </li>
@@ -163,6 +159,10 @@ $userRole = $_SESSION['user_role'] ?? '';
         <li class="nav-item">
           <a class="nav-link <?= strpos($currentPage, '/admin/negocios.php') !== false ? 'active' : '' ?>" 
             href="/admin/negocios.php">Negócios</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <?= strpos($currentPage, '/admin/parceiros.php') !== false ? 'active' : '' ?>" 
+            href="/admin/parceiros.php">Parceiros</a>
         </li>
 
         <!-- Relatórios (expande/contrai) -->

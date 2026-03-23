@@ -78,18 +78,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 
                 $sql = "INSERT INTO parceiros (
-                            razao_social, nome_fantasia, cnpj, 
-                            rep_nome, rep_cpf, 
-                            email_login, senha_hash, 
-                            etapa_atual, status, criado_em
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'em_cadastro', NOW())";
+                    razao_social, nome_fantasia, cnpj, 
+                    rep_nome, rep_cpf, rep_email,
+                    email_login, senha_hash, 
+                    etapa_atual, status, criado_em
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'em_cadastro', NOW())";
                 
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
                     $razao_social, $nome_fantasia, $cnpj, 
-                    $rep_nome, $rep_cpf, 
+                    $rep_nome, $rep_cpf, $email_login, // Usamos o e-mail de login como e-mail do representante provisoriamente
                     $email_login, $senha_hash
                 ]);
+
                 
                 $novo_parceiro_id = $pdo->lastInsertId();
 
