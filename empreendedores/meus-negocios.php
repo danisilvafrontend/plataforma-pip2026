@@ -22,8 +22,6 @@ function labelStatusPremiacao(?string $status): string
 {
     return match ($status) {
         'rascunho' => 'Rascunho',
-        'enviada' => 'Inscrição enviada',
-        'em_triagem' => 'Em triagem',
         'elegivel' => 'Elegível',
         'inelegivel' => 'Inelegível',
         'classificada_fase_1' => 'Classificada Fase 1',
@@ -106,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_
         $stmtExiste->execute([$premiacaoIdAtiva, $negocioId]);
         $inscricaoExistente = $stmtExiste->fetch(PDO::FETCH_ASSOC);
 
-        $statusSalvar = $desejaParticipar ? 'enviada' : 'rascunho';
+        $statusSalvar = $desejaParticipar ? 'elegivel' : 'rascunho';
         $enviadoEm = $desejaParticipar ? date('Y-m-d H:i:s') : null;
 
         if ($inscricaoExistente) {
@@ -393,47 +391,12 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                   <?php endif; ?>
 
                 <?php else: ?>
-                  <form method="post" class="mt-2">
-                    <input type="hidden" name="acao" value="salvar_inscricao_premiacao">
-                    <input type="hidden" name="negocio_id" value="<?= (int)$n['id'] ?>">
-
-                    <div class="form-check mb-2">
-                      <input class="form-check-input" type="checkbox"
-                             name="deseja_participar"
-                             id="deseja_participar_<?= (int)$n['id'] ?>" value="1"
-                             <?= (int)($n['deseja_participar'] ?? 0) === 1 ? 'checked' : '' ?>>
-                      <label class="form-check-label small" for="deseja_participar_<?= (int)$n['id'] ?>">
-                        Desejo participar da premiação
-                      </label>
-                    </div>
-
-                    <div class="form-check mb-2">
-                      <input class="form-check-input" type="checkbox"
-                             name="aceite_regulamento"
-                             id="aceite_regulamento_<?= (int)$n['id'] ?>" value="1"
-                             <?= (int)($n['aceite_regulamento'] ?? 0) === 1 ? 'checked' : '' ?>>
-                      <label class="form-check-label small" for="aceite_regulamento_<?= (int)$n['id'] ?>">
-                          Aceito o
-                          <a href="https://impactospositivos.com/regulamento-do-premio/" target="_blank" rel="noopener noreferrer">
-                              regulamento da Premiação
-                          </a>
-                      </label>
-                    </div>
-
-                    <div class="form-check mb-3">
-                      <input class="form-check-input" type="checkbox"
-                             name="aceite_veracidade"
-                             id="aceite_veracidade_<?= (int)$n['id'] ?>" value="1"
-                             <?= (int)($n['aceite_veracidade'] ?? 0) === 1 ? 'checked' : '' ?>>
-                      <label class="form-check-label small" for="aceite_veracidade_<?= (int)$n['id'] ?>">
-                        Declaro a veracidade das informações publicadas desse Negócio
-                      </label>
-                    </div>
-
-                    <button type="submit" class="btn-emp-outline w-100">
-                      <i class="bi bi-trophy me-1"></i> Salvar participação
-                    </button>
-                  </form>
+                  <button
+                    type="button"
+                    class="btn-emp-primary w-100 mt-2"
+                    onclick="abrirModalPremiacao(<?= (int)$n['id'] ?>, <?= (int)($n['deseja_participar'] ?? 0) ?>, <?= (int)($n['aceite_regulamento'] ?? 0) ?>, <?= (int)($n['aceite_veracidade'] ?? 0) ?>)">
+                    <i class="bi bi-trophy me-1"></i> Quero participar da Premiação
+                  </button>
                 <?php endif; ?>
               </div>
             <?php endif; ?>
@@ -506,6 +469,86 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
 <?php endif; ?>
 
+<!-- Modal Premiação -->
+<div class="modal fade" id="modalPremiacao" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px; border:none;">
+      <form method="post" id="formModalPremiacao">
+        <input type="hidden" name="acao" value="salvar_inscricao_premiacao">
+        <input type="hidden" name="negocio_id" id="modal_premiacao_negocio_id" value="">
+
+        <div class="modal-header" style="border-bottom:1px solid #f0f4ed;">
+          <h5 class="modal-title" style="color:#1E3425;">
+            <i class="bi bi-trophy me-2" style="color:#CDDE00;"></i>Participar da Premiação
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- Texto explicativo -->
+          <div class="p-3 rounded mb-4" style="background:#f7f9f5; border:1px solid #e6ece1;">
+            <p class="small mb-2" style="color:#1E3425; font-weight:600;">
+              <i class="bi bi-info-circle me-1"></i> Sobre a Premiação Impactos Positivos
+            </p>
+            <p class="small text-muted mb-2">
+              A Premiação Impactos Positivos reconhece negócios de impacto social e ambiental
+              que estão transformando realidades. Ao se inscrever, seu negócio concorre ao
+              reconhecimento público, visibilidade na vitrine nacional e ao voto popular da nossa comunidade.
+            </p>
+            <p class="small text-muted mb-0">
+              Negócios aprovados e publicados na vitrine já estão aptos a participar. Sua inscrição será registrada imediatamente.
+            </p>
+          </div>
+
+          <!-- Checkboxes de aceite -->
+          <div class="form-check p-3 mb-2 rounded" style="background:#f5f7f2; border:1px solid #e8ede5;">
+            <input class="form-check-input" type="checkbox"
+                   name="deseja_participar"
+                   id="modal_deseja_participar" value="1">
+            <label class="form-check-label small fw-semibold" for="modal_deseja_participar"
+                   style="color:#1E3425;">
+              Desejo participar da Premiação Impactos Positivos
+            </label>
+          </div>
+
+          <div class="form-check p-3 mb-2 rounded" style="background:#f5f7f2; border:1px solid #e8ede5;">
+            <input class="form-check-input" type="checkbox"
+                   name="aceite_regulamento"
+                   id="modal_aceite_regulamento" value="1">
+            <label class="form-check-label small" for="modal_aceite_regulamento">
+              Li e aceito o
+              <a href="https://impactospositivos.com/regulamento-do-premio/"
+                 target="_blank" rel="noopener noreferrer" style="color:#1E3425; font-weight:600;">
+                regulamento da Premiação
+              </a>
+            </label>
+          </div>
+
+          <div class="form-check p-3 rounded" style="background:#f5f7f2; border:1px solid #e8ede5;">
+            <input class="form-check-input" type="checkbox"
+                   name="aceite_veracidade"
+                   id="modal_aceite_veracidade" value="1">
+            <label class="form-check-label small" for="modal_aceite_veracidade">
+              Declaro que todas as informações publicadas sobre este negócio são verdadeiras
+              e de minha responsabilidade
+            </label>
+          </div>
+
+        </div>
+
+        <div class="modal-footer" style="border-top:1px solid #f0f4ed;">
+          <button type="button" class="btn-emp-outline" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-emp-primary">
+            <i class="bi bi-send me-1"></i> Enviar inscrição
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Ocultar -->
 <div class="modal fade" id="modalOcultar" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -547,10 +590,18 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 </div>
 
 <script>
+  function abrirModalPremiacao(negocioId, desejaParticipar, aceiteRegulamento, aceiteVeracidade) {
+  document.getElementById('modal_premiacao_negocio_id').value = negocioId;
+  document.getElementById('modal_deseja_participar').checked   = desejaParticipar === 1;
+  document.getElementById('modal_aceite_regulamento').checked  = aceiteRegulamento === 1;
+  document.getElementById('modal_aceite_veracidade').checked   = aceiteVeracidade === 1;
+  new bootstrap.Modal(document.getElementById('modalPremiacao')).show();
+}
 function abrirModalOcultar(id) {
   document.getElementById('modal_ocultar_negocio_id').value = id;
   new bootstrap.Modal(document.getElementById('modalOcultar')).show();
 }
+
 </script>
 
 <?php include __DIR__ . '/../app/views/empreendedor/footer.php'; ?>

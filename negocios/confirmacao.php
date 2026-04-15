@@ -235,110 +235,181 @@ include __DIR__ . '/../app/views/empreendedor/header.php'; ?>
         </div>
     </div>
 
-    <div class="emp-confirm-actions-card mt-4">
-        <div class="emp-confirm-actions-header">
+    <!-- Ações da Revisão -->
+    <div class="form-section mb-4">
+
+    <div class="form-section-title">
+        <i class="bi bi-send-check"></i> Publicar na Vitrine
+    </div>
+
+    <!-- 3 cards informativos -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+        <div class="emp-card h-100" style="padding:1rem;">
+            <div class="d-flex align-items-start gap-3">
+            <div class="emp-stat-icon" style="background:#f0f4ed; color:#1E3425;">
+                <i class="bi bi-globe2"></i>
+            </div>
             <div>
-                <h2 class="emp-confirm-actions-title mb-1">Ações da Revisão</h2>
-                <p class="emp-confirm-actions-subtitle mb-0">
-                    Pré-visualize a vitrine, envie para avaliação ou gerencie a publicação do cadastro.
-                </p>
+                <div class="fw-bold small mb-1" style="color:#1E3425;">Visibilidade pública</div>
+                <div class="small text-muted">Seu negócio aparece na Vitrine Nacional e pode ser encontrado por parceiros, investidores e pela comunidade.</div>
+            </div>
             </div>
         </div>
-
-        <div class="emp-confirm-actions-body">
-            <div class="emp-confirm-actions-grid">
-
-                <button type="button"
-                        class="btn-emp-outline emp-confirm-action-btn"
-                        data-bs-toggle="modal"
-                        data-bs-target="#previewModal">
-                    <i class="bi bi-display me-2"></i> Pré-visualizar na Vitrine
-                </button>
-
-                <?php if (($negocio['publicado_vitrine'] ?? 0) == 1): ?>
-
-                    <form action="/negocios/publicar.php"
-                          method="post"
-                          class="m-0"
-                          onsubmit="return confirm('Deseja ocultar o negócio da vitrine?');">
-                        <input type="hidden" name="negocio_id" value="<?= e($negocio_id) ?>">
-                        <input type="hidden" name="acao" value="remover">
-
-                        <button type="submit" class="btn-emp-outline emp-confirm-action-btn emp-confirm-action-danger w-100">
-                            <i class="bi bi-eye-slash me-2"></i> Remover da Vitrine
-                        </button>
-                    </form>
-
-                    <a href="/negocio.php?id=<?= e($negocio_id) ?>"
-                       target="_blank"
-                       class="btn-emp-primary emp-confirm-action-btn">
-                        <i class="bi bi-box-arrow-up-right me-2"></i> Acessar Link Público
-                    </a>
-
-                <?php else: ?>
-
-                    <form action="/negocios/publicar.php" method="post" class="m-0 w-100">
-                        <input type="hidden" name="negocio_id" value="<?= e($negocio_id) ?>">
-                        <input type="hidden" name="acao" value="publicar">
-
-                        <?php if (!empty($premiacaoVigente['id'])): ?>
-                            <div class="mt-3 p-3 rounded" style="background:#f7f9f5; border:1px solid #e6ece1;">
-                                <div class="small fw-semibold mb-2" style="color:#1E3425;">
-                                    <i class="bi bi-trophy me-1"></i>
-                                    Participação na premiação vigente: <?= htmlspecialchars($premiacaoVigente['nome']) ?>
-                                </div>
-
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input"
-                                        type="checkbox"
-                                        name="premiacao_deseja_participar"
-                                        id="premiacao_deseja_participar"
-                                        value="1"
-                                        <?= (int)($inscricaoPremiacao['deseja_participar'] ?? 0) === 1 ? 'checked' : '' ?>>
-                                    <label class="form-check-label small" for="premiacao_deseja_participar">
-                                        Desejo inscrever este negócio na premiação vigente
-                                    </label>
-                                </div>
-
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input"
-                                        type="checkbox"
-                                        name="premiacao_aceite_regulamento"
-                                        id="premiacao_aceite_regulamento"
-                                        value="1"
-                                        <?= (int)($inscricaoPremiacao['aceite_regulamento'] ?? 0) === 1 ? 'checked' : '' ?>>
-                                    <label class="form-check-label small" for="premiacao_aceite_regulamento">
-                                        Aceito o
-                                        <a href="https://impactospositivos.com/regulamento-do-premio/" target="_blank" rel="noopener noreferrer">
-                                            regulamento
-                                        </a>
-                                    </label>
-                                </div>
-
-                                <div class="form-check mb-0">
-                                    <input class="form-check-input"
-                                        type="checkbox"
-                                        name="premiacao_aceite_veracidade"
-                                        id="premiacao_aceite_veracidade"
-                                        value="1"
-                                        <?= (int)($inscricaoPremiacao['aceite_veracidade'] ?? 0) === 1 ? 'checked' : '' ?>>
-                                    <label class="form-check-label small" for="premiacao_aceite_veracidade">
-                                        Declaro a veracidade das informações para a premiação
-                                    </label>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                        <button type="submit" class="btn-emp-primary emp-confirm-action-btn w-100 mt-3">
-                            <i class="bi bi-send-check me-2"></i> Enviar Cadastro para Avaliação
-                        </button>
-                    </form>
-
-                <?php endif; ?>
-
+        </div>
+        <div class="col-12 col-md-4">
+        <div class="emp-card h-100" style="padding:1rem;">
+            <div class="d-flex align-items-start gap-3">
+            <div class="emp-stat-icon" style="background:#f0f4ed; color:#1E3425;">
+                <i class="bi bi-diagram-3"></i>
             </div>
+            <div>
+                <div class="fw-bold small mb-1" style="color:#1E3425;">Parte do ecossistema</div>
+                <div class="small text-muted">Você passa a integrar o mapa de negócios de impacto do Brasil, conectado a outros empreendedores e organizações.</div>
+            </div>
+            </div>
+        </div>
+        </div>
+        <div class="col-12 col-md-4">
+        <div class="emp-card h-100" style="padding:1rem;">
+            <div class="d-flex align-items-start gap-3">
+            <div class="emp-stat-icon" style="background:#f0f4ed; color:#CDDE00;">
+                <i class="bi bi-trophy" style="color:#1E3425;"></i>
+            </div>
+            <div>
+                <div class="fw-bold small mb-1" style="color:#1E3425;">Elegível à Premiação</div>
+                <div class="small text-muted">Negócios publicados ficam aptos a participar da Premiação Impactos Positivos — você decide quando quiser se inscrever.</div>
+            </div>
+            </div>
+        </div>
         </div>
     </div>
+
+    <!-- Ações -->
+    <?php if ((int)($negocio['publicado_vitrine'] ?? 0) === 1): ?>
+
+        <!-- Já publicado -->
+        <div class="d-flex align-items-center gap-3 p-3 rounded mb-3"
+            style="background:#e8f5e9; border:1px solid #a5d6a7;">
+        <i class="bi bi-check-circle-fill" style="color:#2e7d32; font-size:1.3rem;"></i>
+        <div>
+            <div class="fw-semibold small" style="color:#2e7d32;">Negócio publicado na vitrine</div>
+            <div class="small text-muted">Seu negócio já está visível publicamente.</div>
+        </div>
+        <a href="/negocio.php?id=<?= $negocio_id ?>"
+            target="_blank"
+            class="btn-emp-outline ms-auto flex-shrink-0">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Ver na vitrine
+        </a>
+        </div>
+
+    <?php else: ?>
+
+        <!-- Botões de ação -->
+        <div class="d-flex flex-wrap align-items-center gap-2">
+
+        <!-- 1. Pré-visualizar -->
+        <button type="button" class="btn-emp-outline" data-bs-toggle="modal" data-bs-target="#previewModal">
+            <i class="bi bi-display me-1"></i> Pré-visualizar
+        </button>
+
+        <!-- 2. Enviar para revisão (só publica, sem premiação) -->
+        <form action="/negocios/publicar.php" method="post" class="d-inline">
+            <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
+            <input type="hidden" name="acao" value="publicar">
+            <button type="submit" class="btn-emp-outline">
+            <i class="bi bi-send me-1"></i> Enviar para Revisão
+            </button>
+        </form>
+
+        <!-- 3. Enviar para revisão + inscrever na premiação (abre modal) -->
+        <?php if ($premiacaoVigente): ?>
+            <button type="button"
+                    class="btn-emp-primary"
+                    onclick="abrirModalRevisaoPremiacao(<?= $negocio_id ?>, <?= (int)($inscricaoPremiacao['aceite_regulamento'] ?? 0) ?>, <?= (int)($inscricaoPremiacao['aceite_veracidade'] ?? 0) ?>)">
+            <i class="bi bi-trophy me-1"></i> Enviar para Revisão e Inscrever na Premiação
+            </button>
+        <?php endif; ?>
+
+        </div>
+
+    <?php endif; ?>
+
+    </div>
+
+
+    <!-- Modal — Revisão + Premiação -->
+    <?php if ($premiacaoVigente): ?>
+    <div class="modal fade ip-modal" id="modalRevisaoPremiacao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px; border:none;">
+        <form action="/negocios/publicar.php" method="post" id="formRevisaoPremiacao">
+            <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
+            <input type="hidden" name="acao" value="publicar_com_premiacao">
+
+            <div class="modal-header">
+            <h5 class="modal-title">
+                <i class="bi bi-trophy me-2" style="color:#CDDE00;"></i>
+                Inscrição na Premiação
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+            <p class="small text-muted mb-1">
+                <strong style="color:#1E3425;"><?= htmlspecialchars($premiacaoVigente['nome']) ?></strong>
+            </p>
+            <p class="small text-muted mb-4">
+                A inscrição é gratuita e opcional. Negócios publicados ficam aptos a participar da votação pública e ao reconhecimento da comunidade. Você pode alterar sua participação a qualquer momento em "Meus Negócios".
+            </p>
+
+            <div class="form-check p-3 mb-2 rounded" style="background:#f5f7f2; border:1px solid #e8ede5;">
+                <input class="form-check-input" type="checkbox"
+                    name="aceite_regulamento"
+                    id="modal_rev_aceite_regulamento" value="1">
+                <label class="form-check-label small" for="modal_rev_aceite_regulamento">
+                Li e aceito o
+                <a href="https://impactospositivos.com/regulamento-do-premio/"
+                    target="_blank" rel="noopener noreferrer"
+                    style="color:#1E3425; font-weight:700;">
+                    regulamento da Premiação
+                </a>
+                </label>
+            </div>
+
+            <div class="form-check p-3 rounded" style="background:#f5f7f2; border:1px solid #e8ede5;">
+                <input class="form-check-input" type="checkbox"
+                    name="aceite_veracidade"
+                    id="modal_rev_aceite_veracidade" value="1">
+                <label class="form-check-label small" for="modal_rev_aceite_veracidade">
+                Declaro que todas as informações publicadas sobre este negócio são verdadeiras
+                e de minha responsabilidade
+                </label>
+            </div>
+
+            </div>
+
+            <div class="modal-footer">
+            <button type="button" class="btn-modal-fechar" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn-emp-primary">
+                <i class="bi bi-send me-1"></i> Enviar e me inscrever
+            </button>
+            </div>
+
+        </form>
+        </div>
+    </div>
+    </div>
+
+    <script>
+    function abrirModalRevisaoPremiacao(negocioId, aceiteReg, aceiteVer) {
+    document.getElementById('modal_rev_aceite_regulamento').checked = aceiteReg === 1;
+    document.getElementById('modal_rev_aceite_veracidade').checked  = aceiteVer === 1;
+    new bootstrap.Modal(document.getElementById('modalRevisaoPremiacao')).show();
+    }
+    </script>
+    <?php endif; ?>
 
 </div>
 

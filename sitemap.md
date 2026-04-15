@@ -247,7 +247,6 @@ Execução manual única ou pontual. Proteger ou remover após uso.
 | Rota | Arquivo | Descrição |
 |------|---------|-----------|
 | ⚙️ `/resetopcache.php` | `resetopcache.php` | Reset de OPcache (uso manual em produção) |
-| ⚙️ `/sessiontest.php` | `sessiontest.php` | Debug de sessão — **remover em produção** |
 
 ***
 
