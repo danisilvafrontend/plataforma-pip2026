@@ -1,27 +1,23 @@
 <?php
 // /public_html/admin/dashboard.php
 session_start();
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 require_once __DIR__ . '/../app/helpers/auth.php';
 require_admin_login();
 
-// Ajuste estes requires conforme sua estrutura se necessário
 require_once __DIR__ . '/../app/services/Database.php';
 
-// define título e, opcionalmente, CSS/JS extras
 $pageTitle = 'Dashboard';
-$extraHead = '<link rel="stylesheet" href="/assets/admin.css">';
 $extraFooter = '<script>console.log("Dashboard ready")</script>';
 
-// inclui header
 include __DIR__ . '/../app/views/admin/header.php';
 
-/**
- * Função auxiliar para KPIs
- * Observação: use com cuidado para evitar SQL injection — aqui o $table e $where são controlados internamente.
- */
 function getCount(string $table, string $where = '1 = 1'): int {
     try {
-        $pdo = Database::getInstance(); // espera que Database::getInstance() retorne PDO
+        $pdo = Database::getInstance();
         $sql = "SELECT COUNT(*) FROM {$table} WHERE {$where}";
         $stmt = $pdo->query($sql);
         return (int)$stmt->fetchColumn();
@@ -32,19 +28,33 @@ function getCount(string $table, string $where = '1 = 1'): int {
 }
 
 // KPIs de Negócios
-$totalNegocios = getCount('negocios', '1=1');
-$negociosEncerrados = getCount('negocios', "status_operacional = 'encerrado'");
-$negociosConcluidos = getCount('negocios', "inscricao_completa = 1 AND (status_operacional != 'encerrado' OR status_operacional IS NULL)");
-$negociosEmAndamento = getCount('negocios', "(inscricao_completa = 0 OR inscricao_completa IS NULL) AND (status_operacional != 'encerrado' OR status_operacional IS NULL)");
+$totalNegocios        = getCount('negocios', '1=1');
+$negociosEncerrados   = getCount('negocios', "status_operacional = 'encerrado'");
+$negociosConcluidos   = getCount('negocios', "inscricao_completa = 1 AND (status_operacional != 'encerrado' OR status_operacional IS NULL)");
+$negociosEmAndamento  = getCount('negocios', "(inscricao_completa = 0 OR inscricao_completa IS NULL) AND (status_operacional != 'encerrado' OR status_operacional IS NULL)");
+
+// KPIs de Usuários
+$totalEmpreendedores  = getCount('empreendedores');
+$empreendedoresAtivos = getCount('empreendedores', "status = 'ativo'");
+
+$totalParceiros       = getCount('parceiros');
+$parceirosAtivos      = getCount('parceiros', "status = 'ativo'");
+
+$totalSociedadeCivil  = getCount('sociedade_civil');
+
+// Se sociedade_civil não tiver coluna status, mantemos apenas no total
+$sociedadeCivilAtivos = 0;
+
+// Totais gerais
+$totalUsuarios  = $totalEmpreendedores + $totalParceiros + $totalSociedadeCivil;
+$usuariosAtivos = $empreendedoresAtivos + $parceirosAtivos + $sociedadeCivilAtivos;
+
+$taxaUsuariosAtivos = $totalUsuarios > 0
+    ? round(($usuariosAtivos / $totalUsuarios) * 100)
+    : 0;
 
 
-
-// KPIs focados em empreendedores
-$totalEmpreendedores = getCount('empreendedores');                         // todos
-$empreendedoresAtivos = getCount('empreendedores', "status = 'ativo'");    // ativos
-$totalNegocios = getCount('negocios');                                     // negócios
-
-// Últimos logins de empreendedores
+// Últimos logins
 try {
     $pdo = Database::getInstance();
     $stmt = $pdo->query("
@@ -59,127 +69,206 @@ try {
     error_log('Erro ao buscar últimos logins: ' . $e->getMessage());
     $ultimosLogins = [];
 }
-
 ?>
+
+
+<!-- ══════════════════════════════════
+     Saudação + data
+═══════════════════════════════════ -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="fw-bold mb-0" style="color:#1E3425;">Painel Administrativo</h4>
+    <small style="color:#6c8070; font-size:.82rem;">
+      <?php
+        $fmt = new IntlDateFormatter('pt_BR', IntlDateFormatter::FULL, IntlDateFormatter::NONE);
+        echo ucfirst($fmt->format(new DateTime()));
+        // Resultado: "Quinta-feira, 26 de março de 2026"
+      ?>
+    </small>
+  </div>
+  <span class="badge rounded-pill px-3 py-2" style="background:#CDDE00; color:#1E3425; font-weight:700; font-size:.8rem;">
+    <i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i> Sistema online
+  </span>
+</div>
+
+<!-- ══════════════════════════════════
+     KPI Cards — linha 1
+═══════════════════════════════════ -->
+<div class="row g-3 mb-4">
+
+  <!-- Empreendedores Total -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="card kpi-card p-3 h-100">
+      <div class="d-flex align-items-start gap-3">
+        <div class="kpi-icon primary"><i class="bi bi-people-fill"></i></div>
+        <div class="flex-grow-1">
+          <div class="kpi-label mb-1">Total de usuários</div>
+          <div class="kpi-value"><?= $totalUsuarios ?></div>
+        </div>
+      </div>
+      <div class="kpi-progress mt-3">
+        <div class="kpi-progress-bar" style="width:<?= $totalUsuarios > 0 ? min(100, round(($usuariosAtivos / $totalUsuarios) * 100)) : 0 ?>%"></div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <small class="text-muted" style="font-size:.75rem;"><?= $totalEmpreendedores ?> Empreendedores</small>
+        <a href="/admin/empreendedores.php" class="kpi-link">Ver todos <i class="bi bi-arrow-right"></i></a>
+      </div>
+      
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <small class="text-muted" style="font-size:.75rem;"><?= $totalParceiros ?> Parceiros</small>
+        <a href="/admin/parceiros.php" class="kpi-link">Ver todos <i class="bi bi-arrow-right"></i></a>
+      </div>
+      
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <small class="text-muted" style="font-size:.75rem;"><?= $totalSociedadeCivil ?> Sociedade</small>
+        <a href="/admin/usuarios.php" class="kpi-link">Ver todos <i class="bi bi-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empreendedores Ativos -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="card kpi-card p-3 h-100">
+      <div class="d-flex align-items-start gap-3">
+        <div class="kpi-icon secondary"><i class="bi bi-person-check-fill"></i></div>
+        <div class="flex-grow-1">
+          <div class="kpi-label mb-1">Usuários ativos</div>
+          <div class="kpi-value"><?= $usuariosAtivos ?></div>
+        </div>
+      </div>
+      <div class="mt-auto pt-3">
+        <a href="/admin/empreendedores.php?filter=ativos" class="kpi-link">Filtrar ativos <i class="bi bi-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Negócios -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="card kpi-card p-3 h-100">
+      <div class="d-flex align-items-start gap-3">
+        <div class="kpi-icon success"><i class="bi bi-briefcase-fill"></i></div>
+        <div class="flex-grow-1">
+          <div class="kpi-label mb-1">Total de negócios</div>
+          <div class="kpi-value"><?= $totalNegocios ?></div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="neg-row">
+          <span class="neg-label"><i class="bi bi-check-circle-fill text-success"></i> Concluídos</span>
+          <span class="badge rounded-pill" style="background:rgba(205,222,0,.2);color:#7a8500;"><?= $negociosConcluidos ?></span>
+        </div>
+        <div class="neg-row">
+          <span class="neg-label"><i class="bi bi-hourglass-split" style="color:#97A327;"></i> Em andamento</span>
+          <span class="badge rounded-pill" style="background:rgba(151,163,39,.15);color:#5c6318;"><?= $negociosEmAndamento ?></span>
+        </div>
+        <div class="neg-row">
+          <span class="neg-label"><i class="bi bi-x-circle-fill text-danger"></i> Encerrados</span>
+          <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger"><?= $negociosEncerrados ?></span>
+        </div>
+      </div>
+      <div class="mt-2 pt-1">
+        <a href="/admin/negocios.php" class="kpi-link">Gerenciar negócios <i class="bi bi-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Taxa de atividade -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="card kpi-card p-3 h-100" style="background: linear-gradient(135deg,#1E3425 0%,#2d5039 100%);">
+      <div class="d-flex align-items-start gap-3">
+        <div class="kpi-icon" style="background:rgba(205,222,0,.15);color:#CDDE00;"><i class="bi bi-activity"></i></div>
+        <div class="flex-grow-1">
+          <div class="kpi-label mb-1" style="color:rgba(255,255,255,.6);">Taxa de atividade</div>
+          <div class="kpi-value" style="color:#CDDE00;">
+            <?= $taxaUsuariosAtivos ?>%
+          </div>
+        </div>
+      </div>
+      <div class="kpi-progress mt-3" style="background:rgba(255,255,255,.15);">
+        <div class="kpi-progress-bar" style="width:<?= $taxaUsuariosAtivos ?>%; background:#CDDE00;"></div>
+      </div>
+      <div class="mt-2">
+        <small style="color:rgba(255,255,255,.5); font-size:.75rem;">Usuários ativos vs total geral</small>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════
+     Atalhos rápidos
+═══════════════════════════════════ -->
+<div class="card section-card mb-4">
+  <div class="card-header d-flex align-items-center gap-2">
+    <i class="bi bi-lightning-charge-fill" style="color:#CDDE00;"></i>
+    <h5>Acesso rápido</h5>
+  </div>
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2">
+      <a href="/admin/administradores.php" class="shortcut-btn"><i class="bi bi-shield-lock me-1"></i>Administradores</a>
+      <a href="/admin/empreendedores.php" class="shortcut-btn"><i class="bi bi-people me-1"></i>Empreendedores</a>
+      <a href="/admin/parceiros.php"       class="shortcut-btn"><i class="bi bi-handshake me-1"></i>Parceiros</a>
+      <a href="/admin/usuarios.php"        class="shortcut-btn"><i class="bi bi-person me-1"></i>Usuários</a>
+      <a href="/admin/negocios.php"        class="shortcut-btn"><i class="bi bi-briefcase me-1"></i>Negócios</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     Visão geral + Últimos logins
+═══════════════════════════════════ -->
 <div class="row g-3">
-  <div class="col-12 col-md-4">
-    <div class="card">
-      <div class="card-body">
-        <h6 class="card-subtitle mb-2 text-muted">Usuários (total)</h6>
-        <h3 class="card-title"><?= htmlspecialchars((string)$totalEmpreendedores) ?></h3>
-        <p class="mb-0"><a href="/admin/empreendedores.php" class="stretched-link">Ver lista de empreendedores</a></p>
-      </div>
-    </div>
-  </div>
 
-  <div class="col-12 col-md-4">
-    <div class="card">
-      <div class="card-body">
-        <h6 class="card-subtitle mb-2 text-muted">Usuários ativos</h6>
-        <h3 class="card-title"><?= htmlspecialchars((string)$empreendedoresAtivos) ?></h3>
-        <p class="mb-0"><a href="/admin/empreendedores.php?filter=ativos" class="stretched-link">Filtrar ativos</a></p>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div class="card h-100 shadow-sm border-left-primary"> <!-- border-left-primary se tiver css custom -->
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <div>
-                    <h6 class="card-subtitle text-muted mb-1">Negócios</h6>
-                    <h3 class="card-title fw-bold text-primary mb-0"><?= $totalNegocios ?></h3>
-                </div>
-            </div>
-
-            <div class="mt-3 mb-2">
-                <!-- Concluídos -->
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="small text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i> Concluídos</span>
-                    <span class="badge bg-success rounded-pill"><?= $negociosConcluidos ?></span>
-                </div>
-                
-                <!-- Em Andamento -->
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="small text-muted"><i class="bi bi-hourglass-split text-warning text-dark me-1"></i> Em andamento</span>
-                    <span class="badge bg-warning text-dark rounded-pill"><?= $negociosEmAndamento ?></span>
-                </div>
-
-                <!-- Encerrados -->
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="small text-muted"><i class="bi bi-x-circle-fill text-danger me-1"></i> Encerrados</span>
-                    <span class="badge bg-danger rounded-pill"><?= $negociosEncerrados ?></span>
-                </div>
-            </div>
-            
-            <hr class="my-2">
-            
-            <a href="/admin/negocios.php" class="small text-decoration-none fw-bold stretched-link">
-                Gerenciar negócios <i class="bi bi-arrow-right"></i>
-            </a>
-        </div>
-    </div>
-  </div>
-
-
-</div>
-
-<hr class="my-4">
-
-<div class="row">
-  <div class="col-12">
-    <div class="card mb-3">
-      <div class="card-body">
-        <h5 class="card-title">Atalhos</h5>
-        <div class="d-flex gap-2">
-          <a href="/admin/administradores.php" class="btn btn-outline-primary">Administradores</a>
-          <a href="/admin/empreendedores.php" class="btn btn-outline-primary">Empreendedores</a>
-          <a href="/admin/parceiros.php" class="btn btn-outline-primary">Parceiros</a>
-          <a href="/admin/usuarios.php" class="btn btn-outline-primary">Usuários</a>
-          <a href="/admin/negocios.php" class="btn btn-outline-primary">Negócios</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- espaço para widgets, gráficos e tabelas -->
-<div class="row">
   <div class="col-12 col-lg-8">
-    <div class="card mb-3">
+    <div class="card section-card h-100">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-bar-chart-fill" style="color:#97A327;"></i>
+        <h5>Visão Geral</h5>
+      </div>
       <div class="card-body">
-        <h5 class="card-title">Visão Geral</h5>
-        <p class="text-muted">Adicione aqui gráficos, últimas atividades, ou um resumo mensal.</p>
+        <div class="overview-placeholder">
+          <i class="bi bi-graph-up"></i>
+          <span style="font-size:.85rem; font-weight:600;">Gráficos e relatórios em breve</span>
+          <span style="font-size:.78rem;">Adicione aqui gráficos, últimas atividades ou resumo mensal</span>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="col-12 col-lg-4">
-    <div class="card mb-3">
+    <div class="card section-card h-100">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history" style="color:#95BCCC;"></i>
+        <h5>Últimos logins</h5>
+      </div>
       <div class="card-body">
-        <h5 class="card-title">Últimos logins</h5>
         <?php if (!empty($ultimosLogins)): ?>
-          <ul class="list-group list-group-flush">
-            <?php foreach ($ultimosLogins as $login): ?>
-              <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <strong><?= htmlspecialchars($login['nome']) ?></strong><br>
-                  <small class="text-muted"><?= htmlspecialchars($login['email']) ?></small>
+          <?php foreach ($ultimosLogins as $login): ?>
+            <div class="login-item">
+              <div class="d-flex align-items-center gap-2">
+                <div class="login-avatar">
+                  <?= strtoupper(mb_substr($login['nome'], 0, 1)) ?>
                 </div>
-                <span class="badge bg-secondary">
-                  <?= date('d/m/Y H:i', strtotime($login['ultimo_login'])) ?>
-                </span>
-              </li>
-            <?php endforeach; ?>
-          </ul>
+                <div>
+                  <div class="login-name"><?= htmlspecialchars($login['nome']) ?></div>
+                  <div class="login-email"><?= htmlspecialchars($login['email']) ?></div>
+                </div>
+              </div>
+              <span class="login-badge">
+                <i class="bi bi-clock me-1"></i><?= date('d/m H:i', strtotime($login['ultimo_login'])) ?>
+              </span>
+            </div>
+          <?php endforeach; ?>
         <?php else: ?>
-          <p class="text-muted">Nenhum login recente encontrado.</p>
+          <div class="text-center py-4" style="color:#9aab9d;">
+            <i class="bi bi-person-x" style="font-size:1.8rem; opacity:.4;"></i>
+            <p class="mt-2 mb-0" style="font-size:.85rem;">Nenhum login recente encontrado.</p>
+          </div>
         <?php endif; ?>
       </div>
     </div>
   </div>
+
 </div>
 
-<?php
-// inclui footer
-include __DIR__ . '/../app/views/admin/footer.php';
+<?php include __DIR__ . '/../app/views/admin/footer.php'; ?>

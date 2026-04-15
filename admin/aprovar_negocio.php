@@ -1,4 +1,5 @@
 <?php
+// /public_html/admin/aprovar_negocio.php
 session_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -62,6 +63,50 @@ try {
         WHERE id = ?
     ");
     $stmtUpdate->execute([$negocio_id]);
+
+    // Garante inscrição do negócio na premiação vigente após aprovação/publicação
+    $stmtPremiacao = $pdo->query("
+        SELECT id, nome, ano, status
+        FROM premiacoes
+        WHERE status IN ('ativa', 'planejada')
+        ORDER BY 
+            CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
+            ano DESC,
+            id DESC
+        LIMIT 1
+    ");
+    $premiacaoVigente = $stmtPremiacao->fetch(PDO::FETCH_ASSOC);
+
+    if (!empty($premiacaoVigente['id'])) {
+        $stmtBuscaInscricao = $pdo->prepare("
+            SELECT id, deseja_participar, aceite_regulamento, aceite_veracidade
+            FROM premiacao_inscricoes
+            WHERE premiacao_id = ? AND negocio_id = ?
+            LIMIT 1
+        ");
+        $stmtBuscaInscricao->execute([(int)$premiacaoVigente['id'], $negocio_id]);
+        $inscricaoAtual = $stmtBuscaInscricao->fetch(PDO::FETCH_ASSOC);
+
+        if ($inscricaoAtual) {
+            if (
+                (int)$inscricaoAtual['deseja_participar'] === 1 &&
+                (int)$inscricaoAtual['aceite_regulamento'] === 1 &&
+                (int)$inscricaoAtual['aceite_veracidade'] === 1
+            ) {
+                $stmtAtualizaInscricao = $pdo->prepare("
+                    UPDATE premiacao_inscricoes
+                    SET
+                        status = CASE
+                            WHEN status IN ('rascunho', 'enviada') THEN 'em_triagem'
+                            ELSE status
+                        END,
+                        updated_at = NOW()
+                    WHERE id = ?
+                ");
+                $stmtAtualizaInscricao->execute([$inscricaoAtual['id']]);
+            }
+        }
+    }
 
         // PREPARA E ENVIA O E-MAIL (Mesmo formato dos parceiros)
     $emailDestino = !empty($dados['empreendedor_email']) ? $dados['empreendedor_email'] : $dados['email_comercial'];

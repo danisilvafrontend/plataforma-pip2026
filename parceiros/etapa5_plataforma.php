@@ -1,8 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -32,128 +29,222 @@ $rede_impacto = $contrato['rede_impacto'] ?? '';
 include __DIR__ . '/../app/views/public/header_public.php'; 
 ?>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            
-            <!-- Progresso -->
-            <div class="mb-4">
-                <div class="d-flex justify-content-between text-muted small mb-2">
-                    <span class="fw-bold text-primary">Etapa 5: Uso da Plataforma</span>
-                    <span>5 de 6</span>
+<div class="container py-5 parceiro-step-shell">
+    <div class="parceiro-step-top mb-4 mb-lg-5">
+        <div class="parceiro-step-progress-card">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                <div>
+                    <span class="parceiro-step-kicker">Etapa 5 de 6</span>
+                    <h1 class="parceiro-step-title mb-1">Uso da Plataforma</h1>
+                    <p class="parceiro-step-subtitle mb-0">
+                        Escolha como sua organização deseja atuar dentro da plataforma e quais frentes pretende ativar no dia a dia.
+                    </p>
                 </div>
-                <div class="progress" style="height: 8px;">
-                    <div class="progress-bar bg-primary" role="progressbar" style="width: 83%;" aria-valuenow="83" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
+                <div class="parceiro-step-indicator">83%</div>
             </div>
 
-            <div class="card shadow-sm border-0 rounded-3">
-                <div class="card-body p-4 p-md-5">
-                    <h3 class="fw-bold text-dark mb-1">Como você quer atuar?</h3>
-                    <p class="text-muted mb-4">A plataforma Impactos Positivos é viva! Escolha as ferramentas que farão parte do dia a dia da sua organização aqui dentro.</p>
+            <div class="progress parceiro-step-progress" role="progressbar" aria-valuenow="83" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar bg-primary" style="width: 83%;"></div>
+            </div>
+        </div>
+    </div>
 
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-4">
+            <aside class="parceiro-step-aside">
+                <div class="parceiro-step-aside-card">
+                    <div class="parceiro-step-aside-title">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        Nesta etapa
+                    </div>
+                    <ul class="parceiro-step-aside-list">
+                        <li>Defina o que sua organização pretende publicar ou promover dentro da plataforma.</li>
+                        <li>Indique se deseja ativar sua presença na Rede de Impacto.</li>
+                        <li>Ajude a configurar um uso mais alinhado ao perfil da parceria.</li>
+                    </ul>
+                </div>
+
+                <div class="parceiro-step-aside-card parceiro-step-aside-highlight">
+                    <div class="parceiro-step-aside-title">
+                        <i class="bi bi-people-fill"></i>
+                        Rede de Impacto
+                    </div>
+                    <p class="mb-0">
+                        Esse ambiente conecta sua organização a negócios aprovados, propostas de conexão e oportunidades de matchmaking estratégico.
+                    </p>
+                </div>
+            </aside>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="parceiro-step-card">
+                <div class="parceiro-step-card-header">
+                    <div>
+                        <h2 class="parceiro-step-card-title mb-1">Como você quer atuar?</h2>
+                        <p class="parceiro-step-card-subtitle mb-0">
+                            A plataforma Impactos Positivos é viva. Escolha as ferramentas e possibilidades que farão parte da atuação da sua organização aqui dentro.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="parceiro-step-card-body">
                     <?php if (isset($_SESSION['erro_etapa5'])): ?>
-                        <div class="alert alert-danger d-flex align-items-center">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div class="alert alert-danger d-flex align-items-start gap-2 parceiro-step-alert">
+                            <i class="bi bi-exclamation-triangle-fill mt-1"></i>
                             <div><?= htmlspecialchars($_SESSION['erro_etapa5']) ?></div>
                         </div>
                         <?php unset($_SESSION['erro_etapa5']); ?>
                     <?php endif; ?>
 
                     <form method="POST" action="processar_etapa5.php">
-                    <input type="hidden" name="from" value="<?= htmlspecialchars($_GET['from'] ?? '') ?>">
-    
-                        <!-- DESEJA PUBLICAR -->
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-2">Geração de Conteúdo e Oportunidades</h5>
-                        <p class="small text-muted mb-3">Marque tudo o que você planeja publicar ou promover dentro da plataforma:</p>
-                        
-                        <div class="row mb-5">
-                            <?php 
-                            $publicacoes = [
-                                ["icone" => "bi-file-text", "texto" => "Artigos"],
-                                ["icone" => "bi-play-btn", "texto" => "Vídeos"],
-                                ["icone" => "bi-mic", "texto" => "Podcasts"],
-                                ["icone" => "bi-camera-video", "texto" => "Webinars"],
-                                ["icone" => "bi-megaphone", "texto" => "Editais / Chamadas"],
-                                ["icone" => "bi-calendar-event", "texto" => "Convites para Eventos"],
-                                ["icone" => "bi-lightbulb", "texto" => "Oportunidades de Mentoria"],
-                                ["icone" => "bi-mortarboard", "texto" => "Incentivos / Bolsas"],
-                                ["icone" => "bi-box", "texto" => "Produtos e Serviços"],
-                                ["icone" => "bi-graph-up-arrow", "texto" => "Investimentos"],
-                                ["icone" => "bi-heart", "texto" => "Doações estruturadas"]
-                            ];
+                        <input type="hidden" name="from" value="<?= htmlspecialchars($_GET['from'] ?? '') ?>">
 
-                            foreach ($publicacoes as $pub): 
-                                $checked = in_array($pub['texto'], $publicar_salvo) ? 'checked' : '';
-                            ?>
-                                <div class="col-md-6 mb-2">
-                                    <div class="form-check custom-checkbox-card border rounded p-2 px-3 d-flex align-items-center">
-                                        <input class="form-check-input mt-0 me-2" type="checkbox" name="deseja_publicar[]" value="<?= htmlspecialchars($pub['texto']) ?>" id="pub_<?= md5($pub['texto']) ?>" <?= $checked ?>>
-                                        <label class="form-check-label w-100 fw-medium m-0" style="cursor:pointer;" for="pub_<?= md5($pub['texto']) ?>">
-                                            <i class="bi <?= $pub['icone'] ?> text-muted me-1"></i> <?= $pub['texto'] ?>
-                                        </label>
+                        <section class="parceiro-step-section">
+                            <div class="parceiro-step-section-head">
+                                <h3 class="parceiro-step-section-title">Geração de Conteúdo e Oportunidades</h3>
+                                <p class="parceiro-step-section-text">
+                                    Marque tudo o que sua organização planeja publicar, promover ou disponibilizar dentro da plataforma.
+                                </p>
+                            </div>
+
+                            <div class="row g-3">
+                                <?php 
+                                $publicacoes = [
+                                    ["icone" => "bi-file-text", "texto" => "Artigos"],
+                                    ["icone" => "bi-play-btn", "texto" => "Vídeos"],
+                                    ["icone" => "bi-mic", "texto" => "Podcasts"],
+                                    ["icone" => "bi-camera-video", "texto" => "Webinars"],
+                                    ["icone" => "bi-megaphone", "texto" => "Editais / Chamadas"],
+                                    ["icone" => "bi-calendar-event", "texto" => "Convites para Eventos"],
+                                    ["icone" => "bi-lightbulb", "texto" => "Oportunidades de Mentoria"],
+                                    ["icone" => "bi-mortarboard", "texto" => "Incentivos / Bolsas"],
+                                    ["icone" => "bi-box", "texto" => "Produtos e Serviços"],
+                                    ["icone" => "bi-graph-up-arrow", "texto" => "Investimentos"],
+                                    ["icone" => "bi-heart", "texto" => "Doações estruturadas"]
+                                ];
+
+                                foreach ($publicacoes as $pub): 
+                                    $checked = in_array($pub['texto'], $publicar_salvo) ? 'checked' : '';
+                                ?>
+                                    <div class="col-md-6">
+                                        <div class="parceiro-choice-card parceiro-choice-card-icon">
+                                            <div class="form-check parceiro-choice-check parceiro-choice-check-icon">
+                                                <input
+                                                    class="form-check-input parceiro-choice-input"
+                                                    type="checkbox"
+                                                    name="deseja_publicar[]"
+                                                    value="<?= htmlspecialchars($pub['texto']) ?>"
+                                                    id="pub_<?= md5($pub['texto']) ?>"
+                                                    <?= $checked ?>
+                                                >
+                                                <label class="form-check-label parceiro-choice-label parceiro-choice-label-icon" for="pub_<?= md5($pub['texto']) ?>">
+                                                    <span class="parceiro-choice-icon">
+                                                        <i class="bi <?= $pub['icone'] ?>"></i>
+                                                    </span>
+                                                    <span class="parceiro-choice-title"><?= $pub['texto'] ?></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+
+                        <section class="parceiro-step-section">
+                            <div class="parceiro-step-highlight-box">
+                                <div class="parceiro-step-highlight-head">
+                                    <div class="parceiro-step-highlight-icon">
+                                        <i class="bi bi-people-fill"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="parceiro-step-section-title mb-1">Participação na Rede de Impacto</h3>
+                                        <p class="parceiro-step-section-text mb-0">
+                                            A Rede de Impacto é um ambiente de matchmaking inteligente, onde sua organização pode conversar com negócios aprovados, criar pontes estratégicas e receber propostas de conexão.
+                                        </p>
                                     </div>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
 
-                        <!-- REDE DE IMPACTO -->
-                        <div class="bg-light p-4 rounded-3 border mb-4">
-                            <h5 class="fw-bold text-primary mb-2"><i class="bi bi-people-fill me-2"></i>Participação na Rede de Impacto</h5>
-                            <p class="small text-muted mb-3">
-                                A <strong>Rede de Impacto</strong> é nosso ambiente de matchmaking inteligente, onde você pode conversar diretamente com negócios aprovados, criar pontes estratégicas (Impact Chains) e receber propostas de conexão.
-                            </p>
-                            
-                            <label class="fw-semibold mb-2">Deseja ativar seu perfil na Rede de Impacto agora?</label>
-                            
-                            <div class="d-flex gap-3 mt-1">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="rede_impacto" id="rede_sim" value="sim" <?= ($rede_impacto === 'sim') ? 'checked' : '' ?> required>
-                                    <label class="form-check-label" for="rede_sim">
-                                        Sim, quero participar
+                                <div class="mt-4">
+                                    <label class="parceiro-step-label mb-3 d-block">
+                                        Deseja ativar seu perfil na Rede de Impacto agora?
                                     </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="rede_impacto" id="rede_nao" value="nao" <?= ($rede_impacto === 'nao') ? 'checked' : '' ?>>
-                                    <label class="form-check-label" for="rede_nao">
-                                        Não
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="rede_impacto" id="rede_avaliar" value="avaliar_depois" <?= ($rede_impacto === 'avaliar_depois') ? 'checked' : '' ?>>
-                                    <label class="form-check-label" for="rede_avaliar">
-                                        Avaliar depois
-                                    </label>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="parceiro-radio-card parceiro-radio-card-center parceiro-radio-card-compact">
+                                                <input
+                                                    class="form-check-input parceiro-radio-input"
+                                                    type="radio"
+                                                    name="rede_impacto"
+                                                    id="rede_sim"
+                                                    value="sim"
+                                                    <?= ($rede_impacto === 'sim') ? 'checked' : '' ?>
+                                                    required
+                                                >
+                                                <span class="parceiro-radio-content">
+                                                    <span class="parceiro-radio-title">Sim, quero participar</span>
+                                                </span>
+                                            </label>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label class="parceiro-radio-card parceiro-radio-card-center parceiro-radio-card-compact">
+                                                <input
+                                                    class="form-check-input parceiro-radio-input"
+                                                    type="radio"
+                                                    name="rede_impacto"
+                                                    id="rede_nao"
+                                                    value="nao"
+                                                    <?= ($rede_impacto === 'nao') ? 'checked' : '' ?>
+                                                >
+                                                <span class="parceiro-radio-content">
+                                                    <span class="parceiro-radio-title">Não</span>
+                                                </span>
+                                            </label>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label class="parceiro-radio-card parceiro-radio-card-center parceiro-radio-card-compact">
+                                                <input
+                                                    class="form-check-input parceiro-radio-input"
+                                                    type="radio"
+                                                    name="rede_impacto"
+                                                    id="rede_avaliar"
+                                                    value="avaliar_depois"
+                                                    <?= ($rede_impacto === 'avaliar_depois') ? 'checked' : '' ?>
+                                                >
+                                                <span class="parceiro-radio-content">
+                                                    <span class="parceiro-radio-title">Avaliar depois</span>
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </section>
 
-                        <div class="d-flex gap-2 justify-content-end mt-4">
+                        <div class="parceiro-step-actions">
                             <?php if (($_GET['from'] ?? '') === 'confirmacao'): ?>
                                 <button type="submit" name="acao" value="confirmacao" class="btn btn-outline-primary">
                                     Salvar e voltar à revisão
                                 </button>
                             <?php endif; ?>
-                            <a href="etapa4_interesses.php" class="btn btn-outline-secondary btn-lg fw-bold"><i class="bi bi-arrow-left me-2"></i> Voltar</a>
-                            <button type="submit" class="btn btn-primary">
+
+                            <a href="etapa4_interesses.php" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Voltar
+                            </a>
+
+                            <button type="submit" class="btn-reg-submit">
                                 Salvar e continuar
+                                <i class="bi bi-arrow-right"></i>
                             </button>
                         </div>
                     </form>
-
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-/* Manter os cards bonitos */
-.custom-checkbox-card { transition: all 0.2s; background: #fff; }
-.custom-checkbox-card:hover { border-color: #0d6efd !important; background-color: #f8f9fa; }
-.custom-checkbox-card input:checked + label { color: #0d6efd; font-weight: 600; }
-.custom-checkbox-card input:checked + label i { color: #0d6efd !important; }
-.custom-checkbox-card:has(input:checked) { border-color: #0d6efd !important; background-color: #e9ecef !important; }
-</style>
 
 <?php include __DIR__ . '/../app/views/public/footer_public.php'; ?>

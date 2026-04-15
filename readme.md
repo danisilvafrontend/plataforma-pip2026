@@ -2,9 +2,8 @@
 
 Plataforma web para gestão de empreendedores de impacto social, negócios, parceiros e curadoria de uma vitrine pública. Desenvolvida em PHP com MySQL, Bootstrap 5 e PHPMailer.
 
-> **Responsável:** Daniela
+> **Responsável:** Daniela Silva
 > **Última atualização:** Março/2026
-> **Referência técnica:** Copilot – PIP 2026
 
 ---
 
@@ -311,7 +310,6 @@ Toda rota admin requer `require_admin_login()` via `app/helpers/auth.php`.
 - Usar `.gitignore` para excluir arquivos de configuração sensíveis
 - Rotacionar senha SMTP se exposta
 - Remover arquivos `*_debug.php` do ambiente de produção
-- Senha padrão da importação CSV (`Mudar@1234`) deve ser comunicada ao empreendedor para troca no primeiro acesso
 
 ---
 
@@ -326,4 +324,69 @@ Toda rota admin requer `require_admin_login()` via `app/helpers/auth.php`.
 - [ ] Configuração de ambiente (.env ou config)
 
 ---
+
+
+
+## Módulo de Premiação
+
+O módulo de Premiação foi criado para permitir que os negócios cadastrados e publicados na vitrine possam ser inscritos na edição vigente do prêmio Impactos Positivos, de forma integrada ao fluxo já existente da plataforma.
+
+### Objetivo
+Centralizar o processo de inscrição dos negócios elegíveis na premiação, garantindo que:
+- apenas negócios com cadastro completo e publicados na vitrine possam participar;
+- o empreendedor confirme o interesse em participar no momento da revisão final;
+- o sistema registre a inscrição automaticamente na premiação vigente;
+- o admin acompanhe a aprovação e o andamento das inscrições.
+
+### Estrutura criada
+Foi adicionada a tabela `premiacao_inscricoes`, responsável por armazenar:
+- a premiação vinculada;
+- o negócio inscrito;
+- o empreendedor responsável;
+- a categoria;
+- os termos aceitos;
+- a intenção de participação;
+- o status da inscrição;
+- a data de envio;
+- observações administrativas.
+
+### Fluxo da inscrição
+1. O empreendedor finaliza o cadastro do negócio.
+2. Na página de revisão final, ele pode marcar o interesse em participar da premiação vigente.
+3. Ao enviar o negócio para avaliação, o sistema registra ou atualiza a inscrição na tabela `premiacao_inscricoes`.
+4. Quando o admin aprova o negócio, a inscrição passa a acompanhar o fluxo da premiação.
+5. O empreendedor pode consultar o andamento em **Minhas Inscrições na Premiação**.
+
+### Páginas envolvidas
+- `empreendedores/meus-negocios.php`
+- `negocios/confirmacao.php`
+- `negocios/publicar.php`
+- `admin/aprovar_negocio.php`
+- `empreendedores/minhas_inscricoes_premiacao.php`
+
+### Regras de participação
+- O negócio precisa estar com o cadastro completo.
+- O negócio precisa estar publicado na vitrine ou apto para publicação.
+- O empreendedor deve aceitar o regulamento da premiação.
+- O empreendedor deve declarar a veracidade das informações.
+
+### Status da inscrição
+A inscrição pode assumir os seguintes status:
+- `rascunho`
+- `enviada`
+- `em_triagem`
+- `elegivel`
+- `inelegivel`
+- `classificada_fase_1`
+- `classificada_fase_2`
+- `finalista`
+- `vencedora`
+- `eliminada`
+
+### Observações técnicas
+- A tabela `premiacao_inscricoes` possui chave única em `premiacao_id` + `negocio_id`.
+- Isso impede inscrições duplicadas do mesmo negócio na mesma edição.
+- O processo utiliza transações para manter consistência entre envio do negócio e registro da inscrição.
+
+
 

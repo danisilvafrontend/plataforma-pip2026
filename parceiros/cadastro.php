@@ -1,8 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -121,98 +118,159 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 include __DIR__ . '/../app/views/public/header_public.php'; 
 ?>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-7">
-            
-            <div class="text-center mb-4">
-                <h2 class="fw-bold text-primary">Seja um Parceiro</h2>
-                <p class="text-muted">Faça parte do nosso ecossistema e ajude a impulsionar negócios de impacto.</p>
-            </div>
+<div class="container py-5 parceiro-reg-shell">
+    <div class="parceiro-reg-hero text-center mb-4 mb-lg-5">
+        <span class="parceiro-reg-kicker">Cadastro de Parceiros</span>
+        <h1 class="parceiro-reg-page-title">Seja um Parceiro da Plataforma</h1>
+        <p class="parceiro-reg-page-subtitle">
+            Faça parte do nosso ecossistema e ajude a impulsionar negócios de impacto em todo o Brasil.
+        </p>
+    </div>
 
-            <div class="card shadow-sm border-0 rounded-3">
-                <div class="card-body p-4 p-md-5">
-                    
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-4">
+            <aside class="parceiro-reg-aside">
+                <div class="parceiro-reg-aside-card">
+                    <div class="parceiro-reg-aside-title">
+                        <i class="bi bi-info-circle-fill"></i>
+                        Antes de começar
+                    </div>
+
+                    <ul class="parceiro-reg-aside-list">
+                        <li>Este é o primeiro passo do cadastro da instituição parceira.</li>
+                        <li>O representante legal informado deve ser maior de 18 anos.</li>
+                        <li>O CPF do representante e o e-mail de acesso não podem estar vinculados a outro perfil na plataforma.</li>
+                        <li>Após esta etapa, você seguirá para o preenchimento dos dados complementares da parceria.</li>
+                    </ul>
+                </div>
+
+                <div class="parceiro-reg-aside-card parceiro-reg-aside-highlight">
+                    <div class="parceiro-reg-aside-title">
+                        <i class="bi bi-pen-fill"></i>
+                        Carta-acordo
+                    </div>
+                    <p class="mb-0">
+                        O representante legal será a pessoa responsável por assinar a carta-acordo da parceria nas próximas etapas.
+                    </p>
+                </div>
+            </aside>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="parceiro-reg-card">
+                <div class="parceiro-reg-card-header">
+                    <div>
+                        <h2 class="parceiro-reg-card-title mb-1">Dados iniciais do parceiro</h2>
+                        <p class="parceiro-reg-card-subtitle mb-0">
+                            Preencha os dados da instituição, do representante legal e do acesso à plataforma.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="parceiro-reg-card-body">
                     <?php if ($erro): ?>
-                        <div class="alert alert-danger d-flex align-items-center" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div class="alert alert-danger d-flex align-items-start gap-2 parceiro-reg-alert" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill mt-1"></i>
                             <div><?= htmlspecialchars($erro) ?></div>
                         </div>
                     <?php endif; ?>
 
-                    <form method="POST" action="">
-                        
-                        <h5 class="fw-bold mb-3 border-bottom pb-2">Dados da Instituição</h5>
-                        
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Razão Social *</label>
-                            <input type="text" name="razao_social" class="form-control" required value="<?= htmlspecialchars($_POST['razao_social'] ?? '') ?>">
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Nome Fantasia *</label>
-                                <input type="text" name="nome_fantasia" class="form-control" required value="<?= htmlspecialchars($_POST['nome_fantasia'] ?? '') ?>">
+                    <form method="POST" action="" novalidate>
+                        <section class="parceiro-reg-section">
+                            <div class="parceiro-reg-section-head">
+                                <h3 class="parceiro-reg-section-title">Dados da Instituição</h3>
+                                <p class="parceiro-reg-section-text">
+                                    Informe os dados principais da organização parceira.
+                                </p>
                             </div>
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label fw-semibold">CNPJ *</label>
-                                <input type="text" name="cnpj" class="form-control cnpj_mask" placeholder="00.000.000/0000-00" required value="<?= htmlspecialchars($_POST['cnpj'] ?? '') ?>">
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label parceiro-reg-label">Razão Social *</label>
+                                    <input type="text" name="razao_social" class="form-control" required value="<?= htmlspecialchars($_POST['razao_social'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-reg-label">Nome Fantasia *</label>
+                                    <input type="text" name="nome_fantasia" class="form-control" required value="<?= htmlspecialchars($_POST['nome_fantasia'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-reg-label">CNPJ *</label>
+                                    <input type="text" name="cnpj" class="form-control cnpj_mask" placeholder="00.000.000/0000-00" required value="<?= htmlspecialchars($_POST['cnpj'] ?? '') ?>">
+                                </div>
                             </div>
-                        </div>
+                        </section>
 
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 pt-2">Representante Legal</h5>
-                        <p class="small text-muted mb-3">A pessoa que possui poderes para assinar a carta-acordo da parceria.</p>
-                        
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Nome Completo *</label>                                
-                            <input type="text" name="rep_nome" class="form-control" required value="<?= htmlspecialchars($_POST['rep_nome'] ?? '') ?>">
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label fw-semibold">CPF do Representante *</label>
-                                <input type="text" name="rep_cpf" class="form-control cpf_mask" placeholder="000.000.000-00" required value="<?= htmlspecialchars($_POST['rep_cpf'] ?? '') ?>">
-                                <div class="form-text" style="font-size: 0.7rem;">Um CPF só pode ter um perfil na plataforma.</div>
+                        <section class="parceiro-reg-section">
+                            <div class="parceiro-reg-section-head">
+                                <h3 class="parceiro-reg-section-title">Representante Legal</h3>
+                                <p class="parceiro-reg-section-text">
+                                    Essa pessoa será responsável por representar a instituição e assinar a carta-acordo.
+                                </p>
                             </div>
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label fw-semibold">Data de Nascimento *</label>
-                                <!-- Uso do max com PHP para limitar o calendário para 18 anos atrás a partir de hoje -->
-                                <input type="date" name="rep_data_nascimento" class="form-control" max="<?= date('Y-m-d', strtotime('-18 years')) ?>" required value="<?= htmlspecialchars($_POST['rep_data_nascimento'] ?? '') ?>">
-                                <div class="form-text" style="font-size: 0.7rem;">O representante deve ser maior de idade.</div>
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label parceiro-reg-label">Nome Completo *</label>
+                                    <input type="text" name="rep_nome" class="form-control" required value="<?= htmlspecialchars($_POST['rep_nome'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-reg-label">CPF do Representante *</label>
+                                    <input type="text" name="rep_cpf" class="form-control cpf_mask" placeholder="000.000.000-00" required value="<?= htmlspecialchars($_POST['rep_cpf'] ?? '') ?>">
+                                    <div class="form-text parceiro-reg-help">Um CPF só pode estar vinculado a um perfil na plataforma.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-reg-label">Data de Nascimento *</label>
+                                    <input type="date" name="rep_data_nascimento" class="form-control" max="<?= date('Y-m-d', strtotime('-18 years')) ?>" required value="<?= htmlspecialchars($_POST['rep_data_nascimento'] ?? '') ?>">
+                                    <div class="form-text parceiro-reg-help">O representante deve ser maior de 18 anos.</div>
+                                </div>
                             </div>
-                        </div>
+                        </section>
 
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 pt-2">Acesso à Plataforma</h5>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">E-mail de Acesso *</label>
-                            <input type="email" name="email_login" class="form-control" placeholder="contato@empresa.com.br" required value="<?= htmlspecialchars($_POST['email_login'] ?? '') ?>">
-                        </div>
-
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <label class="form-label fw-semibold">Senha *</label>
-                                <input type="password" name="senha" class="form-control" required>
-                                <div class="form-text">Mínimo 8 caracteres.</div>
+                        <section class="parceiro-reg-section">
+                            <div class="parceiro-reg-section-head">
+                                <h3 class="parceiro-reg-section-title">Acesso à Plataforma</h3>
+                                <p class="parceiro-reg-section-text">
+                                    Defina o e-mail e a senha que serão usados para acessar o painel do parceiro.
+                                </p>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Confirmar Senha *</label>
-                                <input type="password" name="senha_confirmar" class="form-control" required>
+
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label parceiro-reg-label">E-mail de Acesso *</label>
+                                    <input type="email" name="email_login" class="form-control" placeholder="contato@empresa.com.br" required value="<?= htmlspecialchars($_POST['email_login'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-reg-label">Senha *</label>
+                                    <input type="password" name="senha" class="form-control" required>
+                                    <div class="form-text parceiro-reg-help">Mínimo de 8 caracteres.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-reg-label">Confirmar Senha *</label>
+                                    <input type="password" name="senha_confirmar" class="form-control" required>
+                                </div>
                             </div>
+                        </section>
+
+                        <div class="parceiro-reg-actions">
+                            <button type="submit" class="btn-reg-submit">
+                                Começar Cadastro de Parceiro
+                                <i class="bi bi-arrow-right"></i>
+                            </button>
                         </div>
 
-                        <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg fw-bold">Começar Cadastro de Parceiro</button>
-                        </div>
-                        
-                        <div class="text-center mt-3">
-                            <span class="text-muted">Já é parceiro?</span> <a href="login.php" class="text-decoration-none fw-semibold">Faça Login</a>
+                        <div class="parceiro-reg-login text-center">
+                            <span class="text-muted">Já é parceiro?</span>
+                            <a href="login.php" class="fw-semibold">Faça login</a>
                         </div>
                     </form>
-
                 </div>
             </div>
-
         </div>
     </div>
 </div>

@@ -3,10 +3,6 @@
 declare(strict_types=1);
 session_start();
 
-// Exibir erros em desenvolvimento (remover em produção)
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
-
 // Helpers
 require_once __DIR__ . '/../app/helpers/functions.php';
 
@@ -62,7 +58,16 @@ if ($empreendedor && password_verify($senha, $empreendedor['senha_hash'])) {
     $_SESSION['logged_at'] = time();
 
     // Atualiza o último login
-    $update = $pdo->prepare("UPDATE empreendedores SET ultimo_login = NOW() WHERE id = ?");
+    $update = $pdo->prepare("
+        UPDATE empreendedores
+        SET status = CASE
+                        WHEN primeiro_acesso_pendente = 1 THEN 'ativo'
+                        ELSE status
+                    END,
+            primeiro_acesso_pendente = 0,
+            ultimo_login = NOW()
+        WHERE id = ?
+    ");
     $update->execute([$empreendedor['id']]);
 
     session_regenerate_id(true);

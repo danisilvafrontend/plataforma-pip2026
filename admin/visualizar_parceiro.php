@@ -28,7 +28,6 @@ $stmt = $pdo->prepare("
         p.*,
         c.tipos_parceria,
         c.natureza_parceria,
-        c.duracao_meses,
         c.nivel_engajamento,
         c.escopo_atuacao,
         c.escopo_outro,
@@ -123,9 +122,28 @@ include __DIR__ . '/../app/views/admin/header.php';
             <a href="parceiros.php" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
-            <a href="processar_status_parceiro.php?id=<?= $parceiro_id ?>" class="btn btn-primary btn-sm">
-                <i class="bi bi-pencil-square"></i> Alterar Status
-            </a>
+
+            <?php if ((int)($parceiro['acordo_aceito'] ?? 0) === 1): ?>
+                <a href="visualizar_carta_parceiro.php?id=<?= (int)$parceiro_id ?>"
+                class="btn btn-outline-success btn-sm"
+                target="_blank">
+                    <i class="bi bi-file-earmark-text"></i> Ver Carta-Acordo
+                </a>
+
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#statusModal">
+                    <i class="bi bi-pencil-square"></i> Alterar Status
+                </button>
+            <?php else: ?>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        disabled
+                        title="Só é possível alterar o status após a assinatura da carta-acordo">
+                    <i class="bi bi-lock"></i> Alterar Status
+                </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -253,13 +271,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                 <div class="col-md-3 mb-2">
                     <small class="text-muted d-block">IP Aceite</small>
                     <span class="fw-semibold"><?= htmlspecialchars($parceiro['acordo_ip'] ?? '-') ?></span>
-                </div>
-
-                <div class="col-md-4 mb-2 mt-3">
-                    <small class="text-muted d-block">Duração da Parceria</small>
-                    <span class="fw-semibold">
-                        <?= !empty($parceiro['duracao_meses']) ? $parceiro['duracao_meses'] . ' meses' : '-' ?>
-                    </span>
                 </div>
                 <div class="col-md-4 mb-2 mt-3">
                     <small class="text-muted d-block">Início Vigência</small>
@@ -435,6 +446,47 @@ include __DIR__ . '/../app/views/admin/header.php';
                     <span class="fw-semibold">#<?= (int)$parceiro['id'] ?></span>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="processar_status_parceiro.php" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alterar Status do Parceiro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="parceiro_id" value="<?= (int)$parceiro_id ?>">
+
+                    <p class="mb-3">
+                        Parceiro: <strong><?= htmlspecialchars($parceiro['nome_fantasia'] ?? $parceiro['razao_social'] ?? 'Parceiro') ?></strong>
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="novo_status" class="form-label">Novo status</label>
+                        <select class="form-select" name="novo_status" id="novo_status" required>
+                            <option value="">Selecione</option>
+                            <option value="analise" <?= ($parceiro['status'] ?? '') === 'analise' ? 'selected' : '' ?>>Em Análise</option>
+                            <option value="ativo" <?= ($parceiro['status'] ?? '') === 'ativo' ? 'selected' : '' ?>>Ativo</option>
+                            <option value="inativo" <?= ($parceiro['status'] ?? '') === 'inativo' ? 'selected' : '' ?>>Inativo</option>
+                        </select>
+                    </div>
+
+                    <div class="small text-muted">
+                        Alteração permitida somente porque a carta-acordo já foi assinada.
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar status</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

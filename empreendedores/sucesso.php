@@ -1,5 +1,10 @@
 <?php
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_secure', 1);
+
 session_start();
+// resto do código...
 
 // Verifica se existe sessão de empreendedor
 if (empty($_SESSION['empreendedor_id'])) {
@@ -36,7 +41,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
           <hr>
           <p>Um e-mail de confirmação foi enviado para <strong><?= htmlspecialchars($email) ?></strong>.</p>
-          <a href="/empreendedores/dashboard.php" class="btn btn-primary">Faça o login e Acesse seu Painel</a>
+          <a href="/negocios/etapa1_dados_negocio.php" class="btn btn-primary">Cadastrar meu negócio</a>
         </div>
 
       </div>

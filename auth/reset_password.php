@@ -7,19 +7,21 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
-$email = $_POST['email'] ?? '';
-$token = $_POST['token'] ?? '';
-$tipo = $_POST['tipo'] ?? '';
-$senha = $_POST['senha'] ?? '';
+$email        = $_POST['email']         ?? '';
+$token        = $_POST['token']         ?? '';
+$tipo         = $_POST['tipo']          ?? '';
+$senha        = $_POST['senha']         ?? '';
 $senhaConfirm = $_POST['senha_confirm'] ?? '';
 
 $tabela = match ($tipo) {
-    'admin' => 'users',
+    'admin'        => 'users',
     'empreendedor' => 'empreendedores',
-    'parceiro' => 'parceiros',
-    'eleitor' => 'comunidade_civil',
-    default => null
+    'parceiro'     => 'parceiros',
+    'eleitor'      => 'sociedade_civil',
+    default        => null
 };
+
+$colunaEmail = ($tabela === 'parceiros') ? 'email_login' : 'email';
 
 if (!$email || !$token || !$senha || !$senhaConfirm || !$tabela) {
     die("Dados incompletos.");
@@ -34,7 +36,7 @@ if (strlen($senha) < 8) {
 }
 
 $tokenHash = hash('sha256', $token);
-$stmt = $pdo->prepare("SELECT id FROM {$tabela} WHERE email = ? AND password_reset_token = ? AND password_reset_expires_at > NOW()");
+$stmt = $pdo->prepare("SELECT id FROM {$tabela} WHERE {$colunaEmail} = ? AND password_reset_token = ? AND password_reset_expires_at > NOW()");
 $stmt->execute([$email, $tokenHash]);
 $user = $stmt->fetch();
 
@@ -46,16 +48,13 @@ $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
 $update = $pdo->prepare("UPDATE {$tabela} SET senha_hash = ?, password_reset_token = NULL, password_reset_expires_at = NULL WHERE id = ?");
 $update->execute([$senhaHash, $user['id']]);
 
-echo "Senha redefinida com sucesso. Você já pode fazer login.";
-
-
 include __DIR__ . '/../app/views/public/header_public.php';
 ?>
 
 <div class="container d-flex flex-column min-vh-100">
   <div class="row justify-content-center flex-grow-1">
     <div class="col-md-6">
-      <div class="alert alert-info mt-5">
+      <div class="alert alert-success mt-5">
         Senha redefinida com sucesso. Você já pode fazer login.
       </div>
       <div class="d-flex gap-3 mt-3">

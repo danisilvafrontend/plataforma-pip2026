@@ -1,7 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 
 // Conexão com banco
 $config = require __DIR__ . '/app/config/db.php';
@@ -14,9 +12,10 @@ $pdo = new PDO(
 
 // Base da query
 $sql = "
-    SELECT n.id, n.nome_fantasia, n.categoria, n.municipio, n.estado, 
-           a.frase_negocio, a.logo_negocio, o.icone_url,
-           e.nome AS eixo_tematico_nome
+    SELECT n.id, n.nome_fantasia, n.categoria, n.municipio, n.estado,
+       a.frase_negocio, a.logo_negocio, a.imagem_destaque,
+       o.icone_url,
+       e.nome AS eixo_tematico_nome
     FROM negocios n
     LEFT JOIN negocio_apresentacao a ON a.negocio_id = n.id
     LEFT JOIN ods o ON o.id = n.ods_prioritaria_id
@@ -99,156 +98,243 @@ $eixos = $pdo->query("
 
 <?php include __DIR__ . '/app/views/public/header_public.php'; ?>
 
-<div class="container my-5">
-    <h2 class="mb-4">Vitrine Nacional</h2>
+<div class="container vitrine-nacional-page">
+    <div class="vitrine-nacional-hero mb-4">
+        <div class="vitrine-nacional-hero-content">
+            <span class="vitrine-kicker">Ecossistema</span>
+            <h1 class="vitrine-title mb-2">Vitrine Nacional</h1>
+            <p class="vitrine-subtitle mb-0">
+                Conheça negócios de impacto publicados na vitrine, explore por filtros e descubra iniciativas em diferentes territórios, eixos e ODS.
+            </p>
+        </div>
+    </div>
 
-     <!-- Filtros -->
-    <form method="get" class="row mb-4">
-        <div class="col-md-2">
-            <select name="categoria" class="form-select">
-                <option value="">Categoria</option>
-                <?php foreach ($categorias as $c): ?>
-                    <option value="<?= htmlspecialchars($c) ?>" <?= ($_GET['categoria'] ?? '') === $c ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($c) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+    <div class="vitrine-toolbar mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <span class="badge text-bg-light px-3 py-2 rounded-pill border">
+                    <?= count($parceiros ?? $negocios ?? []) ?> resultado(s)
+                </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <button
+                    class="btn btn-outline-primary vitrine-filtros-toggle"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#painelFiltros"
+                    aria-expanded="false"
+                    aria-controls="painelFiltros">
+                    <i class="bi bi-sliders me-2"></i> Filtros
+                </button>
+
+                <a href="vitrine_nacional.php"  class="btn btn-outline-secondary">Limpar</a>
+            </div>
         </div>
 
-        <div class="col-md-2">
-            <select name="estado" class="form-select">
-                <option value="">Estado</option>
-                <?php foreach ($estados as $e): ?>
-                    <option value="<?= htmlspecialchars($e) ?>" <?= ($_GET['estado'] ?? '') === $e ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($e) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+        <?php if (
+            !empty($_GET['ods']) ||
+            !empty($_GET['eixo']) ||
+            !empty($_GET['categoria']) ||
+            !empty($_GET['estado']) ||
+            !empty($_GET['municipio']) ||
+            !empty($_GET['setor']) ||
+            !empty($_GET['perfil'])
+        ): ?>
+            <div class="vitrine-filtros-ativos-inline mt-3">
+                <div class="vitrine-filtros-chips">
+                    <?php if (!empty($_GET['ods'])): ?>
+                        <span class="vitrine-filtro-chip">ODS: <?= htmlspecialchars($_GET['ods']) ?></span>
+                    <?php endif; ?>
 
-        <div class="col-md-2">
-            <select name="municipio" class="form-select">
-                <option value="">Município</option>
-                <?php foreach ($municipios as $m): ?>
-                    <option value="<?= htmlspecialchars($m) ?>" <?= ($_GET['municipio'] ?? '') === $m ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($m) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+                    <?php if (!empty($_GET['eixo'])): ?>
+                        <span class="vitrine-filtro-chip">Eixo: <?= htmlspecialchars($_GET['eixo']) ?></span>
+                    <?php endif; ?>
 
-        <div class="col-md-2">
-            <select name="eixo" class="form-select">
-                <option value="">Eixo Temático</option>
-                <?php foreach ($eixos as $e): ?>
-                    <option value="<?= htmlspecialchars($e['id']) ?>" <?= ($_GET['eixo'] ?? '') == $e['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($e['nome']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+                    <?php if (!empty($_GET['setor'])): ?>
+                        <span class="vitrine-filtro-chip">Setor: <?= htmlspecialchars($_GET['setor']) ?></span>
+                    <?php endif; ?>
 
-        <div class="col-md-2">
-            <select name="ods" class="form-select">
-                <option value="">ODS Prioritária</option>
-                <?php foreach ($ods as $o): ?>
-                    <option value="<?= htmlspecialchars($o['id']) ?>" <?= ($_GET['ods'] ?? '') == $o['id'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($o['nome']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+                    <?php if (!empty($_GET['perfil'])): ?>
+                        <span class="vitrine-filtro-chip">Perfil: <?= htmlspecialchars($_GET['perfil']) ?></span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
 
-        <div class="col-md-2 d-flex">
-            <button type="submit" class="btn btn-primary me-2">Filtrar</button>
-            <a href="vitrine_nacional.php" class="btn btn-secondary">Limpar</a>
-        </div>
-    </form>
+    <div class="collapse mb-4" id="painelFiltros">
+        <form method="GET" class="vitrine-filtros-collapse">
+            <div class="row g-3">
+                <div class="col-md-6 col-xl-2">
+                    <label for="filtro-categoria" class="vitrine-filtro-label">Categoria</label>
+                    <select id="filtro-categoria" name="categoria" class="form-select vitrine-select">
+                        <option value="">Todas</option>
+                        <?php foreach ($categorias as $c): ?>
+                            <option value="<?= htmlspecialchars($c) ?>" <?= ($_GET['categoria'] ?? '') === $c ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($c) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-    <!-- Grid de negócios -->
-    <div class="row">
-        <?php foreach ($negocios as $n): ?>
-            <div class="col-md-4 mb-4"> <!-- Coluna limpa, sem overflow -->
-                
-                <!-- O CARD: Aqui entram as classes position-relative e overflow-hidden -->
-                <div class="card d-flex justify-content-between h-100 p-3 shadow-sm position-relative overflow-hidden">                   
+                <div class="col-md-6 col-xl-2">
+                    <label for="filtro-estado" class="vitrine-filtro-label">Estado</label>
+                    <select id="filtro-estado" name="estado" class="form-select vitrine-select">
+                        <option value="">Todos</option>
+                        <?php foreach ($estados as $e): ?>
+                            <option value="<?= htmlspecialchars($e) ?>" <?= ($_GET['estado'] ?? '') === $e ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($e) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-                    <!-- A Faixa Diagonal (Ajustada para textos longos) -->
-                     <?php
+                <div class="col-md-6 col-xl-2">
+                    <label for="filtro-municipio" class="vitrine-filtro-label">Município</label>
+                    <select id="filtro-municipio" name="municipio" class="form-select vitrine-select">
+                        <option value="">Todos</option>
+                        <?php foreach ($municipios as $m): ?>
+                            <option value="<?= htmlspecialchars($m) ?>" <?= ($_GET['municipio'] ?? '') === $m ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($m) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-6 col-xl-2">
+                    <label for="filtro-eixo" class="vitrine-filtro-label">Eixo temático</label>
+                    <select id="filtro-eixo" name="eixo" class="form-select vitrine-select">
+                        <option value="">Todos</option>
+                        <?php foreach ($eixos as $e): ?>
+                            <option value="<?= htmlspecialchars($e['id']) ?>" <?= ($_GET['eixo'] ?? '') == $e['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($e['nome']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-6 col-xl-2">
+                    <label for="filtro-ods" class="vitrine-filtro-label">ODS prioritária</label>
+                    <select id="filtro-ods" name="ods" class="form-select vitrine-select">
+                        <option value="">Todas</option>
+                        <?php foreach ($ods as $o): ?>
+                            <option value="<?= htmlspecialchars($o['id']) ?>" <?= ($_GET['ods'] ?? '') == $o['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($o['nome']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-12 col-xl-2">
+                    <label class="vitrine-filtro-label d-none d-xl-block">&nbsp;</label>
+                    <div class="vitrine-filtro-acoes">
+                        <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                        <a href="vitrine_nacional.php" class="btn btn-outline-secondary w-100">Limpar</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <?php if (!empty($negocios)): ?>
+        <div class="row g-4">
+            <?php foreach ($negocios as $n): ?>
+                <?php
                     $categoria = trim($n['categoria'] ?? '');
 
                     $cores_categoria = [
-                        'Ideação' => 'rgba(255, 161, 0, 0.75)',
-                        'Operação' => 'rgba(76, 144, 177, 0.75)',
-                        'Tração/Escala' => 'rgba(36, 139, 101, 0.75)',
-                        'Dinamizador' => 'rgba(135, 32, 184, 0.75)'
+                        'Ideação' => '#f59e0b',
+                        'Operação' => '#3b82f6',
+                        'Tração/Escala' => '#16a34a',
+                        'Dinamizador' => '#9333ea'
                     ];
 
-                    $cor_categoria = $cores_categoria[$categoria] ?? 'rgba(13, 110, 253, 0.75)';
-                    ?>
-                    <!-- A Faixa Diagonal -->
-                    <div class="position-absolute" style="top: -5px; left: -5px; width: 130px; height: 130px; z-index: 10;">
-                        <div class="text-white text-center shadow-sm text-uppercase d-flex align-items-center justify-content-center"
-                            style="position: absolute; top: 30px; left: -40px; width: 180px; height: 30px; transform: rotate(-45deg); font-size: 0.6rem; font-weight: bold; line-height: 1; background-color: <?= $cor_categoria ?>;">
-                            <span class="d-inline-block px-2" style="max-width: 100%; white-space: normal;">
-                                <?= htmlspecialchars($categoria) ?>
-                            </span>
-                        </div>
-                    </div>
+                    $cor_categoria = $cores_categoria[$categoria] ?? '#1E3425';
 
-                    <div class="row d-flex align-items-center">
-                        <div class="col-md-4 mb-2 text-center">
-                            <!-- A Imagem do Logotipo (removi o overflow daqui também) -->
-                            <?php if (!empty($n['logo_negocio'])): ?>
-                                <img src="<?= htmlspecialchars($n['logo_negocio']) ?>" 
-                                    class="card-logo mt-4 mb-3 position-relative" 
-                                    style="z-index: 1;"
-                                    alt="Logo do negócio">
-                            <?php endif; ?>
-                        </div>
+                    $temCapa = !empty($n['imagem_destaque']);
+                    $temLogo = !empty($n['logo_negocio']);
+                ?>
 
-                        <div class="col-md-8 mb-2 text-center">
-                            <h5 class="card-title text-center"><?= htmlspecialchars($n['nome_fantasia']) ?></h5>                        
-                            <span class="small-muted"><?= htmlspecialchars($n['municipio']) ?>/<?= htmlspecialchars($n['estado']) ?></span> 
-                            <div class="d-flex justify-content-center">                  
-                                <span class="badge m-1 text-wrap text-bg-primary text-center"> <?= htmlspecialchars($n['eixo_tematico_nome'] ?? '') ?> </span>  
-                            </div> 
-                        </div>
-                    </div>
+                <div class="col-md-6 col-xl-4">
+                    <article class="vitrine-card h-100">
+                        <a href="/negocio.php?id=<?= $n['id'] ?>" class="vitrine-card-link-area">
+                            <div class="vitrine-card-media <?= !$temCapa ? 'sem-capa' : '' ?>">
+                                <?php if ($temCapa): ?>
+                                    <img
+                                        src="<?= htmlspecialchars($n['imagem_destaque']) ?>"
+                                        alt="Imagem de destaque de <?= htmlspecialchars($n['nome_fantasia']) ?>"
+                                        class="vitrine-card-cover"
+                                    >
+                                <?php elseif ($temLogo): ?>
+                                    <div class="vitrine-card-logo-wrap">
+                                        <img
+                                            src="<?= htmlspecialchars($n['logo_negocio']) ?>"
+                                            alt="Logo de <?= htmlspecialchars($n['nome_fantasia']) ?>"
+                                            class="vitrine-card-logo"
+                                        >
+                                    </div>
+                                <?php else: ?>
+                                    <div class="vitrine-card-fallback">
+                                        <span><?= htmlspecialchars(mb_strtoupper(mb_substr($n['nome_fantasia'], 0, 1))) ?></span>
+                                    </div>
+                                <?php endif; ?>
 
-                    <div class="row d-flex align-items-center">
-                        <div class="col-md-3 mb-2">
-                            <div class="d-flex justify-content-center">
-                                <?php if (!empty($n['icone_url'])): ?>
-                                    <img src="<?= htmlspecialchars($n['icone_url']) ?>" alt="ODS" style="max-height:50px;">
+                                <?php if (!empty($categoria)): ?>
+                                    <span class="vitrine-card-categoria" style="--categoria-cor: <?= htmlspecialchars($cor_categoria) ?>;">
+                                        <?= htmlspecialchars($categoria) ?>
+                                    </span>
                                 <?php endif; ?>
                             </div>
-                        </div>
-                        <div class="col-md-9 mb-2">
-                            <blockquote class="apresentacao-quote fst-italic text-primary border-start border-4 ps-3">
-                                <i class="bi bi-quote"></i> <?= htmlspecialchars($n['frase_negocio']) ?>
-                            </blockquote>
-                        </div>
-                    </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <div class="d-grid">
-                                <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-primary mt-2">Ver negócio</a>
+                            <div class="vitrine-card-body">
+                                <div class="vitrine-card-top">
+                                    <h3 class="vitrine-card-title"><?= htmlspecialchars($n['nome_fantasia']) ?></h3>
+
+                                    <?php if (!empty($n['municipio']) || !empty($n['estado'])): ?>
+                                        <p class="vitrine-card-local">
+                                            <i class="bi bi-geo-alt"></i>
+                                            <?= htmlspecialchars(trim(($n['municipio'] ?? '') . ' / ' . ($n['estado'] ?? ''), ' /')) ?>
+                                        </p>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="vitrine-card-meta">
+                                    <?php if (!empty($n['eixo_tematico_nome'])): ?>
+                                        <span class="vitrine-chip vitrine-chip-eixo">
+                                            <?= htmlspecialchars($n['eixo_tematico_nome']) ?>
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($n['icone_url'])): ?>
+                                        <span class="vitrine-ods">
+                                            <img src="<?= htmlspecialchars($n['icone_url']) ?>" alt="ODS prioritária">
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if (!empty($n['frase_negocio'])): ?>
+                                    <blockquote class="vitrine-card-frase">
+                                        <?= htmlspecialchars($n['frase_negocio']) ?>
+                                    </blockquote>
+                                <?php endif; ?>
                             </div>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <div class="d-grid">
-                                <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-secondary mt-2">Apoiar</a>
-                            </div>
-                        </div>
-                    </div>
-                </div> <!-- Fim do Card -->
+                        </a>
 
-            </div> <!-- Fim da Coluna -->
-        <?php endforeach; ?>
-    </div>
-
+                        <div class="vitrine-card-actions">
+                            <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-primary">Ver negócio</a>
+                            <a href="/negocio.php?id=<?= $n['id'] ?>#apoiar" class="btn btn-primary">Apoiar</a>
+                        </div>
+                    </article>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <div class="vitrine-empty">
+            <h3>Nenhum negócio encontrado</h3>
+            <p class="mb-0">Tente ajustar ou limpar os filtros para visualizar outros negócios publicados na vitrine.</p>
+        </div>
+    <?php endif; ?>
 </div>
 
 <?php include __DIR__ . '/app/views/public/footer_public.php'; ?>

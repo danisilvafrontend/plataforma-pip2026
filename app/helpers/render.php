@@ -18,10 +18,10 @@ function render_email_from_db($subject, $bodyHtml, $vars = []) {
     }
 
    $header = '
-        <div style="background:#026874;padding:20px;text-align:center">
+        <div style="background:#1E3425;padding:20px;text-align:center">
             <img src="https://pip2026.dscriacaoweb.com.br/assets/images/impactos_positivos_branco.png"
                 alt="Impactos Positivos" style="height:60px">
-            <div style="background:#94A604;height:5px;margin-top:15px"></div>
+            <div style="background:#CDDE00;height:5px;margin-top:15px"></div>
         </div>';
     $footer = '
         <div style="background:#000000;padding:20px;text-align:center;font-size:12px;color:#fff">

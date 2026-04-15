@@ -1,8 +1,6 @@
 <?php
+// /public_html/negocios/publicar.php
 session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
@@ -56,6 +54,9 @@ if (!$docsOk) {
     exit;
 }
 $acao = $_POST['acao'] ?? '';
+$premiacaoDesejaParticipar = isset($_POST['premiacao_deseja_participar']) ? 1 : 0;
+$premiacaoAceiteRegulamento = isset($_POST['premiacao_aceite_regulamento']) ? 1 : 0;
+$premiacaoAceiteVeracidade = isset($_POST['premiacao_aceite_veracidade']) ? 1 : 0;
 
 if ($acao === 'remover') {
     $stmt = $pdo->prepare("UPDATE negocios SET publicado_vitrine = 0, status_operacional = 'encerrado' WHERE id = ?");
@@ -84,6 +85,61 @@ try {
     ");
 
     $stmt->execute([$negocioId, $empreendedorId]);
+
+    // 1.1) Se houver premiação vigente e o empreendedor desejar participar,
+    // salva ou atualiza a inscrição do negócio na premiação
+    $stmtPremiacao = $pdo->query("
+        SELECT id, nome, ano, status
+        FROM premiacoes
+        WHERE status IN ('ativa', 'planejada')
+        ORDER BY 
+            CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
+            ano DESC,
+            id DESC
+        LIMIT 1
+    ");
+    $premiacaoVigente = $stmtPremiacao->fetch(PDO::FETCH_ASSOC);
+
+    if (!empty($premiacaoVigente['id']) && $premiacaoDesejaParticipar === 1) {
+        if ($premiacaoAceiteRegulamento !== 1 || $premiacaoAceiteVeracidade !== 1) {
+            throw new Exception('Para participar da premiação, é obrigatório aceitar o regulamento e declarar a veracidade das informações.');
+        }
+
+        $stmtPremiacaoUpsert = $pdo->prepare("
+            INSERT INTO premiacao_inscricoes (
+                premiacao_id,
+                negocio_id,
+                empreendedor_id,
+                categoria,
+                aceite_regulamento,
+                aceite_veracidade,
+                deseja_participar,
+                status,
+                enviado_em,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'enviada', NOW(), NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                empreendedor_id = VALUES(empreendedor_id),
+                categoria = VALUES(categoria),
+                aceite_regulamento = VALUES(aceite_regulamento),
+                aceite_veracidade = VALUES(aceite_veracidade),
+                deseja_participar = VALUES(deseja_participar),
+                status = 'enviada',
+                enviado_em = NOW(),
+                updated_at = NOW()
+        ");
+
+        $stmtPremiacaoUpsert->execute([
+            (int)$premiacaoVigente['id'],
+            $negocioId,
+            $empreendedorId,
+            $negocio['categoria'],
+            $premiacaoAceiteRegulamento,
+            $premiacaoAceiteVeracidade,
+            $premiacaoDesejaParticipar
+        ]);
+    }
 
     // 2) Envia email para admins
     $stmt = $pdo->prepare("

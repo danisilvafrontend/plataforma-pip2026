@@ -25,10 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $parceiro_id = (int)($_POST['parceiro_id'] ?? 0);
-// CORREÇÃO: O select no modal se chama 'novo_status', não 'status'
 $novo_status = trim($_POST['novo_status'] ?? '');
 
-if ($parceiro_id <= 0 || $novo_status === '') {
+$status_permitidos = ['analise', 'ativo', 'inativo'];
+
+if ($parceiro_id <= 0 || $novo_status === '' || !in_array($novo_status, $status_permitidos, true)) {
     $_SESSION['erro'] = 'Dados inválidos para atualizar o status do parceiro.';
     header('Location: parceiros.php');
     exit;
@@ -36,9 +37,15 @@ if ($parceiro_id <= 0 || $novo_status === '') {
 
 try {
     $stmt = $pdo->prepare("
-        SELECT id, nome_fantasia, razao_social, rep_nome, rep_email 
-        FROM parceiros 
-        WHERE id = ? 
+        SELECT 
+            id,
+            nome_fantasia,
+            razao_social,
+            rep_nome,
+            rep_email,
+            acordo_aceito
+        FROM parceiros
+        WHERE id = ?
         LIMIT 1
     ");
     $stmt->execute([$parceiro_id]);
@@ -50,14 +57,21 @@ try {
         exit;
     }
 
+    // Só bloqueia ativação sem carta assinada
+    if ($novo_status === 'ativo' && (int)($parceiro['acordo_aceito'] ?? 0) !== 1) {
+        $_SESSION['erro'] = 'O status só pode ser alterado para Ativo após a assinatura da carta-acordo.';
+        header('Location: visualizar_parceiro.php?id=' . $parceiro_id);
+        exit;
+    }
+
     $stmtUpdate = $pdo->prepare("UPDATE parceiros SET status = ? WHERE id = ?");
     $stmtUpdate->execute([$novo_status, $parceiro_id]);
 
-    // SE FOI APROVADO, DISPARA O E-MAIL COM HEADER E FOOTER
-    if ($novo_status === 'ativo' && !empty($parceiro['rep_email'])) { // No form o option é value="ativo"
+    // Se foi aprovado, dispara o e-mail
+    if ($novo_status === 'ativo' && !empty($parceiro['rep_email'])) {
         $subject = 'Sua parceria com a Plataforma Impactos Positivos foi Aprovada';
-        
-            $bodyHtml = '
+
+        $bodyHtml = '
             <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; padding: 30px; background-color: #ffffff;">
                 
                 <div style="text-align: center; margin-bottom: 25px;">
@@ -92,7 +106,6 @@ try {
                 <p style="color: #666; font-size: 14px; margin-top: 0;">Um grande abraço,<br><strong>Equipe Impactos Positivos</strong></p>
             </div>
         ';
-
 
         $rendered = render_email_from_db($subject, $bodyHtml, [
             'nome' => $parceiro['rep_nome'] ?: $parceiro['nome_fantasia'],

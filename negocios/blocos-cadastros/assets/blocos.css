@@ -355,3 +355,982 @@ img[loading="lazy"]{
   font-size: 13px;
   user-select: none;
 }
+
+
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Blocos das etapas
+════════════════════════════════════════════════════════════ */
+
+.emp-review-card {
+    background: #fff;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(30,52,37,.04);
+}
+
+.emp-review-card-header {
+    padding: 1rem 1.25rem;
+    background: #f7faf7;
+    border-bottom: 1px solid rgba(30,52,37,.08);
+}
+
+.emp-review-card-title {
+    font-size: .98rem;
+    font-weight: 700;
+    color: #1E3425;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .2rem;
+}
+
+.emp-review-step {
+    font-size: .78rem;
+    font-weight: 600;
+    color: #7b8d7d;
+}
+
+.emp-review-card-body {
+    padding: 1.25rem;
+}
+
+.emp-review-group {
+    display: flex;
+    flex-direction: column;
+    gap: .95rem;
+}
+
+.emp-review-item {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.emp-review-label {
+    font-size: .76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #7b8d7d;
+}
+
+.emp-review-value {
+    font-size: .92rem;
+    line-height: 1.5;
+    color: #1E3425;
+}
+
+.emp-review-divider {
+    height: 1px;
+    background: rgba(30,52,37,.08);
+    margin: 1.25rem 0 1rem;
+}
+
+.emp-review-subtitle {
+    font-size: .86rem;
+    font-weight: 700;
+    color: #1E3425;
+    margin-bottom: .85rem;
+}
+
+.emp-review-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+}
+
+.emp-review-link-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem .8rem;
+    border: 1px solid rgba(30,52,37,.10);
+    border-radius: 999px;
+    background: #fff;
+    color: #3f5445;
+    text-decoration: none;
+    font-size: .82rem;
+    font-weight: 600;
+    transition: all .15s ease;
+}
+
+.emp-review-link-chip:hover {
+    border-color: #97A327;
+    background: rgba(151,163,39,.05);
+    color: #1E3425;
+}
+
+@media (max-width: 767.98px) {
+    .emp-review-card-header,
+    .emp-review-card-body {
+        padding: 1rem;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 2
+════════════════════════════════════════════════════════════ */
+
+.emp-review-subblock {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.emp-review-subblock-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .3rem;
+    font-size: .9rem;
+    font-weight: 700;
+    margin-bottom: .25rem;
+}
+
+.emp-review-subblock-title.principal {
+    color: #01696f;
+}
+
+.emp-review-subblock-title.secondary {
+    color: #4b5f4e;
+}
+
+.emp-review-count {
+    font-size: .78rem;
+    font-weight: 600;
+    color: #7b8d7d;
+}
+
+.emp-review-cofounders {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.emp-review-cofounder-card {
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 14px;
+    background: #fafcf8;
+    padding: 1rem;
+}
+
+.emp-review-cofounder-title {
+    font-size: .84rem;
+    font-weight: 700;
+    color: #6c8070;
+    margin-bottom: .85rem;
+}
+
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 3 com ícone
+════════════════════════════════════════════════════════════ */
+
+.emp-review-eixo-hero {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .35rem 0 .15rem;
+}
+
+.emp-review-eixo-icon {
+    width: 78px;
+    height: 78px;
+    border-radius: 16px;
+    background: #f7faf7;
+    border: 1px solid rgba(30,52,37,.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 78px;
+    overflow: hidden;
+}
+
+.emp-review-eixo-icon img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+}
+
+.emp-review-eixo-content {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.emp-review-highlight-box {
+    padding: .4rem 0 .2rem;
+}
+
+.emp-review-highlight-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .65rem 1rem;
+    border-radius: 999px;
+    background: #01696f;
+    color: #fff;
+    font-size: .9rem;
+    font-weight: 700;
+    line-height: 1.2;
+    box-shadow: 0 4px 12px rgba(1, 105, 111, .18);
+}
+
+.emp-review-tags-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+}
+
+.emp-review-tag-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .35rem;
+    padding: .8rem .9rem;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 12px;
+    background: #fafcf8;
+    color: #334a39;
+    font-size: .84rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 767.98px) {
+    .emp-review-eixo-hero {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .emp-review-tags-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 4 ODS
+════════════════════════════════════════════════════════════ */
+
+.emp-review-ods-principal {
+    display: flex;
+    justify-content: center;
+    padding-top: .25rem;
+}
+
+.emp-review-ods-principal-card {
+    width: 150px;
+    height: 150px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(30,52,37,.08);
+    box-shadow: 0 8px 20px rgba(30,52,37,.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: .9rem;
+}
+
+.emp-review-ods-principal-img {
+    max-width: 110px;
+    max-height: 110px;
+    object-fit: contain;
+}
+
+.emp-review-ods-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+    gap: .9rem;
+    margin-top: .25rem;
+}
+
+.emp-review-ods-item {
+    display: flex;
+    justify-content: center;
+}
+
+.emp-review-ods-thumb {
+    width: 95px;
+    height: 95px;
+    border-radius: 14px;
+    background: #fafcf8;
+    border: 1px solid rgba(30,52,37,.08);
+    box-shadow: 0 4px 12px rgba(30,52,37,.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: .55rem;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.emp-review-ods-thumb:hover {
+    transform: translateY(-2px);
+    border-color: rgba(151,163,39,.45);
+    box-shadow: 0 8px 18px rgba(30,52,37,.08);
+}
+
+.emp-review-ods-img {
+    max-width: 68px;
+    max-height: 68px;
+    object-fit: contain;
+}
+
+@media (max-width: 767.98px) {
+    .emp-review-ods-principal-card {
+        width: 130px;
+        height: 130px;
+    }
+
+    .emp-review-ods-principal-img {
+        max-width: 96px;
+        max-height: 96px;
+    }
+
+    .emp-review-ods-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 5
+════════════════════════════════════════════════════════════ */
+
+.emp-review-apresentacao-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.emp-review-logo-card {
+    width: 100%;
+    max-width: 260px;
+    margin: 0 auto;
+    display: block;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(30,52,37,.08);
+    box-shadow: 0 4px 16px rgba(30,52,37,.06);
+    padding: .75rem;
+    object-fit: contain;
+}
+
+.emp-review-logo-placeholder {
+    max-width: 260px;
+    margin: 0 auto;
+    border-radius: 18px;
+    background: #f7faf7;
+    border: 1px solid rgba(30,52,37,.08);
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emp-review-quote {
+    margin: 0;
+    padding: .9rem 1rem;
+    border-left: 4px solid #01696f;
+    background: #f7faf7;
+    border-radius: 0 12px 12px 0;
+    color: #01696f;
+    font-style: italic;
+    line-height: 1.5;
+}
+
+.emp-review-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: .9rem;
+}
+
+.emp-review-boxed {
+    padding: .9rem 1rem;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 14px;
+    background: #fafcf8;
+}
+
+.emp-review-video-card {
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 14px;
+    background: #fff;
+    padding: 1rem;
+    height: 100%;
+}
+
+.emp-review-video-link {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-decoration: none;
+    color: #7b1e1e;
+    border: 1px solid rgba(220,53,69,.18);
+    background: #fff7f7;
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    transition: all .15s ease;
+}
+
+.emp-review-video-link:hover {
+    background: #fff0f0;
+    border-color: rgba(220,53,69,.3);
+    color: #5f1515;
+}
+
+.emp-review-video-link small {
+    color: #8b8b8b;
+}
+
+.emp-review-content-panel {
+    border-radius: 14px;
+    padding: 1rem;
+    background: #fafcf8;
+    border: 1px solid rgba(30,52,37,.08);
+    height: 100%;
+}
+
+.emp-review-content-panel.danger {
+    border-left: 4px solid #dc3545;
+}
+
+.emp-review-content-panel.success {
+    border-left: 4px solid #198754;
+}
+
+.emp-review-innovation-box {
+    background: #f7fcf8;
+    border: 1px solid rgba(25,135,84,.12);
+    border-radius: 14px;
+    padding: 1rem;
+}
+
+.emp-review-link-chip.success {
+    background: rgba(25,135,84,.08);
+    border-color: rgba(25,135,84,.14);
+    color: #256444;
+}
+
+.emp-review-innovation-description {
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px solid rgba(25,135,84,.16);
+    color: #385746;
+    line-height: 1.55;
+    font-size: .88rem;
+}
+
+.emp-review-desafio-card {
+    display: flex;
+    align-items: stretch;
+    min-height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(30,52,37,.08);
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(30,52,37,.04);
+}
+
+.emp-review-desafio-rank {
+    min-width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.emp-review-desafio-text {
+    padding: .8rem .9rem;
+    display: flex;
+    align-items: center;
+    color: #25382a;
+    font-size: .84rem;
+    line-height: 1.35;
+    font-weight: 500;
+}
+
+.emp-review-desafio-card.nivel-critico .emp-review-desafio-rank { background: #dc3545; }
+.emp-review-desafio-card.nivel-alto .emp-review-desafio-rank { background: #fd7e14; }
+.emp-review-desafio-card.nivel-medio .emp-review-desafio-rank { background: #0dcaf0; }
+.emp-review-desafio-card.nivel-moderado .emp-review-desafio-rank { background: #0d6efd; }
+.emp-review-desafio-card.nivel-baixo .emp-review-desafio-rank { background: #198754; }
+
+.emp-review-gallery-shell {
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 16px;
+    background: #fff;
+    padding: .75rem;
+    box-shadow: 0 2px 10px rgba(30,52,37,.04);
+}
+
+.emp-review-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.emp-review-gallery a {
+    overflow: hidden;
+    border-radius: 12px;
+    background: #f3f6f3;
+    display: block;
+}
+
+.emp-review-gallery img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .2s ease;
+}
+
+.emp-review-gallery a:hover img {
+    transform: scale(1.03);
+}
+
+/* Lightbox */
+.jg-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 20, 18, 0.88);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1055;
+    padding: 2rem;
+}
+
+.jg-lightbox.is-open {
+    display: flex;
+}
+
+.jg-full {
+    max-width: min(92vw, 1200px);
+    max-height: 82vh;
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.35);
+}
+
+.jg-close,
+.jg-btn {
+    position: absolute;
+    border: 0;
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    cursor: pointer;
+}
+
+.jg-close {
+    top: 20px;
+    right: 24px;
+}
+
+.jg-prev {
+    left: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.jg-next {
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.jg-caption {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: .9rem;
+    background: rgba(0,0,0,.25);
+    padding: .45rem .8rem;
+    border-radius: 999px;
+}
+
+@media (max-width: 767.98px) {
+    .emp-review-logo-card,
+    .emp-review-logo-placeholder {
+        max-width: 220px;
+    }
+
+    .jg-lightbox {
+        padding: 1rem;
+    }
+
+    .jg-prev {
+        left: 10px;
+    }
+
+    .jg-next {
+        right: 10px;
+    }
+
+    .jg-close {
+        right: 12px;
+        top: 12px;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 6
+════════════════════════════════════════════════════════════ */
+
+.emp-review-finance-highlight {
+    border: 1px solid rgba(1,105,111,.12);
+    background: linear-gradient(135deg, rgba(1,105,111,.08), rgba(151,163,39,.07));
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+}
+
+.emp-review-finance-highlight-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1E3425;
+    line-height: 1.4;
+}
+
+.emp-review-finance-card {
+    background: #fff;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 14px;
+    padding: 1rem;
+    box-shadow: 0 2px 10px rgba(30,52,37,.03);
+}
+
+.emp-review-finance-card-title {
+    font-size: .86rem;
+    font-weight: 700;
+    color: #1E3425;
+    margin-bottom: .35rem;
+    line-height: 1.4;
+}
+
+.emp-review-finance-card-help {
+    font-size: .74rem;
+    color: #7b8d7d;
+    line-height: 1.4;
+    margin-bottom: .7rem;
+}
+
+.emp-review-finance-card-value {
+    font-size: .9rem;
+    color: #334a39;
+    line-height: 1.55;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.emp-review-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .55rem .85rem;
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-top: .35rem;
+}
+
+.emp-review-status-pill.success {
+    background: #dff3e2;
+    color: #245a2e;
+}
+
+.emp-review-status-pill.warning {
+    background: #fff3cd;
+    color: #7a5b00;
+}
+
+.emp-review-status-pill.danger {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.emp-review-status-pill.neutral {
+    background: #eef1f3;
+    color: #4f5f69;
+}
+
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 7
+════════════════════════════════════════════════════════════ */
+
+.emp-review-context {
+    font-size: .78rem;
+    color: #7b8d7d;
+    line-height: 1.45;
+    margin-bottom: .5rem;
+}
+
+.emp-review-content-box {
+    background: #fafcf8;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    color: #1E3425;
+    font-size: .88rem;
+    line-height: 1.55;
+}
+
+.emp-review-empty {
+    background: #f5f5f5;
+    border: 1px dashed rgba(30,52,37,.12);
+    border-radius: 12px;
+    padding: .85rem 1rem;
+    text-align: center;
+    color: #7b8d7d;
+    font-size: .84rem;
+}
+
+.emp-review-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+}
+
+.emp-review-link-row {
+    display: flex;
+    align-items: flex-start;
+    gap: .55rem;
+    padding: .8rem .9rem;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 12px;
+    background: #fff;
+    color: #3f5445;
+    text-decoration: none;
+    font-size: .84rem;
+    line-height: 1.45;
+    transition: all .15s ease;
+}
+
+.emp-review-link-row:hover {
+    border-color: #97A327;
+    background: rgba(151,163,39,.05);
+    color: #1E3425;
+}
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 8
+════════════════════════════════════════════════════════════ */
+
+.emp-review-text-box {
+    background: #f7faf7;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 14px;
+    padding: 1rem;
+    color: #2e4335;
+    font-size: .9rem;
+    line-height: 1.6;
+    min-height: 120px;
+}
+
+.emp-review-empty-box {
+    background: #fbfbfb;
+    border: 1px dashed rgba(30,52,37,.12);
+    border-radius: 14px;
+    padding: 1rem;
+    color: #7b8d7d;
+    font-size: .88rem;
+    text-align: center;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emp-review-helper-text {
+    font-size: .76rem;
+    color: #7b8d7d;
+    line-height: 1.45;
+    margin-bottom: .8rem;
+}
+
+.emp-review-extra-note {
+    font-size: .82rem;
+    color: #4a5e4f;
+    line-height: 1.45;
+}
+
+.emp-review-card-body .badge {
+    margin: 0 .45rem .45rem 0;
+    padding: .55rem .8rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+}
+/* ════════════════════════════════════════════════════════════
+   REVISÃO — Etapa 9
+════════════════════════════════════════════════════════════ */
+
+.etapa9-review-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.etapa9-review-doc-card {
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 14px;
+    background: #fafcf8;
+    padding: 1rem;
+}
+
+.etapa9-review-doc-top {
+    display: flex;
+    align-items: flex-start;
+    gap: .9rem;
+    margin-bottom: .9rem;
+}
+
+.etapa9-review-doc-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex: 0 0 46px;
+    font-size: 1rem;
+}
+
+.etapa9-review-doc-icon.success {
+    background: #2e7d32;
+}
+
+.etapa9-review-doc-icon.info {
+    background: #0b7fab;
+}
+
+.etapa9-review-doc-meta {
+    flex: 1;
+}
+
+.etapa9-review-doc-title {
+    font-size: .88rem;
+    font-weight: 700;
+    color: #1E3425;
+    line-height: 1.35;
+    margin-bottom: .35rem;
+}
+
+.etapa9-review-doc-status {
+    margin-bottom: .4rem;
+}
+
+.etapa9-review-doc-filename {
+    font-size: .78rem;
+    color: #6c8070;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.etapa9-review-doc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+}
+
+.etapa9-review-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .38rem .7rem;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-right: .35rem;
+    margin-bottom: .35rem;
+}
+
+.etapa9-review-status-badge.success {
+    background: #dff3e2;
+    color: #256c2f;
+}
+
+.etapa9-review-status-badge.info {
+    background: #d9f0f8;
+    color: #0b6f91;
+}
+
+.etapa9-review-status-badge.warning {
+    background: #fff4d6;
+    color: #8a6500;
+}
+
+@media (max-width: 767.98px) {
+    .etapa9-review-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════
+   CONFIRMAÇÃO / REVISÃO FINAL
+════════════════════════════════════════════════════════════ */
+
+.emp-confirm-actions-card {
+    background: #fff;
+    border: 1px solid rgba(30,52,37,.08);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(30,52,37,.04);
+}
+
+.emp-confirm-actions-header {
+    padding: 1.1rem 1.25rem;
+    background: #f7faf7;
+    border-bottom: 1px solid rgba(30,52,37,.08);
+}
+
+.emp-confirm-actions-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1E3425;
+}
+
+.emp-confirm-actions-subtitle {
+    font-size: .84rem;
+    color: #6c8070;
+    line-height: 1.45;
+}
+
+.emp-confirm-actions-body {
+    padding: 1.25rem;
+}
+
+.emp-confirm-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .9rem;
+}
+
+.emp-confirm-action-btn {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    text-align: center;
+}
+
+.emp-confirm-action-danger {
+    border-color: rgba(161,53,68,.22);
+    color: #8f3240;
+}
+
+.emp-confirm-action-danger:hover {
+    background: rgba(161,53,68,.06);
+    border-color: rgba(161,53,68,.38);
+    color: #712430;
+}
+
+@media (max-width: 991.98px) {
+    .emp-confirm-actions-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,8 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
@@ -154,16 +151,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <!-- Progresso final -->
-            <div class="mb-5">
-                <div class="d-flex justify-content-between text-muted small mb-2">
-                    <span class="fw-bold text-success">Etapa 7 - Assinatura Digital</span>
-                    <span>7 de 7</span>
-                </div>
-                <div class="progress" style="height: 8px;">
-                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
-            </div>
 
             <?php if (isset($erro)): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($erro) ?></div>
@@ -178,11 +165,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
                         </h2>
                         <p class="mb-0 opacity-75 mt-1">IMPACTOS POSITIVOS <?= date('Y') ?></p>
                     </div>
-                    
-                    <!-- Botão Imprimir / PDF -->
-                    <button type="button" onclick="window.print();" class="btn btn-light btn-sm text-primary fw-bold shadow-sm d-print-none">
-                        <i class="bi bi-printer me-1"></i> Imprimir / Salvar PDF
-                    </button>
                 </div>
 
                 
@@ -295,7 +277,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                             </div>
                         </div>
 
-                        <form method="POST" action="" onsubmit="return confirm('Tem certeza que deseja assinar este documento digitalmente? Esta ação não pode ser desfeita.');" class="d-print-none">
+                       <form method="POST" action="" onsubmit="return confirm('Tem certeza que deseja assinar este documento digitalmente? Esta ação não pode ser desfeita.');" class="d-print-none">
                             <div class="form-check d-inline-block text-start mb-4">
                                 <input class="form-check-input" type="checkbox" name="aceito" id="aceito" value="1" required style="transform: scale(1.3); margin-right: 10px;">
                                 <label class="form-check-label fw-bold text-dark" for="aceito" style="font-size: 1.1rem; cursor: pointer;">
@@ -303,7 +285,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                 </label>
                             </div>
                             <br>
-                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow-sm">
+                            <button type="submit" id="btnAssinar" class="btn btn-success btn-lg px-5 fw-bold shadow-sm btn-assinar-disabled" disabled>
                                 <i class="bi bi-pen me-2"></i> Finalizar e Assinar Contrato
                             </button>
                         </form>
@@ -321,7 +303,15 @@ include __DIR__ . '/../app/views/public/header_public.php';
 </div>
 
 <style>
+
+.btn-assinar-disabled {
+opacity: 0.55;
+cursor: not-allowed;
+pointer-events: none;
+box-shadow: none !important;
+}
 /* CSS EXCLUSIVO PARA A IMPRESSÃO */
+
 @media print {
     /* Esconde o que não é o contrato */
     body * {
@@ -382,6 +372,26 @@ include __DIR__ . '/../app/views/public/header_public.php';
 }
 </style>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkAceito = document.getElementById('aceito');
+    const btnAssinar = document.getElementById('btnAssinar');
 
+    if (!checkAceito || !btnAssinar) return;
+
+    function atualizarBotao() {
+        if (checkAceito.checked) {
+            btnAssinar.disabled = false;
+            btnAssinar.classList.remove('btn-assinar-disabled');
+        } else {
+            btnAssinar.disabled = true;
+            btnAssinar.classList.add('btn-assinar-disabled');
+        }
+    }
+
+    checkAceito.addEventListener('change', atualizarBotao);
+    atualizarBotao();
+});
+</script>
 <?php include __DIR__ . '/../app/views/public/footer_public.php'; ?>
 

@@ -1,3 +1,4 @@
 /app/config/db.php
 /app/config/db_hostgator.php
 /app/config/mail.php
+/app/config/db_producao.php

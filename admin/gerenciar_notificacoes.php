@@ -1,392 +1,665 @@
 <?php
-/**
- * Sistema de Notificação e Rastreamento de Atualizações
- * - Envia notificação aos empreendedores importados
- * - Rastreia quando entram (primeiro acesso)
- * - Rastreia quando atualizam cadastro
- * - Gera relatórios de engajamento
- */
+// /public_html/admin/gerenciar_notificacoes.php
+declare(strict_types=1);
 
-require_once 'config.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-class GerenciadorNotificacoes {
-    
-    private $pdo;
-    private $email_remetente = 'noreply@pip2026.com.br';
-    private $nome_remetente = 'PIP 2026 - Plataforma de Impacto';
-    
-    public function __construct($pdo) {
-        $this->pdo = $pdo;
-    }
-    
-    /**
-     * Envia notificação a um empreendedor importado
-     * Pode ser chamado manualmente pelo admin
-     */
-    public function enviarNotificacao($usuario_id) {
-        try {
-            // Busca dados do usuário
-            $usuario = $this->buscarUsuario($usuario_id);
-            if (!$usuario) {
-                throw new Exception("Usuário não encontrado");
-            }
-            
-            // Busca se foi importado
-            $importacao = $this->buscarImportacao($usuario_id);
-            if (!$importacao) {
-                throw new Exception("Usuário não é importado");
-            }
-            
-            // Verifica se já foi notificado
-            if ($importacao['email_notificacao_enviado']) {
-                return [
-                    'sucesso' => false,
-                    'mensagem' => 'Notificação já foi enviada para este usuário'
-                ];
-            }
-            
-            // Gera link temporário (ou usa senha) para reset
-            $token_reset = $this->gerarTokenReset($usuario_id);
-            $link_acesso = "https://pip2026.dscriacaoweb.com.br/login.php?reset_token=" . $token_reset;
-            
-            // Prepara email
-            $assunto = "Bem-vindo à Plataforma PIP 2026 - Complete seu Cadastro!";
-            $corpo_html = $this->gerarEmailHTML($usuario, $link_acesso);
-            
-            // Envia email
-            $enviado = $this->enviarEmail($usuario['email'], $assunto, $corpo_html);
-            
-            if ($enviado) {
-                // Registra que notificação foi enviada
-                $sql = "UPDATE usuarios_importacao 
-                        SET email_notificacao_enviado = 1, 
-                            data_email_notificacao = NOW() 
-                        WHERE usuario_id = ?";
-                $stmt = $this->pdo->prepare($sql);
-                $stmt->execute([$usuario_id]);
-                
-                // Log de notificação
-                $this->logAcao('notificacao_enviada', $usuario_id, null, 
-                    "Notificação enviada para: {$usuario['email']}", 'sucesso');
-                
-                return [
-                    'sucesso' => true,
-                    'mensagem' => 'Notificação enviada com sucesso',
-                    'email' => $usuario['email']
-                ];
-            } else {
-                throw new Exception("Falha ao enviar email");
-            }
-            
-        } catch (Exception $e) {
-            $this->logAcao('notificacao_enviada', $usuario_id ?? null, null, 
-                "Erro ao enviar notificação: {$e->getMessage()}", 'erro');
-            
-            return [
-                'sucesso' => false,
-                'mensagem' => $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
-     * Envia notificação em LOTE para todos os empreendedores não notificados
-     */
-    public function enviarNotificacaoEmLote() {
-        try {
-            // Busca usuários que ainda não foram notificados
-            $sql = "SELECT usuario_id FROM usuarios_importacao 
-                    WHERE email_notificacao_enviado = 0 
-                    ORDER BY data_importacao ASC
-                    LIMIT 100"; // Processa 100 por vez
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute();
-            $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            $enviados = 0;
-            $erros = 0;
-            
-            foreach ($usuarios as $user) {
-                $resultado = $this->enviarNotificacao($user['usuario_id']);
-                if ($resultado['sucesso']) {
-                    $enviados++;
-                } else {
-                    $erros++;
-                }
-            }
-            
-            return [
-                'sucesso' => true,
-                'total_processados' => count($usuarios),
-                'enviados' => $enviados,
-                'erros' => $erros
-            ];
-            
-        } catch (Exception $e) {
-            return [
-                'sucesso' => false,
-                'mensagem' => $e->getMessage()
-            ];
-        }
-    }
-    
-    /**
-     * Registra o primeiro acesso de um usuário importado
-     * Chamado quando o usuário faz login
-     */
-    public function registrarPrimeiroAcesso($usuario_id) {
-        try {
-            $sql = "UPDATE usuarios_importacao 
-                    SET status_atualizacao = 'acessou', 
-                        data_primeiro_acesso = NOW() 
-                    WHERE usuario_id = ? AND status_atualizacao = 'nao_acessou'";
-            
-            $stmt = $this->pdo->prepare($sql);
-            $result = $stmt->execute([$usuario_id]);
-            
-            if ($result && $stmt->rowCount() > 0) {
-                $this->logAcao('cadastro_atualizado', $usuario_id, null, 
-                    "Primeiro acesso registrado", 'sucesso');
-            }
-            
-        } catch (Exception $e) {
-            error_log("Erro ao registrar primeiro acesso: {$e->getMessage()}");
-        }
-    }
-    
-    /**
-     * Registra quando um usuário atualiza seu cadastro
-     * Chamado ao final de cada processarEtapa
-     */
-    public function registrarAtualizacaoCadastro($usuario_id, $etapa) {
-        try {
-            $sql = "UPDATE usuarios_importacao 
-                    SET status_atualizacao = 'atualizou_cadastro', 
-                        data_ultima_atualizacao = NOW(),
-                        observacoes = CONCAT(IFNULL(observacoes, ''), 
-                        '\nEtapa ', ?, ' atualizada em ', NOW()) 
-                    WHERE usuario_id = ?";
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$etapa, $usuario_id]);
-            
-            $this->logAcao('cadastro_atualizado', $usuario_id, null, 
-                "Etapa $etapa atualizada", 'sucesso');
-            
-        } catch (Exception $e) {
-            error_log("Erro ao registrar atualização: {$e->getMessage()}");
-        }
-    }
-    
-    /**
-     * Gera relatório de engajamento dos empreendedores importados
-     */
-    public function gerarRelatorioEngajamento() {
-        try {
-            $sql = "SELECT 
-                        COUNT(*) as total,
-                        SUM(CASE WHEN status_atualizacao = 'nao_acessou' THEN 1 ELSE 0 END) as nao_acessaram,
-                        SUM(CASE WHEN status_atualizacao = 'acessou' THEN 1 ELSE 0 END) as acessaram,
-                        SUM(CASE WHEN status_atualizacao = 'atualizou_cadastro' THEN 1 ELSE 0 END) as atualizaram,
-                        SUM(CASE WHEN email_notificacao_enviado = 1 THEN 1 ELSE 0 END) as notificados
-                    FROM usuarios_importacao";
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute();
-            $dados = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            // Calcula porcentagens
-            $total = $dados['total'] ?? 0;
-            
-            return [
-                'total' => $total,
-                'nao_acessaram' => $dados['nao_acessaram'] ?? 0,
-                'acessaram' => $dados['acessaram'] ?? 0,
-                'atualizaram' => $dados['atualizaram'] ?? 0,
-                'notificados' => $dados['notificados'] ?? 0,
-                'percentuais' => [
-                    'nao_acessaram' => $total > 0 ? round(($dados['nao_acessaram'] / $total) * 100, 2) : 0,
-                    'acessaram' => $total > 0 ? round(($dados['acessaram'] / $total) * 100, 2) : 0,
-                    'atualizaram' => $total > 0 ? round(($dados['atualizaram'] / $total) * 100, 2) : 0
-                ]
-            ];
-            
-        } catch (Exception $e) {
-            return ['erro' => $e->getMessage()];
-        }
-    }
-    
-    /**
-     * Lista usuários por status
-     */
-    public function listarPorStatus($status = 'nao_acessou', $limite = 50) {
-        try {
-            $sql = "SELECT u.id, u.nome, u.email, ui.status_atualizacao, 
-                           ui.data_importacao, ui.data_primeiro_acesso, 
-                           ui.data_ultima_atualizacao, ui.email_notificacao_enviado
-                    FROM usuarios_importacao ui
-                    JOIN usuarios u ON ui.usuario_id = u.id
-                    WHERE ui.status_atualizacao = ?
-                    ORDER BY ui.data_importacao ASC
-                    LIMIT ?";
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$status, $limite]);
-            
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-        } catch (Exception $e) {
-            return [];
-        }
-    }
-    
-    // ===== MÉTODOS PRIVADOS =====
-    
-    private function buscarUsuario($usuario_id) {
-        $sql = "SELECT id, nome, email FROM usuarios WHERE id = ?";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$usuario_id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-    
-    private function buscarImportacao($usuario_id) {
-        $sql = "SELECT * FROM usuarios_importacao WHERE usuario_id = ?";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$usuario_id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-    
-    private function gerarTokenReset($usuario_id) {
-        $token = bin2hex(random_bytes(32));
-        $hash_token = hash('sha256', $token);
-        $expira = date('Y-m-d H:i:s', strtotime('+24 hours'));
-        
-        $sql = "UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$hash_token, $expira, $usuario_id]);
-        
-        return $token;
-    }
-    
-    private function gerarEmailHTML($usuario, $link_acesso) {
-        $nome = $usuario['nome'] ?? 'Empreendedor';
-        
-        return "
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <style>
-                body { font-family: Arial, sans-serif; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px; }
-                .header { background: #4CAF50; color: white; padding: 20px; text-align: center; }
-                .content { background: white; padding: 20px; margin-top: 20px; }
-                .cta { background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; 
-                       border-radius: 4px; display: inline-block; margin-top: 20px; }
-                .footer { margin-top: 20px; font-size: 12px; color: #666; }
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <div class='header'>
-                    <h1>🎉 Bem-vindo à Plataforma PIP 2026!</h1>
-                </div>
-                
-                <div class='content'>
-                    <p>Olá <strong>$nome</strong>,</p>
-                    
-                    <p>Você foi incluído na <strong>Plataforma de Impacto Positivo 2026</strong> com sucesso!</p>
-                    
-                    <p>Agora você pode:</p>
-                    <ul>
-                        <li>Atualizar seus dados de empreendedor</li>
-                        <li>Registrar seus negócios de impacto</li>
-                        <li>Conectar com outros empreendedores</li>
-                        <li>Acessar recursos e ferramentas</li>
-                    </ul>
-                    
-                    <p><strong>Clique no botão abaixo para acessar sua conta:</strong></p>
-                    
-                    <a href='$link_acesso' class='cta'>Acessar Minha Conta</a>
-                    
-                    <p style='margin-top: 20px; font-size: 12px;'>
-                        Link expira em 24 horas. Se tiver dúvidas, entre em contato com nosso suporte.
-                    </p>
-                </div>
-                
-                <div class='footer'>
-                    <p>PIP 2026 - Plataforma de Impacto Positivo</p>
-                    <p>© 2026 - Todos os direitos reservados</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        ";
-    }
-    
-    private function enviarEmail($para, $assunto, $corpo_html) {
-        require_once 'PHPMailer/PHPMailer.php';
-        require_once 'PHPMailer/SMTP.php';
-        require_once 'PHPMailer/Exception.php';
-        
-        $mail = new PHPMailer\PHPMailer\PHPMailer();
-        
-        try {
-            $mail->isSMTP();
-            $mail->Host = 'smtp.seuservidor.com';
-            $mail->SMTPAuth = true;
-            $mail->Username = 'seu_email@seuservidor.com';
-            $mail->Password = 'sua_senha';
-            $mail->SMTPSecure = 'tls';
-            $mail->Port = 587;
-            
-            $mail->setFrom($this->email_remetente, $this->nome_remetente);
-            $mail->addAddress($para);
-            $mail->Subject = $assunto;
-            $mail->isHTML(true);
-            $mail->Body = $corpo_html;
-            
-            return $mail->send();
-            
-        } catch (Exception $e) {
-            error_log("Erro ao enviar email: " . $mail->ErrorInfo);
-            return false;
-        }
-    }
-    
-    private function logAcao($tipo_acao, $usuario_id, $negocio_id, $descricao, $resultado) {
-        try {
-            $sql = "INSERT INTO importacao_log 
-                    (tipo_acao, usuario_id, negocio_id, descricao, resultado, data_acao) 
-                    VALUES (?, ?, ?, ?, ?, NOW())";
-            
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$tipo_acao, $usuario_id, $negocio_id, $descricao, $resultado]);
-            
-        } catch (Exception $e) {
-            error_log("Erro ao registrar log: {$e->getMessage()}");
-        }
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+$possibleAppPaths = [
+    __DIR__ . '/../app',
+    __DIR__ . '/../../app',
+    __DIR__ . '/app',
+];
+
+$appBase = null;
+foreach ($possibleAppPaths as $p) {
+    if (is_dir($p)) {
+        $appBase = realpath($p);
+        break;
     }
 }
 
-// ===== EXEMPLOS DE USO =====
-//
-// 1. Enviar notificação para um usuário específico:
-//    $gerenciador = new GerenciadorNotificacoes($pdo);
-//    $resultado = $gerenciador->enviarNotificacao($usuario_id);
-//
-// 2. Enviar notificações em lote:
-//    $resultado = $gerenciador->enviarNotificacaoEmLote();
-//
-// 3. Registrar primeiro acesso (em login.php):
-//    if ($login_bem_sucedido) {
-//        $gerenciador->registrarPrimeiroAcesso($_SESSION['usuario_id']);
-//    }
-//
-// 4. Registrar atualização de cadastro (em processar_etapa1.php):
-//    $gerenciador->registrarAtualizacaoCadastro($_SESSION['usuario_id'], 1);
-//
-// 5. Gerar relatório:
-//    $relatorio = $gerenciador->gerarRelatorioEngajamento();
-//
+if ($appBase === null) {
+    die('Erro: pasta app não encontrada.');
+}
+
+require_once $appBase . '/helpers/auth.php';
+require_once $appBase . '/helpers/mail.php';
+require_once $appBase . '/helpers/render.php';
+
+require_admin_login();
+
+$config = require $appBase . '/config/db.php';
+
+try {
+    $pdo = new PDO(
+        "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
+        $config['user'],
+        $config['pass'],
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]
+    );
+} catch (PDOException $e) {
+    die('Erro ao conectar ao banco de dados: ' . $e->getMessage());
+}
+
+$pageTitle = 'Gerenciar notificações';
+$mensagem = '';
+$filtro = trim($_GET['filtro'] ?? 'pendentes');
+$busca = trim($_GET['busca'] ?? '');
+$origemSelecionada = trim($_GET['origem_importacao'] ?? $_POST['origem_importacao'] ?? '');
+
+function montarEmailPrimeiroAcesso(): string
+{
+    return '
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #243328; line-height: 1.6; max-width: 640px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e7ece8; border-radius: 10px; overflow: hidden;">
+
+        <div style="padding: 32px 28px 10px 28px; text-align: center; border-bottom: 1px solid #e7ece8;">
+            <h1 style="margin: 0; color: #1D3427; font-size: 28px; line-height: 1.2;">
+                Não perca sua vitrine na Impactos Positivos
+            </h1>
+            <p style="margin: 14px 0 0 0; color: #5B6B63; font-size: 16px;">
+                Agora, falta só um passo para continuar com a gente em uma plataforma ainda mais completa.
+            </p>
+        </div>
+
+        <div style="padding: 28px;">
+            <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
+                Olá, <strong>{{nome}}</strong>,
+            </p>
+
+            <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
+                Você já faz parte da vitrine de negócios da <strong>Impactos Positivos</strong>.
+            </p>
+
+            <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
+                Este ano, estamos evoluindo para uma plataforma mais completa, pensada para ampliar a visibilidade dos negócios, gerar conexões e criar novas oportunidades para quem está transformando a economia.
+            </p>
+
+            <p style="margin: 0 0 22px 0; font-size: 16px; color: #31443A;">
+                Para seguir com a gente, falta apenas um passo:
+            </p>
+
+            <div style="text-align: center; margin: 0 0 28px 0;">
+                <a href="{{link_painel}}" style="background-color: #1D4F3A; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; font-weight: bold; display: inline-block;">
+                    Atualizar cadastro
+                </a>
+            </div>
+
+            <p style="margin: 0 0 14px 0; font-size: 16px; color: #31443A;">
+                O processo é simples e gratuito:
+            </p>
+
+            <ul style="padding-left: 20px; margin: 0 0 24px 0; color: #31443A; font-size: 15px;">
+                <li style="margin-bottom: 8px;">Acesse a plataforma.</li>
+                <li style="margin-bottom: 8px;">Defina sua nova senha <small>(Link <strong>"Esqueceu a Senha?"</strong>)</small></li>
+                <li style="margin-bottom: 8px;">Preencha seus dados na nova plataforma.</li>
+                <li style="margin-bottom: 8px;">Complete o perfil do seu negócio.</li>
+            </ul>
+
+            <div style="text-align: center; margin: 0 0 28px 0;">
+                <a href="{{link_painel}}" style="color: #0B6B74; font-size: 15px; font-weight: bold; text-decoration: none;">
+                    Atualizar cadastro
+                </a>
+            </div>
+
+            <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
+                Ao atualizar seu cadastro, seu negócio segue ativo e preparado para aproveitar tudo o que estamos construindo para 2026.
+            </p>
+
+            <p style="margin: 0 0 18px 0; font-size: 15px; color: #31443A;">
+                Se precisar de apoio, nosso time está disponível para te ajudar.
+                Fale com o PIP pelo WhatsApp:
+                <a href="https://api.whatsapp.com/send?phone=551123673170&text=Ol%C3%A1%2C%20seja%20bem-vindo%21%20Em%20que%20podemos%20ajudar%3F" style="color: #0B6B74; font-weight: bold; text-decoration: none;" target="_blank">
+                    clique aqui para conversar
+                </a>.
+            </p>
+
+            <p style="margin: 0 0 12px 0; font-size: 15px; color: #31443A;">
+                Juntos, ampliamos o que o mundo tem de melhor.
+            </p>
+
+            <p style="margin: 0; font-size: 15px; color: #31443A;">
+                <strong>Equipe Impactos Positivos</strong>
+            </p>
+        </div>
+    </div>
+    ';
+}
+
+$stmtOrigens = $pdo->query("
+    SELECT DISTINCT origem_importacao
+    FROM empreendedores
+    WHERE origem_importacao IS NOT NULL
+      AND origem_importacao != ''
+    ORDER BY origem_importacao ASC
+");
+$origensImportacao = $stmtOrigens->fetchAll(PDO::FETCH_COLUMN);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $acao = $_POST['acao'] ?? '';
+
+    try {
+        if ($acao === 'enviar_individual') {
+            $empreendedorId = (int)($_POST['empreendedor_id'] ?? 0);
+
+            if ($empreendedorId <= 0) {
+                throw new Exception('Empreendedor inválido.');
+            }
+
+            $stmt = $pdo->prepare("
+                SELECT
+                    e.id,
+                    e.nome,
+                    e.sobrenome,
+                    e.email,
+                    e.primeiro_acesso_pendente,
+                    e.notificacao_primeiro_acesso_enviada,
+                    e.notificacao_primeiro_acesso_enviada_em,
+                    e.origem_importacao,
+                    COUNT(n.id) AS total_negocios
+                FROM empreendedores e
+                LEFT JOIN negocios n ON n.empreendedor_id = e.id
+                WHERE e.id = ?
+                  AND e.origem_importacao IS NOT NULL
+                  AND e.origem_importacao != ''
+                GROUP BY
+                    e.id,
+                    e.nome,
+                    e.sobrenome,
+                    e.email,
+                    e.primeiro_acesso_pendente,
+                    e.notificacao_primeiro_acesso_enviada,
+                    e.notificacao_primeiro_acesso_enviada_em,
+                    e.origem_importacao
+                LIMIT 1
+            ");
+            $stmt->execute([$empreendedorId]);
+            $emp = $stmt->fetch();
+
+            if (!$emp) {
+                throw new Exception('Empreendedor importado não encontrado.');
+            }
+
+            if ((int)$emp['primeiro_acesso_pendente'] !== 1) {
+                throw new Exception('Este cadastro já está ativo e não pode receber nova notificação por esta tela.');
+            }
+
+            if (empty($emp['email'])) {
+                throw new Exception('Empreendedor sem e-mail cadastrado.');
+            }
+
+            $nomeCompleto = trim(($emp['nome'] ?? '') . ' ' . ($emp['sobrenome'] ?? ''));
+            if ($nomeCompleto === '') {
+                $nomeCompleto = 'Empreendedor(a)';
+            }
+
+            $subject = 'Atualize seu cadastro e continue na vitrine da Impactos Positivos 2026';
+            $bodyHtml = montarEmailPrimeiroAcesso();
+
+            $rendered = render_email_from_db($subject, $bodyHtml, [
+                'nome' => $nomeCompleto,
+                'email' => $emp['email'],
+                'link_painel' => get_base_url() . '/login.php',
+                'link_admin' => get_base_url() . '/admin/gerenciar_notificacoes.php',
+                'ano' => date('Y')
+            ]);
+
+            $bodyAlt = strip_tags($rendered['bodyHtml'] ?? $bodyHtml);
+
+            send_mail(
+                $emp['email'],
+                $nomeCompleto,
+                $rendered['subject'] ?? $subject,
+                $rendered['bodyHtml'] ?? $bodyHtml,
+                $bodyAlt
+            );
+
+            $stmtUpdate = $pdo->prepare("
+                UPDATE empreendedores
+                SET notificacao_primeiro_acesso_enviada = 1,
+                    notificacao_primeiro_acesso_enviada_em = NOW()
+                WHERE id = ?
+            ");
+            $stmtUpdate->execute([$emp['id']]);
+
+            $mensagem = "<div class='alert alert-success alert-dismissible fade show' role='alert'>
+                            <i class='bi bi-envelope-check me-1'></i>
+                            E-mail enviado com sucesso para <strong>" . htmlspecialchars($emp['email']) . "</strong>.
+                            <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                         </div>";
+
+        } elseif ($acao === 'enviar_lote') {
+            $permitirReenvio = isset($_POST['permitir_reenvio']) ? 1 : 0;
+            $origemSelecionada = trim($_POST['origem_importacao'] ?? '');
+
+            if ($origemSelecionada === '') {
+                throw new Exception('Selecione um arquivo de origem antes de enviar em lote.');
+            }
+
+            $sqlLote = "
+                SELECT
+                    e.id,
+                    e.nome,
+                    e.sobrenome,
+                    e.email,
+                    e.primeiro_acesso_pendente,
+                    e.notificacao_primeiro_acesso_enviada,
+                    e.notificacao_primeiro_acesso_enviada_em,
+                    e.origem_importacao
+                FROM empreendedores e
+                WHERE e.origem_importacao IS NOT NULL
+                  AND e.origem_importacao != ''
+                  AND e.origem_importacao = ?
+                  AND e.primeiro_acesso_pendente = 1
+                  AND e.email IS NOT NULL
+                  AND e.email != ''
+            ";
+
+            if (!$permitirReenvio) {
+                $sqlLote .= " AND e.notificacao_primeiro_acesso_enviada = 0 ";
+            }
+
+            $sqlLote .= " ORDER BY e.id ASC ";
+
+            $stmtLote = $pdo->prepare($sqlLote);
+            $stmtLote->execute([$origemSelecionada]);
+            $empreendedoresLote = $stmtLote->fetchAll();
+
+            if (!$empreendedoresLote) {
+                $mensagem = "<div class='alert alert-warning alert-dismissible fade show' role='alert'>
+                                Nenhum cadastro importado pendente encontrado para o arquivo <strong>" . htmlspecialchars($origemSelecionada) . "</strong>.
+                                <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                             </div>";
+            } else {
+                $enviados = 0;
+                $falhas = 0;
+                $errosDetalhados = [];
+                $emailsFalharam = [];
+
+                $stmtUpdate = $pdo->prepare("
+                    UPDATE empreendedores
+                    SET notificacao_primeiro_acesso_enviada = 1,
+                        notificacao_primeiro_acesso_enviada_em = NOW()
+                    WHERE id = ?
+                ");
+
+                foreach ($empreendedoresLote as $emp) {
+                    try {
+                        $nomeCompleto = trim(($emp['nome'] ?? '') . ' ' . ($emp['sobrenome'] ?? ''));
+                        if ($nomeCompleto === '') {
+                            $nomeCompleto = 'Empreendedor(a)';
+                        }
+
+                        $subject = 'Sua conta na Plataforma Impactos Positivos foi atualizada';
+                        $bodyHtml = montarEmailPrimeiroAcesso();
+
+                        $rendered = render_email_from_db($subject, $bodyHtml, [
+                            'nome' => $nomeCompleto,
+                            'email' => $emp['email'],
+                            'link_painel' => get_base_url() . '/login.php',
+                            'link_admin' => get_base_url() . '/admin/gerenciar_notificacoes.php',
+                            'ano' => date('Y')
+                        ]);
+
+                        $bodyAlt = strip_tags($rendered['bodyHtml'] ?? $bodyHtml);
+
+                        $enviado = send_mail(
+                            $emp['email'],
+                            $nomeCompleto,
+                            $rendered['subject'] ?? $subject,
+                            $rendered['bodyHtml'] ?? $bodyHtml,
+                            $bodyAlt
+                        );
+
+                        if ($enviado !== true) {
+                            throw new Exception('Falha ao enviar e-mail para ' . $emp['email']);
+                        }
+
+                        $stmtUpdate->execute([$emp['id']]);
+                        $enviados++;
+
+                    } catch (Throwable $mailError) {
+                        $falhas++;
+                        $emailsFalharam[] = $emp['email'] ?? 'sem email';
+                        $errosDetalhados[] = ($emp['email'] ?? 'sem email') . ' - ' . $mailError->getMessage();
+                    }
+                }
+
+                $mensagem = "
+                    <div class='alert alert-success alert-dismissible fade show' role='alert'>
+                        <i class='bi bi-send-check me-1'></i>
+                        <strong>Envio em lote concluído.</strong><br>
+                        <strong>Enviados:</strong> {$enviados}<br>
+                        <strong>Falhas:</strong> {$falhas}
+                        <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                    </div>
+                ";
+
+                if (!empty($emailsFalharam)) {
+                    $mensagem .= "
+                        <div class='alert alert-warning mt-3'>
+                            <strong>E-mails com falha (para reenviar depois):</strong><br>
+                            " . nl2br(htmlspecialchars(implode("\n", $emailsFalharam))) . "
+                        </div>
+                    ";
+                }
+
+                if (!empty($errosDetalhados)) {
+                    $mensagem .= "
+                        <div class='alert alert-warning mt-3'>
+                            <strong>Detalhes das falhas:</strong><br>
+                            " . nl2br(htmlspecialchars(implode("\n", $errosDetalhados))) . "
+                        </div>
+                    ";
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        $mensagem = "<div class='alert alert-danger alert-dismissible fade show' role='alert'>
+                        <i class='bi bi-exclamation-triangle me-1'></i>
+                        Erro: " . htmlspecialchars($e->getMessage()) . "
+                        <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                     </div>";
+    }
+}
+
+$where = [];
+$params = [];
+
+$where[] = "e.origem_importacao IS NOT NULL";
+$where[] = "e.origem_importacao != ''";
+
+if ($filtro === 'pendentes') {
+    $where[] = "e.primeiro_acesso_pendente = 1";
+} elseif ($filtro === 'nao_notificados') {
+    $where[] = "e.primeiro_acesso_pendente = 1";
+    $where[] = "e.notificacao_primeiro_acesso_enviada = 0";
+} elseif ($filtro === 'notificados') {
+    $where[] = "e.notificacao_primeiro_acesso_enviada = 1";
+} elseif ($filtro === 'ativos') {
+    $where[] = "e.primeiro_acesso_pendente = 0";
+}
+
+if ($origemSelecionada !== '') {
+    $where[] = "e.origem_importacao = ?";
+    $params[] = $origemSelecionada;
+}
+
+if ($busca !== '') {
+    $where[] = "(e.nome LIKE ? OR e.sobrenome LIKE ? OR e.email LIKE ? OR e.cpf LIKE ?)";
+    $params[] = "%{$busca}%";
+    $params[] = "%{$busca}%";
+    $params[] = "%{$busca}%";
+    $params[] = "%{$busca}%";
+}
+
+$sql = "
+    SELECT
+        e.id,
+        e.nome,
+        e.sobrenome,
+        e.email,
+        e.cpf,
+        e.celular,
+        e.primeiro_acesso_pendente,
+        e.notificacao_primeiro_acesso_enviada,
+        e.notificacao_primeiro_acesso_enviada_em,
+        e.origem_importacao,
+        COUNT(n.id) AS total_negocios
+    FROM empreendedores e
+    LEFT JOIN negocios n ON n.empreendedor_id = e.id
+    WHERE " . implode(' AND ', $where) . "
+    GROUP BY
+        e.id,
+        e.nome,
+        e.sobrenome,
+        e.email,
+        e.cpf,
+        e.celular,
+        e.primeiro_acesso_pendente,
+        e.notificacao_primeiro_acesso_enviada,
+        e.notificacao_primeiro_acesso_enviada_em,
+        e.origem_importacao
+    ORDER BY e.id DESC
+";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$empreendedores = $stmt->fetchAll();
+
+$stmtResumo = $pdo->query("
+    SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN origem_importacao IS NOT NULL AND origem_importacao != '' AND primeiro_acesso_pendente = 1 THEN 1 ELSE 0 END) AS pendentes,
+        SUM(CASE WHEN origem_importacao IS NOT NULL AND origem_importacao != '' AND primeiro_acesso_pendente = 0 THEN 1 ELSE 0 END) AS ativos,
+        SUM(CASE WHEN origem_importacao IS NOT NULL AND origem_importacao != '' AND notificacao_primeiro_acesso_enviada = 1 THEN 1 ELSE 0 END) AS notificados,
+        SUM(CASE WHEN origem_importacao IS NOT NULL AND origem_importacao != '' AND primeiro_acesso_pendente = 1 AND notificacao_primeiro_acesso_enviada = 0 THEN 1 ELSE 0 END) AS nao_notificados
+    FROM empreendedores
+    WHERE origem_importacao IS NOT NULL
+      AND origem_importacao != ''
+");
+$resumo = $stmtResumo->fetch();
+
+require_once $appBase . '/views/admin/header.php';
 ?>
+
+<div class="container-fluid py-4">
+
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#1E3425;">Gerenciar notificações</h4>
+            <small style="color:#6c8070;">Tela exclusiva para cadastros importados.</small>
+        </div>
+    </div>
+
+    <?= $mensagem ?>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card p-3 border-0 shadow-sm h-100">
+                <div class="text-muted small mb-1">Importados</div>
+                <div class="fs-3 fw-bold"><?= (int)($resumo['total'] ?? 0) ?></div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card p-3 border-0 shadow-sm h-100">
+                <div class="text-muted small mb-1">Pendentes</div>
+                <div class="fs-3 fw-bold text-warning"><?= (int)($resumo['pendentes'] ?? 0) ?></div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card p-3 border-0 shadow-sm h-100">
+                <div class="text-muted small mb-1">Cadastros ativos</div>
+                <div class="fs-3 fw-bold text-success"><?= (int)($resumo['ativos'] ?? 0) ?></div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-3">
+            <div class="card p-3 border-0 shadow-sm h-100">
+                <div class="text-muted small mb-1">Pendentes não notificados</div>
+                <div class="fs-3 fw-bold" style="color:#97A327;"><?= (int)($resumo['nao_notificados'] ?? 0) ?></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Envio em lote por arquivo</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" onsubmit="return confirm('Deseja iniciar o envio em lote para o arquivo selecionado?');">
+                <input type="hidden" name="acao" value="enviar_lote">
+
+                <p class="text-muted mb-3">
+                    O envio em lote notificará apenas os <strong>cadastros importados com acesso pendente</strong> do arquivo selecionado.
+                </p>
+
+                <div class="mb-3">
+                    <label class="form-label">Arquivo de origem</label>
+                    <select name="origem_importacao" class="form-select" required>
+                        <option value="">Selecione um arquivo</option>
+                        <?php foreach ($origensImportacao as $origem): ?>
+                            <option value="<?= htmlspecialchars($origem) ?>" <?= $origemSelecionada === $origem ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($origem) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="permitir_reenvio" id="permitirReenvio" value="1">
+                    <label class="form-check-label" for="permitirReenvio">
+                        Reenviar também para quem ainda não acessou a plataforma
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-send me-1"></i> Enviar notificações do arquivo
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="filtro" class="form-select">
+                        <option value="pendentes" <?= $filtro === 'pendentes' ? 'selected' : '' ?>>Acesso pendente</option>
+                        <option value="nao_notificados" <?= $filtro === 'nao_notificados' ? 'selected' : '' ?>>Pendentes não notificados</option>
+                        <option value="notificados" <?= $filtro === 'notificados' ? 'selected' : '' ?>>Já notificados</option>
+                        <option value="ativos" <?= $filtro === 'ativos' ? 'selected' : '' ?>>Cadastro ativo</option>
+                        <option value="todos" <?= $filtro === 'todos' ? 'selected' : '' ?>>Todos os importados</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Arquivo de origem</label>
+                    <select name="origem_importacao" class="form-select">
+                        <option value="">Todos os arquivos</option>
+                        <?php foreach ($origensImportacao as $origem): ?>
+                            <option value="<?= htmlspecialchars($origem) ?>" <?= $origemSelecionada === $origem ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($origem) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" name="busca" class="form-control" value="<?= htmlspecialchars($busca) ?>" placeholder="Nome, email ou CPF">
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <button type="submit" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-funnel me-1"></i> Aplicar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Cadastros importados</h5>
+        </div>
+        <div class="card-body">
+            <?php if (empty($empreendedores)): ?>
+                <div class="alert alert-light border mb-0">Nenhum cadastro importado encontrado com os filtros informados.</div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Empreendedor</th>
+                                <th>Contato</th>
+                                <th>Negócios</th>
+                                <th>Status</th>
+                                <th>Notificação</th>
+                                <th>Origem</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($empreendedores as $emp): ?>
+                                <?php
+                                    $nomeCompleto = trim(($emp['nome'] ?? '') . ' ' . ($emp['sobrenome'] ?? ''));
+                                    $pendente = ((int)$emp['primeiro_acesso_pendente'] === 1);
+                                    $statusAcesso = $pendente ? 'Pendente' : 'Cadastro ativo';
+                                    $notificado = ((int)$emp['notificacao_primeiro_acesso_enviada'] === 1);
+                                ?>
+                                <tr>
+                                    <td><?= (int)$emp['id'] ?></td>
+                                    <td>
+                                        <div class="fw-semibold"><?= htmlspecialchars($nomeCompleto !== '' ? $nomeCompleto : 'Sem nome') ?></div>
+                                        <div class="text-muted small">CPF: <?= htmlspecialchars($emp['cpf'] ?? '-') ?></div>
+                                    </td>
+                                    <td>
+                                        <div><?= htmlspecialchars($emp['email'] ?? '-') ?></div>
+                                        <div class="text-muted small"><?= htmlspecialchars($emp['celular'] ?? '-') ?></div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark"><?= (int)$emp['total_negocios'] ?> negócio(s)</span>
+                                    </td>
+                                    <td>
+                                        <?php if ($pendente): ?>
+                                            <span class="badge text-bg-warning"><?= $statusAcesso ?></span>
+                                        <?php else: ?>
+                                            <span class="badge text-bg-success"><?= $statusAcesso ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($notificado): ?>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle">Enviado</span>
+                                            <div class="text-muted small mt-1">
+                                                <?= !empty($emp['notificacao_primeiro_acesso_enviada_em']) ? date('d/m/Y H:i', strtotime($emp['notificacao_primeiro_acesso_enviada_em'])) : '-' ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Não enviado</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($emp['origem_importacao'] ?? '-') ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php if ($pendente): ?>
+                                            <form method="post" class="d-inline" onsubmit="return confirm('Enviar notificação para <?= htmlspecialchars(addslashes($nomeCompleto)) ?>?');">
+                                                <input type="hidden" name="acao" value="enviar_individual">
+                                                <input type="hidden" name="empreendedor_id" value="<?= (int)$emp['id'] ?>">
+                                                <input type="hidden" name="origem_importacao" value="<?= htmlspecialchars($origemSelecionada) ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-envelope me-1"></i>
+                                                    <?= $notificado ? 'Reenviar' : 'Enviar' ?>
+                                                </button>
+                                            </form>
+                                        <?php else: ?>
+                                            <span class="text-muted small">Sem ação</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+</div>
+
+<?php require_once $appBase . '/views/admin/footer.php'; ?>

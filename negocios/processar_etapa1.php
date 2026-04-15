@@ -5,10 +5,6 @@ session_start();
 require_once __DIR__ . '/../app/helpers/auth.php';
 require_once __DIR__ . '/../app/helpers/functions.php';
 
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
-
 // Apenas empreendedores podem acessar
 require_role(['empreendedor']);
 

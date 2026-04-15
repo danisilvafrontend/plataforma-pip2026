@@ -1,7 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 
 $config = require __DIR__ . '/app/config/db.php';
 $pdo = new PDO(
@@ -47,6 +45,12 @@ if (!is_array($especialidades)) $especialidades = [];
 include __DIR__ . '/app/views/public/header_public.php';
 ?>
 
+<!-- <div class="container pt-4">
+    <a href="parceiros.php" class="btn btn-light rounded-pill px-4 py-2 fw-semibold">
+        <i class="bi bi-arrow-left me-2"></i> Voltar para parceiros
+    </a>
+</div> -->
+
 <!-- BANNER / CAPA -->
 <?php if (!empty($parceiro['imagem_capa_url'])): ?>
     <div class="w-100" style="height: 250px; background-image: url('<?= htmlspecialchars($parceiro['imagem_capa_url']) ?>'); background-size: cover; background-position: center; background-repeat: no-repeat;">
@@ -87,7 +91,7 @@ include __DIR__ . '/app/views/public/header_public.php';
                             <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-2 mb-2">
                                 <h1 class="fw-bold text-dark mb-0 fs-2"><?= htmlspecialchars($parceiro['nome_fantasia']) ?></h1>
                                 <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill px-3 py-2 ms-md-2" title="Parceiro Oficial">
-                                    <i class="bi bi-patch-check-fill me-1"></i> Parceiro Homologado
+                                    <i class="bi bi-patch-check-fill me-1"></i> Parceiro de Impacto Oficial
                                 </span>
                             </div>
 
@@ -225,5 +229,11 @@ include __DIR__ . '/app/views/public/header_public.php';
         </div>
     </div>
 </div>
-
+<div class="container mb-5">
+    <div class="text-center">
+        <a href="parceiros.php" class="btn btn-outline-secondary rounded-pill px-4 py-2 fw-semibold">
+            <i class="bi bi-arrow-left me-2"></i> Voltar para parceiros
+        </a>
+    </div>
+</div>
 <?php include __DIR__ . '/app/views/public/footer_public.php'; ?>

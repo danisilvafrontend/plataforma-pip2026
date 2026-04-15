@@ -4,9 +4,6 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: /login.php");
     exit;
 }
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
@@ -51,7 +48,32 @@ if (!empty($_FILES['logo_negocio']['name'])) {
         }
     }
 }
+// ====== Upload Imagem de Destaque (Capa Vitrine) ======
+$imagemDestaqueUrl = $apresentacao['imagem_destaque'] ?? null;
 
+if (!empty($_POST['remover_imagem_destaque'])) {
+    $imagemDestaqueUrl = null;
+}
+
+if (!empty($_FILES['imagem_destaque']['name'])) {
+    $fileTmp  = $_FILES['imagem_destaque']['tmp_name'];
+    $fileSize = $_FILES['imagem_destaque']['size'];
+    $fileType = mime_content_type($fileTmp);
+
+    if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp'])
+        && $fileSize <= 5 * 1024 * 1024) {
+        $destName   = uniqid('capa_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['imagem_destaque']['name']);
+        $targetDest = __DIR__ . '/../uploads/negocios/capas/' . $destName;
+        if (!is_dir(__DIR__ . '/../uploads/negocios/capas/')) {
+            mkdir(__DIR__ . '/../uploads/negocios/capas/', 0755, true);
+        }
+        if (move_uploaded_file($fileTmp, $targetDest)) {
+            $imagemDestaqueUrl = '/uploads/negocios/capas/' . $destName;
+        }
+    } else {
+        $_SESSION['errors_etapa5'][] = "A imagem de destaque deve ser JPG, PNG ou WebP e ter no máximo 5MB.";
+    }
+}
 // ====== Upload PDF ======
 $pdfUrl = $apresentacao['apresentacao_pdf'] ?? null;
 
@@ -194,7 +216,7 @@ foreach ($desafios as $d) {
 // ====== Insert/Update ======
 $stmt = $pdo->prepare("
     INSERT INTO negocio_apresentacao (
-        negocio_id, logo_negocio, frase_negocio, problema_resolvido, solucao_oferecida,
+        negocio_id, logo_negocio, imagem_destaque, frase_negocio, problema_resolvido, solucao_oferecida,
         video_pitch_url, apresentacao_pdf, apresentacao_video_url,
         galeria_imagens, inovacao, descricao_inovacao, inovacao_tecnologica,
         inovacao_produto, inovacao_servico, inovacao_modelo,
@@ -206,7 +228,7 @@ $stmt = $pdo->prepare("
         info_adicionais, info_adicionais_links,
         criado_em, atualizado_em
     ) VALUES (
-        :negocio_id, :logo, :frase, :problema_resolvido, :solucao_oferecida,
+        :negocio_id, :logo, :imagem_destaque, :frase, :problema_resolvido, :solucao_oferecida,
         :video_pitch, :pdf, :video_inst,
         :galeria, :inovacao, :desc_inovacao, :inovacao_tecnologica, :inovacao_produto,
         :inovacao_servico, :inovacao_modelo,
@@ -220,6 +242,7 @@ $stmt = $pdo->prepare("
     )
     ON DUPLICATE KEY UPDATE
         logo_negocio = VALUES(logo_negocio),
+        imagem_destaque = VALUES(imagem_destaque),
         frase_negocio = VALUES(frase_negocio),
         problema_resolvido = VALUES(problema_resolvido),
         solucao_oferecida = VALUES(solucao_oferecida),
@@ -252,6 +275,7 @@ $stmt = $pdo->prepare("
 
 $params = [
     'negocio_id'         => $negocio_id,
+    'imagem_destaque'    => $imagemDestaqueUrl,
     'logo'               => $logoUrl,
     'frase'              => $frase_negocio,
     'problema_resolvido' => $problema_resolvido,

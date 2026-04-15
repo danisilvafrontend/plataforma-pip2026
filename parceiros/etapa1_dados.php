@@ -1,8 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -31,157 +28,217 @@ if (!$parceiro) {
 include __DIR__ . '/../app/views/public/header_public.php'; 
 ?>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            
-            <!-- Progresso -->
-            <div class="mb-4">
-                <div class="d-flex justify-content-between text-muted small mb-2">
-                    <span class="fw-bold text-primary">Etapa 1: Dados Complementares</span>
-                    <span>1 de 6</span>
+<div class="container py-5 parceiro-step-shell">
+    <div class="parceiro-step-top mb-4 mb-lg-5">
+        <div class="parceiro-step-progress-card">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                <div>
+                    <span class="parceiro-step-kicker">Etapa 1 de 6</span>
+                    <h1 class="parceiro-step-title mb-1">Dados Complementares</h1>
+                    <p class="parceiro-step-subtitle mb-0">
+                        Complete as informações institucionais e os contatos da parceria.
+                    </p>
                 </div>
-                <div class="progress" style="height: 8px;">
-                    <div class="progress-bar bg-primary" role="progressbar" style="width: 16%;" aria-valuenow="16" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
+                <div class="parceiro-step-indicator">16%</div>
             </div>
 
-            <div class="card shadow-sm border-0 rounded-3">
-                <div class="card-body p-4 p-md-5">
-                    <h3 class="fw-bold text-dark mb-1">Complete o seu Perfil</h3>
-                    <p class="text-muted mb-4">Essas informações são importantes para a formalização da nossa parceria e geração automática do seu contrato.</p>
+            <div class="progress parceiro-step-progress" role="progressbar" aria-valuenow="16" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar bg-primary" style="width: 16%;"></div>
+            </div>
+        </div>
+    </div>
 
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-4">
+            <aside class="parceiro-step-aside">
+                <div class="parceiro-step-aside-card">
+                    <div class="parceiro-step-aside-title">
+                        <i class="bi bi-compass-fill"></i>
+                        Orientações desta etapa
+                    </div>
+                    <ul class="parceiro-step-aside-list">
+                        <li>Preencha os dados institucionais para formalização da parceria.</li>
+                        <li>Essas informações serão usadas nas próximas etapas e na geração automática do contrato.</li>
+                        <li>Revise com atenção os dados do representante legal e do contato operacional.</li>
+                    </ul>
+                </div>
+
+                <div class="parceiro-step-aside-card parceiro-step-aside-highlight">
+                    <div class="parceiro-step-aside-title">
+                        <i class="bi bi-envelope-paper-fill"></i>
+                        Comunicação da parceria
+                    </div>
+                    <p class="mb-0">
+                        Você poderá definir quem recebe comunicações institucionais e operacionais por e-mail e WhatsApp.
+                    </p>
+                </div>
+            </aside>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="parceiro-step-card">
+                <div class="parceiro-step-card-header">
+                    <div>
+                        <h2 class="parceiro-step-card-title mb-1">Complete o seu perfil</h2>
+                        <p class="parceiro-step-card-subtitle mb-0">
+                            Essas informações são importantes para a formalização da parceria e geração automática do contrato.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="parceiro-step-card-body">
                     <?php if (isset($_SESSION['erro_etapa1'])): ?>
-                        <div class="alert alert-danger d-flex align-items-center">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div class="alert alert-danger d-flex align-items-start gap-2 parceiro-step-alert">
+                            <i class="bi bi-exclamation-triangle-fill mt-1"></i>
                             <div><?= htmlspecialchars($_SESSION['erro_etapa1']) ?></div>
                         </div>
                         <?php unset($_SESSION['erro_etapa1']); ?>
                     <?php endif; ?>
 
                     <form method="POST" action="processar_etapa1.php">
-                    <input type="hidden" name="from" value="<?= htmlspecialchars($_GET['from'] ?? '') ?>">
-    
-                        <!-- DADOS DA INSTITUIÇÃO (Endereço) -->
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary">Endereço e Contato Institucional</h5>
-                        
-                        <div class="row">
-                            <!-- Os IDs aqui devem ser os mesmos que o seu scripts.js está esperando -->
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">CEP</label>
-                                <input type="text" name="cep" id="cep" class="form-control" value="<?= htmlspecialchars($parceiro['cep'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-8 mb-3">
-                                <label class="form-label fw-semibold">Rua / Logradouro</label>
-                                <input type="text" name="endereco_completo" id="rua" class="form-control" value="<?= htmlspecialchars($parceiro['endereco_completo'] ?? '') ?>">
-                            </div>
-                        </div>
+                        <input type="hidden" name="from" value="<?= htmlspecialchars($_GET['from'] ?? '') ?>">
 
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Cidade</label>
-                                <input type="text" name="cidade" id="municipio" class="form-control" value="<?= htmlspecialchars($parceiro['cidade'] ?? '') ?>">
+                        <section class="parceiro-step-section">
+                            <div class="parceiro-step-section-head">
+                                <h3 class="parceiro-step-section-title">Endereço e Contato Institucional</h3>
+                                <p class="parceiro-step-section-text">
+                                    Informe os dados de localização e contato principal da instituição.
+                                </p>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Estado (UF)</label>
-                                <input type="text" name="estado" id="estado" class="form-control" value="<?= htmlspecialchars($parceiro['estado'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">País</label>
-                                <input type="text" name="pais" class="form-control" value="<?= htmlspecialchars($parceiro['pais'] ?? 'Brasil') ?>">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Telefone Institucional</label>
-                                <input type="text" name="telefone_institucional" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['telefone_institucional'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Site</label>
-                                <input type="url" name="site" class="form-control" placeholder="https://..." value="<?= htmlspecialchars($parceiro['site'] ?? '') ?>">
-                            </div>
-                        </div>
 
-                        <!-- REPRESENTANTE LEGAL COMPLEMENTO -->
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-3">Representante Legal</h5>
-                        <p class="small text-muted mb-3">A pessoa que possui poderes para assinar a carta-acordo da parceria.</p>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label parceiro-step-label">CEP</label>
+                                    <input type="text" name="cep" id="cep" class="form-control" value="<?= htmlspecialchars($parceiro['cep'] ?? '') ?>">
+                                </div>
 
-                        <div class="row mb-4">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Cargo</label>
-                                <input type="text" name="rep_cargo" class="form-control" value="<?= htmlspecialchars($parceiro['rep_cargo'] ?? '') ?>">
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">E-mail do Representante</label>
-                                <input type="email" name="rep_email" class="form-control" value="<?= htmlspecialchars($parceiro['rep_email'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="rep_email_optin" name="rep_email_optin" value="1" <?= (!empty($parceiro['rep_email_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="rep_email_optin">Aceito receber atualizações via e-mail</label>
+                                <div class="col-md-8">
+                                    <label class="form-label parceiro-step-label">Rua / Logradouro</label>
+                                    <input type="text" name="endereco_completo" id="rua" class="form-control" value="<?= htmlspecialchars($parceiro['endereco_completo'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-step-label">Cidade</label>
+                                    <input type="text" name="cidade" id="municipio" class="form-control" value="<?= htmlspecialchars($parceiro['cidade'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-step-label">Estado (UF)</label>
+                                    <input type="text" name="estado" id="estado" class="form-control" value="<?= htmlspecialchars($parceiro['estado'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label parceiro-step-label">País</label>
+                                    <input type="text" name="pais" class="form-control" value="<?= htmlspecialchars($parceiro['pais'] ?? 'Brasil') ?>">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label parceiro-step-label">Telefone Institucional</label>
+                                    <input type="text" name="telefone_institucional" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['telefone_institucional'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label parceiro-step-label">Site</label>
+                                    <input type="url" name="site" class="form-control" placeholder="https://..." value="<?= htmlspecialchars($parceiro['site'] ?? '') ?>">
                                 </div>
                             </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold">Telefone / Celular</label>
-                                <input type="text" name="rep_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="rep_whatsapp_optin" name="rep_whatsapp_optin" value="1" <?= (!empty($parceiro['rep_whatsapp_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="rep_whatsapp_optin">Aceito receber novidades via WhatsApp</label>
+                        </section>
+
+                        <section class="parceiro-step-section">
+                            <div class="parceiro-step-section-head">
+                                <h3 class="parceiro-step-section-title">Representante Legal</h3>
+                                <p class="parceiro-step-section-text">
+                                    A pessoa com poderes para assinar a carta-acordo da parceria.
+                                </p>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label parceiro-step-label">Cargo</label>
+                                    <input type="text" name="rep_cargo" class="form-control" value="<?= htmlspecialchars($parceiro['rep_cargo'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label parceiro-step-label">E-mail do Representante</label>
+                                    <input type="email" name="rep_email" class="form-control" value="<?= htmlspecialchars($parceiro['rep_email'] ?? '') ?>">
+                                    <div class="form-check parceiro-step-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="rep_email_optin" name="rep_email_optin" value="1" <?= (!empty($parceiro['rep_email_optin'])) ? 'checked' : '' ?>>
+                                        <label class="form-check-label small text-muted" for="rep_email_optin">Aceito receber atualizações via e-mail</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label parceiro-step-label">Telefone / Celular</label>
+                                    <input type="text" name="rep_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?>">
+                                    <div class="form-check parceiro-step-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="rep_whatsapp_optin" name="rep_whatsapp_optin" value="1" <?= (!empty($parceiro['rep_whatsapp_optin'])) ? 'checked' : '' ?>>
+                                        <label class="form-check-label small text-muted" for="rep_whatsapp_optin">Aceito receber novidades via WhatsApp</label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </section>
 
-                        <!-- CONTATO OPERACIONAL -->
-                        <h5 class="fw-bold mb-3 border-bottom pb-2 text-primary pt-3">Contato Operacional</h5>
-                        <p class="small text-muted mb-3">Quem vai operar a plataforma no dia a dia (pode ser a mesma pessoa).</p>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="mesmo_contato">
-                            <label class="form-check-label" for="mesmo_contato">
-                                O contato operacional é o mesmo que o Representante Legal
-                            </label>
-                        </div>
-
-                        <div class="row mb-4" id="bloco_operacional">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Nome Operacional</label>
-                                <input type="text" name="op_nome" id="op_nome" class="form-control" value="<?= htmlspecialchars($parceiro['op_nome'] ?? '') ?>">
+                        <section class="parceiro-step-section">
+                            <div class="parceiro-step-section-head">
+                                <h3 class="parceiro-step-section-title">Contato Operacional</h3>
+                                <p class="parceiro-step-section-text">
+                                    Pessoa responsável por operar a plataforma no dia a dia, podendo ser a mesma do representante legal.
+                                </p>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Cargo</label>
-                                <input type="text" name="op_cargo" id="op_cargo" class="form-control" value="<?= htmlspecialchars($parceiro['op_cargo'] ?? '') ?>">
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">E-mail</label>
-                                <input type="email" name="op_email" id="op_email" class="form-control" value="<?= htmlspecialchars($parceiro['op_email'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="op_email_optin" name="op_email_optin" value="1" <?= (!empty($parceiro['op_email_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="op_email_optin">Aceito receber atualizações via e-mail</label>
+
+                            <div class="parceiro-step-toggle-box mb-3">
+                                <div class="form-check m-0">
+                                    <input class="form-check-input" type="checkbox" id="mesmo_contato">
+                                    <label class="form-check-label fw-semibold" for="mesmo_contato">
+                                        O contato operacional é o mesmo que o representante legal
+                                    </label>
                                 </div>
                             </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">Telefone</label>
-                                <input type="text" name="op_telefone" id="op_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['op_telefone'] ?? '') ?>">
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="op_whatsapp_optin" name="op_whatsapp_optin" value="1" <?= (!empty($parceiro['op_whatsapp_optin'])) ? 'checked' : '' ?>>
-                                    <label class="form-check-label small text-muted" for="op_whatsapp_optin">Aceito receber novidades via WhatsApp</label>
+
+                            <div class="row g-3" id="bloco_operacional">
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-step-label">Nome Operacional</label>
+                                    <input type="text" name="op_nome" id="op_nome" class="form-control" value="<?= htmlspecialchars($parceiro['op_nome'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-step-label">Cargo</label>
+                                    <input type="text" name="op_cargo" id="op_cargo" class="form-control" value="<?= htmlspecialchars($parceiro['op_cargo'] ?? '') ?>">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-step-label">E-mail</label>
+                                    <input type="email" name="op_email" id="op_email" class="form-control" value="<?= htmlspecialchars($parceiro['op_email'] ?? '') ?>">
+                                    <div class="form-check parceiro-step-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="op_email_optin" name="op_email_optin" value="1" <?= (!empty($parceiro['op_email_optin'])) ? 'checked' : '' ?>>
+                                        <label class="form-check-label small text-muted" for="op_email_optin">Aceito receber atualizações via e-mail</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label parceiro-step-label">Telefone</label>
+                                    <input type="text" name="op_telefone" id="op_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['op_telefone'] ?? '') ?>">
+                                    <div class="form-check parceiro-step-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="op_whatsapp_optin" name="op_whatsapp_optin" value="1" <?= (!empty($parceiro['op_whatsapp_optin'])) ? 'checked' : '' ?>>
+                                        <label class="form-check-label small text-muted" for="op_whatsapp_optin">Aceito receber novidades via WhatsApp</label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        </section>
 
-
-                        <div class="d-flex gap-2 justify-content-end mt-4">
+                        <div class="parceiro-step-actions">
                             <?php if (($_GET['from'] ?? '') === 'confirmacao'): ?>
                                 <button type="submit" name="acao" value="confirmacao" class="btn btn-outline-primary">
                                     Salvar e voltar à revisão
                                 </button>
                             <?php endif; ?>
-                            <button type="submit" class="btn btn-primary">
+
+                            <button type="submit" class="btn-reg-submit">
                                 Salvar e continuar
+                                <i class="bi bi-arrow-right"></i>
                             </button>
                         </div>
                     </form>
-
                 </div>
             </div>
         </div>

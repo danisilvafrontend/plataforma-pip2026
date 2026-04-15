@@ -38,8 +38,13 @@ if (!$usuario || !password_verify($senha, $usuario['senha_hash'])) {
 }
 
 // login ok
-$_SESSION['sociedade_id'] = $usuario['id'];
-$_SESSION['sociedade_nome'] = $usuario['nome'];
+session_regenerate_id(false);
 
-header("Location: /index.php"); // redireciona para área pública
+$_SESSION['logado']        = true;
+$_SESSION['usuario_id']    = $usuario['id'];
+$_SESSION['usuario_nome']  = $usuario['nome'];
+$_SESSION['usuario_email'] = $usuario['email'];
+$_SESSION['usuario_tipo']  = 'sociedade_civil';
+
+header("Location: /sociedade_civil/minha_conta.php");
 exit;

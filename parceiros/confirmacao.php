@@ -1,8 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
@@ -48,209 +45,315 @@ if (!is_array($publicacoes)) $publicacoes = [];
 include __DIR__ . '/../app/views/public/header_public.php';
 ?>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
+<div class="container py-5 parceiro-review-shell">
+    <div class="parceiro-review-hero mb-4 mb-lg-5">
+        <div class="parceiro-review-hero-card">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <span class="parceiro-step-kicker">Revisão final</span>
+                    <h1 class="parceiro-step-title mb-1">Confira suas informações antes da Carta-Acordo</h1>
+                    <p class="parceiro-step-subtitle mb-0">
+                        Revise os dados preenchidos, ajuste o que for necessário e siga para a geração da minuta da parceria.
+                    </p>
+                </div>
+
+                <div class="parceiro-review-badge">
+                    <i class="bi bi-shield-check"></i>
+                    Cadastro pronto para validação
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-4">
+            <aside class="parceiro-review-aside">
+                <div class="parceiro-step-aside-card">
+                    <div class="parceiro-step-aside-title">
+                        <i class="bi bi-list-check"></i>
+                        Antes de continuar
+                    </div>
+                    <ul class="parceiro-step-aside-list">
+                        <li>Revise os dados institucionais e os termos principais da parceria com atenção.</li>
+                        <li>Esta etapa está focada na geração da Carta-Acordo com base nas informações essenciais já preenchidas.</li>
+                        <li>A etapa 4 poderá ser complementada ou ajustada posteriormente, sem impedir a continuidade deste fluxo.</li>
+                    </ul>
+                </div>
+
+                <div class="parceiro-step-aside-card parceiro-step-aside-highlight">
+                    <div class="parceiro-step-aside-title">
+                        <i class="bi bi-file-earmark-text-fill"></i>
+                        Próxima tela
+                    </div>
+                    <p class="mb-0">
+                        Após esta revisão, a plataforma irá montar a minuta da Carta-Acordo com base nos dados informados ao longo do cadastro.
+                    </p>
+                </div>
+            </aside>
+        </div>
+
         <div class="col-lg-8">
-            
-            <div class="text-center mb-5">
-                <h2 class="fw-bold text-dark mb-2">Revisão Final</h2>
-                <p class="text-muted">Por favor, revise as informações abaixo antes de gerar e assinar sua Carta-Acordo.</p>
-            </div>
+            <div class="parceiro-review-stack">
 
-            <!-- BLOCO 1: DADOS INSTITUCIONAIS -->
-            <div class="card shadow-sm border-0 rounded-3 mb-4">
-                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
-                    <h5 class="fw-bold text-primary mb-0">Etapa 1: Dados da Instituição</h5>
-                    <a href="etapa1_dados.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <strong class="text-muted d-block small">Nome Fantasia</strong>
-                            <span><?= htmlspecialchars($parceiro['nome_fantasia']) ?></span>
+                <section class="parceiro-review-card">
+                    <div class="parceiro-review-card-header">
+                        <div>
+                            <span class="parceiro-review-step">Etapa 1</span>
+                            <h2 class="parceiro-review-card-title">Dados da Instituição</h2>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <strong class="text-muted d-block small">Razão Social</strong>
-                            <span><?= htmlspecialchars($parceiro['razao_social']) ?></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong class="text-muted d-block small">CNPJ</strong>
-                            <span><?= htmlspecialchars($parceiro['cnpj']) ?></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong class="text-muted d-block small">Localização</strong>
-                            <span><?= htmlspecialchars($parceiro['cidade'] ?? '') ?> - <?= htmlspecialchars($parceiro['estado'] ?? '') ?></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong class="text-muted d-block small">Representante Legal</strong>
-                            <span><?= htmlspecialchars($parceiro['rep_nome']) ?> (<?= htmlspecialchars($parceiro['rep_cargo']) ?>)</span>
-                            <br><span class="small text-muted">CPF: <?= htmlspecialchars($parceiro['rep_cpf'] ?? 'Não informado') ?></span>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <strong class="text-muted d-block small">Contatos do Representante</strong>
-                            <span><?= htmlspecialchars($parceiro['rep_email']) ?></span><br>
-                            <span><?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?></span>
+                        <a href="etapa1_dados.php?from=confirmacao" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i>Editar
+                        </a>
+                    </div>
+
+                    <div class="parceiro-review-card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">Nome Fantasia</span>
+                                    <strong class="parceiro-review-value"><?= htmlspecialchars($parceiro['nome_fantasia']) ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">Razão Social</span>
+                                    <strong class="parceiro-review-value"><?= htmlspecialchars($parceiro['razao_social']) ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">CNPJ</span>
+                                    <strong class="parceiro-review-value"><?= htmlspecialchars($parceiro['cnpj']) ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">Localização</span>
+                                    <strong class="parceiro-review-value"><?= htmlspecialchars($parceiro['cidade'] ?? '') ?> - <?= htmlspecialchars($parceiro['estado'] ?? '') ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">Representante Legal</span>
+                                    <strong class="parceiro-review-value">
+                                        <?= htmlspecialchars($parceiro['rep_nome']) ?> (<?= htmlspecialchars($parceiro['rep_cargo']) ?>)
+                                    </strong>
+                                    <span class="parceiro-review-note">CPF: <?= htmlspecialchars($parceiro['rep_cpf'] ?? 'Não informado') ?></span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">Contatos do Representante</span>
+                                    <strong class="parceiro-review-value"><?= htmlspecialchars($parceiro['rep_email']) ?></strong>
+                                    <span class="parceiro-review-note"><?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- BLOCO 2: TIPO E NATUREZA -->
-            <div class="card shadow-sm border-0 rounded-3 mb-4">
-                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
-                    <h5 class="fw-bold text-primary mb-0">Etapa 2: Tipo de Parceria</h5>
-                    <a href="etapa2_tipo.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <strong class="text-muted d-block small mb-2">Papéis selecionados:</strong>
-                            <?php if(!empty($tipos)): ?>
-                                <ul class="mb-0 ps-3">
-                                    <?php foreach($tipos as $t): ?>
-                                        <li><?= htmlspecialchars($t) ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php else: ?>
-                                <span class="text-muted">Nenhum tipo selecionado.</span>
-                            <?php endif; ?>
+                <section class="parceiro-review-card">
+                    <div class="parceiro-review-card-header">
+                        <div>
+                            <span class="parceiro-review-step">Etapa 2</span>
+                            <h2 class="parceiro-review-card-title">Tipo de Parceria</h2>
                         </div>
-                        <div class="col-md-6">
-                            <strong class="text-muted d-block small mb-2">Natureza dos recursos:</strong>
-                            <?php if(!empty($naturezas)): ?>
-                                <ul class="mb-0 ps-3">
-                                    <?php foreach($naturezas as $n): ?>
-                                        <li><?= htmlspecialchars($n) ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php else: ?>
-                                <span class="text-muted">Nenhuma natureza selecionada.</span>
-                            <?php endif; ?>
+                        <a href="etapa2_tipo.php?from=confirmacao" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i>Editar
+                        </a>
+                    </div>
+
+                    <div class="parceiro-review-card-body">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <span class="parceiro-review-label mb-2 d-block">Papéis selecionados</span>
+                                <?php if (!empty($tipos)): ?>
+                                    <div class="parceiro-review-pill-list">
+                                        <?php foreach ($tipos as $t): ?>
+                                            <span class="parceiro-review-pill"><?= htmlspecialchars($t) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="parceiro-review-empty">Nenhum tipo selecionado.</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="col-md-6">
+                                <span class="parceiro-review-label mb-2 d-block">Natureza dos recursos</span>
+                                <?php if (!empty($naturezas)): ?>
+                                    <div class="parceiro-review-pill-list">
+                                        <?php foreach ($naturezas as $n): ?>
+                                            <span class="parceiro-review-pill"><?= htmlspecialchars($n) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="parceiro-review-empty">Nenhuma natureza selecionada.</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- BLOCO 3: O COMBINADO -->
-            <div class="card shadow-sm border-0 rounded-3 mb-4">
-                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
-                    <h5 class="fw-bold text-primary mb-0">Etapa 3: O Nosso Acordo</h5>
-                    <a href="etapa3_combinado.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <strong class="text-muted d-block small">Nível de Engajamento</strong>
-                            <span><?= htmlspecialchars(ucfirst($parceiro['nivel_engajamento'] ?? 'Não informado')) ?></span>
+                <section class="parceiro-review-card">
+                    <div class="parceiro-review-card-header">
+                        <div>
+                            <span class="parceiro-review-step">Etapa 3</span>
+                            <h2 class="parceiro-review-card-title">O Nosso Acordo</h2>
                         </div>
-                        
-                        <div class="col-12 mb-3">
-                            <strong class="text-muted d-block small mb-2">Escopo de Atuação:</strong>
-                            <?php if(!empty($escopo)): ?>
-                                <ul class="mb-1 ps-3">
-                                    <?php foreach($escopo as $e): ?>
-                                        <li><?= htmlspecialchars($e) ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php else: ?>
-                                <span class="text-muted">Nenhum escopo selecionado.</span>
-                            <?php endif; ?>
-                            
-                            <?php if(!empty($parceiro['escopo_outro'])): ?>
-                                <div class="mt-2 p-2 bg-light rounded small">
-                                    <strong>Outro:</strong> <?= htmlspecialchars($parceiro['escopo_outro']) ?>
+                        <a href="etapa3_combinado.php?from=confirmacao" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i>Editar
+                        </a>
+                    </div>
+
+                    <div class="parceiro-review-card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">Nível de Engajamento</span>
+                                    <strong class="parceiro-review-value"><?= htmlspecialchars(ucfirst($parceiro['nivel_engajamento'] ?? 'Não informado')) ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <span class="parceiro-review-label mb-2 d-block">Escopo de Atuação</span>
+                                <?php if (!empty($escopo)): ?>
+                                    <div class="parceiro-review-pill-list">
+                                        <?php foreach ($escopo as $e): ?>
+                                            <span class="parceiro-review-pill"><?= htmlspecialchars($e) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="parceiro-review-empty">Nenhum escopo selecionado.</span>
+                                <?php endif; ?>
+
+                                <?php if (!empty($parceiro['escopo_outro'])): ?>
+                                    <div class="parceiro-review-note-box mt-3">
+                                        <strong>Outro:</strong> <?= htmlspecialchars($parceiro['escopo_outro']) ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if (!empty($parceiro['oferece_premiacao'])): ?>
+                                <div class="col-12">
+                                    <div class="parceiro-review-highlight-success">
+                                        <span class="parceiro-review-label text-success mb-1 d-block">
+                                            <i class="bi bi-gift me-1"></i>Premiação oferecida
+                                        </span>
+                                        <div class="parceiro-review-highlight-text">
+                                            <?= htmlspecialchars($parceiro['premio_descricao']) ?>
+                                        </div>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                         </div>
+                    </div>
+                </section>
 
-                        <?php if(!empty($parceiro['oferece_premiacao'])): ?>
-                        <div class="col-12">
-                            <strong class="text-success d-block small mb-1"><i class="bi bi-gift me-1"></i> Premiação Oferecida:</strong>
-                            <div class="p-2 border border-success rounded bg-light small">
-                                <?= htmlspecialchars($parceiro['premio_descricao']) ?>
+                <section class="parceiro-review-card">
+                    <div class="parceiro-review-card-header">
+                        <div>
+                            <span class="parceiro-review-step">Etapa 5</span>
+                            <h2 class="parceiro-review-card-title">Uso da Plataforma</h2>
+                        </div>
+                        <a href="etapa5_plataforma.php?from=confirmacao" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil me-1"></i>Editar
+                        </a>
+                    </div>
+
+                    <div class="parceiro-review-card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <span class="parceiro-review-label mb-2 d-block">Deseja Publicar / Promover</span>
+                                <?php if (!empty($publicacoes)): ?>
+                                    <div class="parceiro-review-pill-list">
+                                        <?php foreach ($publicacoes as $pub): ?>
+                                            <span class="parceiro-review-pill"><?= htmlspecialchars($pub) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="parceiro-review-empty">Nada selecionado.</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="parceiro-review-item">
+                                    <span class="parceiro-review-label">Participação na Rede de Impacto</span>
+                                    <strong class="parceiro-review-value">
+                                        <?php
+                                            if ($rede_impacto === 'sim') echo 'Sim, quero participar';
+                                            elseif ($rede_impacto === 'nao') echo 'Não';
+                                            elseif ($rede_impacto === 'avaliar_depois') echo 'Avaliar depois';
+                                            else echo 'Não informado';
+                                        ?>
+                                    </strong>
+                                </div>
                             </div>
                         </div>
-                        <?php endif; ?>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- BLOCO 5: PLATAFORMA -->
-            <div class="card shadow-sm border-0 rounded-3 mb-4">
-                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
-                    <h5 class="fw-bold text-primary mb-0">Etapa 5: Uso da Plataforma</h5>
-                    <a href="etapa5_plataforma.php?from=confirmacao" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
-                </div>
-                <div class="card-body p-4">
-                    <strong class="text-muted d-block small mb-2">Deseja Publicar/Promover:</strong>
-                    <?php if(!empty($publicacoes)): ?>
-                        <ul class="mb-3 ps-3">
-                            <?php foreach($publicacoes as $pub): ?>
-                                <li><?= htmlspecialchars($pub) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php else: ?>
-                        <p class="text-muted small">Nada selecionado.</p>
-                    <?php endif; ?>
-
-                    <strong class="text-muted d-block small mb-1">Participação na Rede de Impacto:</strong>
-                    <span>
-                        <?php 
-                            if($rede_impacto === 'sim') echo "Sim, quero participar";
-                            elseif($rede_impacto === 'nao') echo "Não";
-                            elseif($rede_impacto === 'avaliar_depois') echo "Avaliar depois";
-                            else echo "Não informado";
-                        ?>
-                    </span>
-                </div>
-            </div>
-
-            <!-- DECLARAÇÃO FINAL E INSTRUÇÕES -->
-            <div class="card shadow-sm border-0 rounded-3 mb-4 bg-light border-start border-4 border-warning">
-                <div class="card-body p-4">
-                    <h6 class="fw-bold text-dark mb-3">
-                        <i class="bi bi-info-circle-fill text-warning me-2"></i> Próximo Passo: Geração da Carta-Acordo
-                    </h6>
-                    <p class="small text-muted mb-4">
-                        Ao avançar, o sistema irá gerar o documento oficial da <strong>Carta-Acordo de Parceria</strong> utilizando os dados que você acabou de revisar. <br>
-                        <strong>Fique tranquilo(a):</strong> você ainda poderá ler o documento completo e verificar todas as cláusulas na próxima tela <strong>antes</strong> de realizar a assinatura digital.
-                    </p>
-                    
-                    <div class="form-check d-inline-block text-start p-3 bg-white border rounded w-100 shadow-sm">
-                        <input class="form-check-input ms-1" type="checkbox" id="checkRevisao" required style="transform: scale(1.2); margin-top: 5px; cursor: pointer;">
-                        <label class="form-check-label fw-bold text-dark ms-2" for="checkRevisao" style="cursor: pointer;">
-                            Declaro que as informações acima foram revisadas e são verdadeiras, e desejo gerar a minuta da Carta-Acordo.
-                        </label>
+                <section class="parceiro-review-card parceiro-review-declaration">
+                    <div class="parceiro-review-card-header parceiro-review-card-header-warn">
+                        <div>
+                            <span class="parceiro-review-step">Confirmação</span>
+                            <h2 class="parceiro-review-card-title">Geração da Carta-Acordo</h2>
+                        </div>
                     </div>
+
+                    <div class="parceiro-review-card-body">
+                        <p class="parceiro-review-text mb-4">
+                            Ao avançar, o sistema irá gerar o documento oficial da Carta-Acordo de Parceria com base nas informações revisadas nesta tela. Você ainda poderá ler o documento completo e verificar as cláusulas antes da assinatura digital.
+                        </p>
+
+                        <div class="parceiro-step-toggle-box parceiro-review-confirm-box">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="checkbox" id="checkRevisao" required>
+                                <label class="form-check-label fw-semibold" for="checkRevisao">
+                                    Declaro que as informações acima foram revisadas, são verdadeiras e desejo gerar a minuta da Carta-Acordo.
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="parceiro-review-actions">
+                    <a href="etapa6_juridico.php" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Voltar e editar
+                    </a>
+
+                    <a href="assinar_acordo.php" class="btn-reg-submit parceiro-review-btn-disabled" id="btnAvancar" aria-disabled="true">
+                        <i class="bi bi-file-earmark-text me-2"></i>Gerar e ler Carta-Acordo
+                        <i class="bi bi-arrow-right ms-2"></i>
+                    </a>
                 </div>
             </div>
-
-            <div class="d-flex justify-content-between mb-5 flex-wrap gap-3">
-                <a href="etapa6_juridico.php" class="btn btn-outline-secondary btn-lg fw-bold px-4">
-                    <i class="bi bi-arrow-left me-2"></i> Voltar e Editar
-                </a>
-                <a href="assinar_acordo.php" class="btn btn-primary btn-lg px-5 fw-bold text-white shadow-sm" id="btnAvancar" style="pointer-events: none; opacity: 0.5;">
-                    <i class="bi bi-file-earmark-text me-2"></i> Gerar e Ler Carta-Acordo <i class="bi bi-arrow-right ms-2"></i>
-                </a>
-            </div>
-
         </div>
     </div>
 </div>
 
 <script>
-document.getElementById('checkRevisao').addEventListener('change', function() {
-    const btn = document.getElementById('btnAvancar');
-    if(this.checked) {
-        btn.style.pointerEvents = 'auto';
-        btn.style.opacity = '1';
-        // Efeito de pulso rápido para incentivar o clique
-        btn.classList.add('animate__animated', 'animate__pulse');
-        setTimeout(() => btn.classList.remove('animate__animated', 'animate__pulse'), 1000);
-    } else {
-        btn.style.pointerEvents = 'none';
-        btn.style.opacity = '0.5';
-    }
+document.addEventListener('DOMContentLoaded', function () {
+    const checkRevisao = document.getElementById('checkRevisao');
+    const btnAvancar = document.getElementById('btnAvancar');
+
+    if (!checkRevisao || !btnAvancar) return;
+
+    checkRevisao.addEventListener('change', function () {
+        if (this.checked) {
+            btnAvancar.classList.remove('parceiro-review-btn-disabled');
+            btnAvancar.setAttribute('aria-disabled', 'false');
+            btnAvancar.style.pointerEvents = 'auto';
+        } else {
+            btnAvancar.classList.add('parceiro-review-btn-disabled');
+            btnAvancar.setAttribute('aria-disabled', 'true');
+            btnAvancar.style.pointerEvents = 'none';
+        }
+    });
 });
 </script>
 

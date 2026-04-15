@@ -2,13 +2,14 @@
 // intro_text_eixo_tematico.php
 // Uso: inclua este arquivo no início da etapa para mostrar o texto padrão de orientação
 ?>
-
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body">
-    <h3 class="fw-bold">
-      <i class="bi bi-diagram-3 me-2"></i> Eixo temático de atuação
-    </h3>
-    <p>
+<!-- ── Card introdutório ─────────────────────────────────── -->
+<div class="intro-card">
+  <div class="intro-card-header">
+    <div class="header-icon"><i class="bi bi-diagram-3"></i></div>
+    <h3> Eixo temático de atuação</h3>
+  </div>
+  <div class="intro-card-body">
+     <p>
       Escolha <strong>apenas 1 eixo principal</strong> que representa o 
       <strong>campo de atuação prioritário</strong> do seu <strong>negócio de impacto</strong>.
     </p>
@@ -28,14 +29,16 @@
       e <strong>soluções propostas</strong>, facilitando conexões com 
       <strong>parceiros</strong> e <strong>investidores</strong>.
     </p>
-    
-    <div class="mt-3">
-      <small class="d-block text-muted">
-        <i class="bi bi-eye text-secondary me-1"></i> Público — será exibido na vitrine
-      </small>
-      <small class="d-block text-muted">
-        <i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Privado — visível apenas para análise interna
-      </small>
+
+    <div class="intro-legend">
+      <div class="intro-legend-item">
+        <span class="legend-dot pub"><i class="bi bi-eye-fill"></i></span>
+        Público — será exibido na vitrine
+      </div>
+      <div class="intro-legend-item">
+        <span class="legend-dot priv"><i class="bi bi-eye-slash-fill"></i></span>
+        Privado — visível apenas para análise interna
+      </div>
     </div>
   </div>
 </div>

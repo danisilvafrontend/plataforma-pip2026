@@ -27,7 +27,7 @@ $parceiro_id = (int)$_GET['id'];
 // Busca TODOS os dados para o contrato
 $stmt = $pdo->prepare("
     SELECT p.*, 
-           c.tipos_parceria, c.natureza_parceria, c.duracao_meses, c.nivel_engajamento,
+           c.tipos_parceria, c.natureza_parceria, c.nivel_engajamento,
            c.escopo_atuacao, c.escopo_outro, c.oferece_premiacao, c.premio_descricao,
            c.autoriza_marca, c.data_assinatura, c.data_vencimento
     FROM parceiros p
@@ -69,9 +69,25 @@ include __DIR__ . '/../app/views/admin/header.php';
 
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4 d-print-none">
-        <a href="parceiros.php" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i> Voltar aos Parceiros
-        </a>
+        <div>
+            <h2 class="fw-bold mb-1">Carta-Acordo</h2>
+            <p class="text-muted mb-0">
+                <?= htmlspecialchars($parceiro['nome_fantasia'] ?? $parceiro['razao_social'] ?? 'Parceiro') ?>
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a href="visualizar_parceiro.php?id=<?= (int)$parceiro_id ?>" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Ver Cadastro
+            </a>
+
+            <button type="button"
+                    class="btn btn-primary btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#statusModal">
+                <i class="bi bi-pencil-square"></i> Alterar Status
+            </button>
+        </div>
     </div>
 
     <div class="row justify-content-center">
@@ -79,7 +95,7 @@ include __DIR__ . '/../app/views/admin/header.php';
             
             <div class="card shadow border-0 rounded-0 mb-5" id="area-contrato">
                 <!-- Cabeçalho do Contrato -->
-                <div class="card-header text-white p-4 border-0 d-flex justify-content-between align-items-center flex-wrap gap-3" style="background-color: #00458a;">
+                <div class="card-header text-white p-4 border-0 d-flex justify-content-between align-items-center flex-wrap gap-3" style="background-color: #97A327;">
                     <div>
                         <h2 class="mb-0 fw-bold h4 d-flex align-items-center">
                             <i class="bi bi-file-earmark-text me-2"></i>
@@ -108,11 +124,11 @@ include __DIR__ . '/../app/views/admin/header.php';
 
                     <hr class="my-4" style="border-top: 1px dashed #ccc;">
 
-                    <h5 class="fw-bold mb-3" style="color: #00458a;">CLÁUSULA 1 -- OBJETO</h5>
+                    <h5 class="fw-bold mb-3" style="color: #1E3425;">CLÁUSULA 1 -- OBJETO</h5>
                     <p>1.1. O presente instrumento tem por objeto a formalização da parceria institucional entre as partes no âmbito das iniciativas da Plataforma Impactos Positivos.</p>
                     <p>1.2. A parceria poderá envolver ações de comunicação, visibilidade institucional e apoio estratégico, conforme descrito no formulário eletrônico preenchido pelo APOIADOR, que passa a integrar este instrumento.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 2 -- CONTRAPARTIDAS</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 2 -- CONTRAPARTIDAS</h5>
                     <p>2.1. A PLATAFORMA IMPACTOS POSITIVOS compromete-se a conceder visibilidade institucional ao APOIADOR por meio de seus canais oficiais, incluindo redes sociais, newsletters, eventos, releases à imprensa e demais materiais vinculados às ações.</p>
                     
                     <p>2.2. O APOIADOR compromete-se a cumprir as entregas descritas no campo específico do formulário eletrônico:</p>
@@ -136,44 +152,44 @@ include __DIR__ . '/../app/views/admin/header.php';
                         </ul>
                     </div>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 3 -- VIGÊNCIA</h5>
-                    <p>3.1. O presente acordo entra em vigor na data da assinatura eletrônica (<strong><?= $data_assinatura_br ?></strong>) e permanecerá válido até <strong><?= $data_vencimento_br ?></strong> (Duração: <?= htmlspecialchars($parceiro['duracao_meses']) ?> meses).</p>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 3 -- VIGÊNCIA</h5>
+                    <p>3.1. O presente acordo entra em vigor na data da assinatura eletrônica <strong><?= $data_assinatura_br ?></strong> e permanecerá válido até <strong><?= $data_vencimento_br ?></strong>.</p>
                     <p>3.2. Poderá ser renovado mediante comum acordo entre as partes.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 4 -- NATUREZA DA RELAÇÃO</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 4 -- NATUREZA DA RELAÇÃO</h5>
                     <p>4.1. A presente parceria possui caráter institucional e colaborativo.</p>
                     <p>4.2. Não estabelece vínculo empregatício, societário, associativo, representação comercial ou exclusividade entre as partes.</p>
                     <p>4.3. Cada parte atuará de forma independente, sendo responsável por suas obrigações legais e regulatórias.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 5 -- NATUREZA GRATUITA DO APOIO</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 5 -- NATUREZA GRATUITA DO APOIO</h5>
                     <p>5.1. As partes reconhecem que o presente apoio é gratuito, não envolvendo transferência de recursos financeiros entre as partes.</p>
                     <p>5.2. Não há remuneração, cobrança de valores ou obrigação financeira decorrente deste instrumento, salvo se formalizado acordo específico em documento apartado.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 6 -- USO DE MARCA</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 6 -- USO DE MARCA</h5>
                     <p>6.1. O APOIADOR autoriza a utilização de sua marca e identidade visual exclusivamente para fins relacionados às ações da parceria. <?= !empty($parceiro['autoriza_marca']) ? '<em>(Autorização formal registrada na plataforma)</em>' : '' ?></p>
                     <p>6.2. O uso da marca Impactos Positivos pelo APOIADOR deverá estar vinculado exclusivamente às ações formalmente acordadas.</p>
                     <p>6.3. Qualquer utilização fora do escopo da parceria deverá ser previamente alinhada por escrito.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 7 -- INTEGRIDADE E CONFORMIDADE</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 7 -- INTEGRIDADE E CONFORMIDADE</h5>
                     <p>7.1. As partes reafirmam seu compromisso com elevados padrões de ética e integridade, observando a legislação aplicável, incluindo a Lei nº 12.846/2013 (Lei Anticorrupção Brasileira), quando aplicável.</p>
                     <p>7.2. Comprometem-se a atuar com transparência e a não adotar práticas que possam configurar vantagem indevida ou violação normativa.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 8 -- COMPROMISSO ESG</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 8 -- COMPROMISSO ESG</h5>
                     <p>8.1. O APOIADOR declara compartilhar dos princípios ambientais, sociais e de governança (ESG) que norteiam a Plataforma Impactos Positivos.</p>
                     <p>8.2. Ambas as partes se comprometem a atuar de forma ética, sustentável, responsável e alinhada aos direitos humanos e à legislação ambiental vigente.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 9 -- PROTEÇÃO DE DADOS</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 9 -- PROTEÇÃO DE DADOS</h5>
                     <p>9.1. As partes comprometem-se a cumprir a Lei Geral de Proteção de Dados (Lei nº 13.709/2018 -- LGPD).</p>
                     <p>9.2. Os dados pessoais eventualmente compartilhados serão utilizados exclusivamente para finalidades relacionadas a esta parceria.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 10 -- LIMITAÇÃO DE RESPONSABILIDADE</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 10 -- LIMITAÇÃO DE RESPONSABILIDADE</h5>
                     <p>10.1. A parceria possui natureza institucional e de visibilidade, não havendo garantia de resultados financeiros, comerciais ou midiáticos.</p>
                     <p>10.2. Cada parte será responsável exclusivamente por seus próprios atos e decisões, não havendo responsabilidade solidária perante terceiros.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 11 -- RESCISÃO</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 11 -- RESCISÃO</h5>
                     <p>11.1. O presente acordo poderá ser encerrado por qualquer das partes mediante comunicação formal, preservando-se as ações já realizadas até a data do encerramento.</p>
 
-                    <h5 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 12 -- FORO</h5>
+                    <h5 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 12 -- FORO</h5>
                     <p>12.1. Para dirimir eventuais controvérsias oriundas deste instrumento, fica eleito o foro da Comarca de São Paulo/SP, Brasil.</p>
 
                     <hr class="my-5">
@@ -242,5 +258,46 @@ include __DIR__ . '/../app/views/admin/header.php';
     .text-success { color: #000 !important; }
 }
 </style>
+
+
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="processar_status_parceiro.php" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alterar Status do Parceiro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="parceiro_id" value="<?= (int)$parceiro_id ?>">
+
+                    <p class="mb-3">
+                        Parceiro: <strong><?= htmlspecialchars($parceiro['nome_fantasia'] ?? $parceiro['razao_social'] ?? 'Parceiro') ?></strong>
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="novo_status" class="form-label">Novo status</label>
+                        <select class="form-select" name="novo_status" id="novo_status" required>
+                            <option value="">Selecione</option>
+                            <option value="analise" <?= ($parceiro['status'] ?? '') === 'analise' ? 'selected' : '' ?>>Em Análise</option>
+                            <option value="ativo" <?= ($parceiro['status'] ?? '') === 'ativo' ? 'selected' : '' ?>>Ativo</option>
+                            <option value="inativo" <?= ($parceiro['status'] ?? '') === 'inativo' ? 'selected' : '' ?>>Inativo</option>
+                        </select>
+                    </div>
+
+                    <div class="small text-muted">
+                        Esta ação está disponível porque a carta-acordo já foi assinada.
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>

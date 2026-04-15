@@ -16,16 +16,16 @@ $tabela = match ($tipo) {
     'admin' => 'users',
     'empreendedor' => 'empreendedores',
     'parceiro' => 'parceiros',
-    'eleitor' => 'comunidade_civil',
+    'eleitor' => 'sociedade_civil',
     default => null
 };
-
+$colunaEmail = ($tabela === 'parceiros') ? 'email_login' : 'email';
 if (!$email || !$token || !$tabela) {
     die("Link inválido.");
 }
 
 $tokenHash = hash('sha256', $token);
-$stmt = $pdo->prepare("SELECT id FROM {$tabela} WHERE email = ? AND password_reset_token = ? AND password_reset_expires_at > NOW()");
+$stmt = $pdo->prepare("SELECT id FROM {$tabela} WHERE {$colunaEmail} = ? AND password_reset_token = ? AND password_reset_expires_at > NOW()");
 $stmt->execute([$email, $tokenHash]);
 $user = $stmt->fetch();
 

@@ -1,12 +1,12 @@
 <?php
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_secure', 1); // ← remova o comentário em produção
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
+error_log('CSRF SESSION: ' . ($_SESSION['csrf'] ?? 'VAZIO') . ' | POST: ' . ($_POST['csrf'] ?? 'VAZIO'));
 // CSRF
 if (empty($_POST['csrf']) || !hash_equals($_SESSION['csrf'] ?? '', $_POST['csrf'])) {
     http_response_code(403);
@@ -164,6 +164,8 @@ try {
     $_SESSION['empreendedor_email'] = $data['email'];
     $_SESSION['eh_fundador'] = $data['eh_fundador'];
     $_SESSION['logged_at'] = time();
+    $_SESSION['user_id'] = $empreendedorId;
+    $_SESSION['user_role']  = 'empreendedor';
 
 } catch (PDOException $e) {
     http_response_code(500);

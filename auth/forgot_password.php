@@ -40,48 +40,76 @@ try {
     http_response_code(500);
     die("Erro na conexão com o banco: " . $e->getMessage());
 }
+$user = null;
+$tipo = null;
+$tabelaEncontrada = null;
 
-// Tabelas e tipos de usuário
-$tipos = [
-    'users' => 'admin',
-    'empreendedores' => 'empreendedor',
-    'parceiros' => 'parceiro',
-    'comunidade_civil' => 'eleitor'
-];
+// 1) users
+$stmt = $pdo->prepare("SELECT id, nome, role FROM users WHERE email = ? LIMIT 1");
+$stmt->execute([$email]);
+if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $user = $row;
+    $tipo = $row['role'];
+    $tabelaEncontrada = 'users';
+}
 
-// Busca o e-mail em todas as tabelas
-foreach ($tipos as $tabela => $tipo) {
-    $stmt = $pdo->prepare("SELECT id, nome FROM {$tabela} WHERE email = ? LIMIT 1");
+// 2) empreendedores
+if (!$user) {
+    $stmt = $pdo->prepare("SELECT id, nome FROM empreendedores WHERE email = ? LIMIT 1");
     $stmt->execute([$email]);
-    if ($user = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        // Gera token e salva hash
-        $token = bin2hex(random_bytes(32));
-        $tokenHash = hash('sha256', $token);
-        $expiresAt = (new DateTime())->add(new DateInterval('PT1H'))->format('Y-m-d H:i:s');
-
-        $update = $pdo->prepare("UPDATE {$tabela} SET password_reset_token = ?, password_reset_expires_at = ? WHERE id = ?");
-        $update->execute([$tokenHash, $expiresAt, $user['id']]);
-
-        // Monta link de redefinição
-        $resetUrl = sprintf(
-            "https://%s/auth/reset_password_form.php?email=%s&token=%s&tipo=%s",
-            $_SERVER['HTTP_HOST'],
-            urlencode($email),
-            urlencode($token),
-            $tipo
-        );
-
-        // Monta e envia o e-mail
-        $subject = "Redefinição de senha — Plataforma Impactos Positivos";
-        $body = render_email_template(__DIR__ . '/../app/views/emails/reset_password.php', [
-            'nome' => $user['nome'],
-            'resetUrl' => $resetUrl,
-            'expiresHours' => 1
-        ]);
-
-        send_mail($email, $user['nome'], $subject, $body);
-        break;
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $user = $row;
+        $tipo = 'empreendedor';
+        $tabelaEncontrada = 'empreendedores';
     }
+}
+
+// 3) parceiros
+if (!$user) {
+    $stmt = $pdo->prepare("SELECT id, nome_fantasia AS nome FROM parceiros WHERE email_login = ? LIMIT 1");
+    $stmt->execute([$email]);
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $user = $row;
+        $tipo = 'parceiro';
+        $tabelaEncontrada = 'parceiros';
+    }
+}
+
+// 4) sociedade_civil
+if (!$user) {
+    $stmt = $pdo->prepare("SELECT id, nome FROM sociedade_civil WHERE email = ? LIMIT 1");
+    $stmt->execute([$email]);
+    if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $user = $row;
+        $tipo = 'eleitor';
+        $tabelaEncontrada = 'sociedade_civil';
+    }
+}
+
+if ($user && $tipo && $tabelaEncontrada) {
+    $token = bin2hex(random_bytes(32));
+    $tokenHash = hash('sha256', $token);
+    $expiresAt = (new DateTime())->add(new DateInterval('PT1H'))->format('Y-m-d H:i:s');
+
+    $update = $pdo->prepare("UPDATE {$tabelaEncontrada} SET password_reset_token = ?, password_reset_expires_at = ? WHERE id = ?");
+    $update->execute([$tokenHash, $expiresAt, $user['id']]);
+
+    $resetUrl = sprintf(
+        "https://%s/auth/reset_password_form.php?email=%s&token=%s&tipo=%s",
+        $_SERVER['HTTP_HOST'],
+        urlencode($email),
+        urlencode($token),
+        urlencode($tipo)
+    );
+
+    $subject = "Redefinição de senha — Plataforma Impactos Positivos";
+    $body = render_email_template(__DIR__ . '/../app/views/emails/reset_password.php', [
+        'nome' => $user['nome'],
+        'resetUrl' => $resetUrl,
+        'expiresHours' => 1
+    ]);
+
+    send_mail($email, $user['nome'], $subject, $body);
 }
 
 include __DIR__ . '/../app/views/public/header_public.php';

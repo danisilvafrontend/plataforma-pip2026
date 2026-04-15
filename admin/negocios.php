@@ -1,39 +1,32 @@
 <?php
 // /public_html/admin/negocios.php
+declare(strict_types=1);
 session_start();
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 require_once __DIR__ . '/../app/helpers/auth.php';
-
-// só permite admin, superadmin ou juri
 require_admin_login();
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 $config = require __DIR__ . '/../app/config/db.php';
+$dsn    = "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}";
+$opts   = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
 
 try {
-    $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset=utf8mb4";
-    $pdo = new PDO($dsn, $config['user'], $config['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
 
-    // --- FILTROS ---
-    $where = [];
+    $where  = [];
     $params = [];
 
-    // Filtro por Nome Fantasia
     $filtro_nome = $_GET['nome'] ?? '';
-    if (!empty($filtro_nome)) {
-        $where[] = "n.nome_fantasia LIKE ?";
-        $params[] = "%" . $filtro_nome . "%";
-    }
-    // Filtro por Categoria
-    $filtro_categoria = $_GET['categoria'] ?? '';
-    if (!empty($filtro_categoria)) {
-        $where[] = "n.categoria = ?";
-        $params[] = $filtro_categoria;
-    }
+    if (!empty($filtro_nome)) { $where[] = "n.nome_fantasia LIKE ?"; $params[] = "%" . $filtro_nome . "%"; }
 
-        // Filtro por Status
+    $filtro_categoria = $_GET['categoria'] ?? '';
+    if (!empty($filtro_categoria)) { $where[] = "n.categoria = ?"; $params[] = $filtro_categoria; }
+
     $filtro_status = $_GET['status'] ?? '';
     if ($filtro_status === 'encerrado') {
         $where[] = "n.status_operacional = 'encerrado'";
@@ -47,73 +40,46 @@ try {
         $where[] = "n.status_vitrine = 'aprovado'";
     }
 
+    $sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_completa,
+                   n.status_operacional, n.status_vitrine, n.publicado_vitrine,
+                   CONCAT(TRIM(e.nome), ' ', TRIM(e.sobrenome)) AS empreendedor,
+                   s.score_impacto, s.score_investimento, s.score_escala, s.score_geral
+            FROM negocios n
+            JOIN empreendedores e ON n.empreendedor_id = e.id
+            LEFT JOIN scores_negocios s ON n.id = s.negocio_id ";
 
-    // Monta a Query
-      // Monta a Query
-$sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_completa, 
-        n.status_operacional, n.status_vitrine, n.publicado_vitrine, 
-        CONCAT(TRIM(e.nome), ' ', TRIM(e.sobrenome)) AS empreendedor, 
-        s.score_impacto, s.score_investimento, s.score_escala, s.score_geral 
-        FROM negocios n 
-        JOIN empreendedores e ON n.empreendedor_id = e.id 
-        LEFT JOIN scores_negocios s ON n.id = s.negocio_id ";
+    if (!empty($where)) { $sql .= " WHERE " . implode(" AND ", $where); }
 
-
-        if (!empty($where)) {
-        $sql .= " WHERE " . implode(" AND ", $where);
-    }
-    
-    // SISTEMA DE ORDENAÇÃO DINÂMICA
-    $coluna_ordem = $_GET['ordem'] ?? 'created_at'; // Coluna padrão
-    $direcao_ordem = $_GET['dir'] ?? 'DESC';        // Direção padrão
-
-    // Lista de colunas permitidas (Segurança contra SQL Injection)
-    $colunas_permitidas = [
-        'created_at' => 'n.created_at',
-        'escala' => 's.score_escala',
-        'investimento' => 's.score_investimento',
-        'impacto' => 's.score_impacto',
-        'geral' => 's.score_geral'
-    ];
+    $colunas_permitidas  = ['created_at' => 'n.created_at', 'escala' => 's.score_escala', 'investimento' => 's.score_investimento', 'impacto' => 's.score_impacto', 'geral' => 's.score_geral'];
     $direcoes_permitidas = ['ASC', 'DESC'];
-
-    // Validar se o que veio pela URL é permitido
+    $coluna_ordem  = $_GET['ordem'] ?? 'created_at';
+    $direcao_ordem = $_GET['dir']   ?? 'DESC';
     $campo_sql = $colunas_permitidas[$coluna_ordem] ?? 'n.created_at';
-    $dir_sql = in_array(strtoupper($direcao_ordem), $direcoes_permitidas) ? strtoupper($direcao_ordem) : 'DESC';
-
-    // Aplica a ordem final
+    $dir_sql   = in_array(strtoupper($direcao_ordem), $direcoes_permitidas) ? strtoupper($direcao_ordem) : 'DESC';
     $sql .= " ORDER BY {$campo_sql} {$dir_sql}";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // FUNÇÃO PARA CRIAR LINKS DE ORDENAÇÃO SEM PERDER OS FILTROS
     function linkOrdenacao($coluna) {
-        $get = $_GET; // Copia os parâmetros atuais da URL (filtros)
+        $get = $_GET;
         $dir_atual = $get['dir'] ?? 'DESC';
         $col_atual = $get['ordem'] ?? 'created_at';
-
-        // Se clicou na mesma coluna, inverte a ordem. Se não, começa DESC
-        $get['dir'] = ($col_atual === $coluna && $dir_atual === 'DESC') ? 'ASC' : 'DESC';
+        $get['dir']   = ($col_atual === $coluna && $dir_atual === 'DESC') ? 'ASC' : 'DESC';
         $get['ordem'] = $coluna;
-
         return '?' . http_build_query($get);
     }
 
-    // Função para mostrar setinha (Cima/Baixo) na tabela se a coluna estiver ativa
     function iconeOrdenacao($coluna) {
         $dir_atual = $_GET['dir'] ?? 'DESC';
         $col_atual = $_GET['ordem'] ?? 'created_at';
         if ($col_atual === $coluna) {
-            return $dir_atual === 'ASC' ? '<i class="bi bi-caret-up-fill ms-1"></i>' : '<i class="bi bi-caret-down-fill ms-1"></i>';
+            return $dir_atual === 'ASC' ? '▲' : '▼';
         }
-        return ''; // Se não estiver ordenado por essa coluna, não mostra seta
+        return '';
     }
 
-
-    // Lista de Categorias para o Select (Pode vir do banco ou ser fixa)
-    // Se quiser pegar do banco: SELECT DISTINCT categoria FROM negocios
     $stmtCat = $pdo->query("SELECT DISTINCT categoria FROM negocios WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria");
     $categorias_disponiveis = $stmtCat->fetchAll(PDO::FETCH_COLUMN);
 
@@ -121,261 +87,225 @@ $sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_co
     die("Erro no banco de dados: " . $e->getMessage());
 }
 
-// --- QUERY DE TOTAIS GERAIS (Para o Card) ---
-// Conta total, concluídos, andamento e encerrados
-$sqlTotais = "SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN status_operacional = 'encerrado' THEN 1 ELSE 0 END) as encerrados,
-                SUM(CASE WHEN inscricao_completa = 1 AND (status_operacional != 'encerrado' OR status_operacional IS NULL) THEN 1 ELSE 0 END) as concluidos,
-                SUM(CASE WHEN (inscricao_completa = 0 OR inscricao_completa IS NULL) AND (status_operacional != 'encerrado' OR status_operacional IS NULL) THEN 1 ELSE 0 END) as andamento
-                FROM negocios";
-$stmtTotais = $pdo->query($sqlTotais);
-$totais = $stmtTotais->fetch(PDO::FETCH_ASSOC);
-
-// Garante que não retorne NULL se tabela vazia
-$totalGeral = $totais['total'] ?? 0;
+$sqlTotais = "SELECT COUNT(*) as total,
+    SUM(CASE WHEN status_operacional = 'encerrado' THEN 1 ELSE 0 END) as encerrados,
+    SUM(CASE WHEN inscricao_completa = 1 AND (status_operacional != 'encerrado' OR status_operacional IS NULL) THEN 1 ELSE 0 END) as concluidos,
+    SUM(CASE WHEN (inscricao_completa = 0 OR inscricao_completa IS NULL) AND (status_operacional != 'encerrado' OR status_operacional IS NULL) THEN 1 ELSE 0 END) as andamento
+    FROM negocios";
+$stmtTotais      = $pdo->query($sqlTotais);
+$totais          = $stmtTotais->fetch(PDO::FETCH_ASSOC);
+$totalGeral      = $totais['total']      ?? 0;
 $totalEncerrados = $totais['encerrados'] ?? 0;
 $totalConcluidos = $totais['concluidos'] ?? 0;
-$totalAndamento = $totais['andamento'] ?? 0;
+$totalAndamento  = $totais['andamento']  ?? 0;
 
-
-// Etapas legíveis
 $etapas = [
-    'dados_gerais' => 'Dados Gerais',
-    'contatos'     => 'Contatos',
-    'endereco'     => 'Endereço',
-    'midias'       => 'Mídias',
-    'pitch'        => 'Pitch',
-    'impacto'      => 'Impacto',
-    'demografia'   => 'Demografia',
-    'finalizado'   => 'Finalizado'
+    'dados_gerais' => 'Dados Gerais', 'contatos'   => 'Contatos',
+    'endereco'     => 'Endereço',     'midias'      => 'Mídias',
+    'pitch'        => 'Pitch',        'impacto'     => 'Impacto',
+    'demografia'   => 'Demografia',   'finalizado'  => 'Finalizado'
 ];
 
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
 
-<div class="container-fluid py-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Negócios Cadastrados</h1>
-        <div>
-            <a href="/admin/recalcular_scores.php" class="btn btn-success btn-sm me-2">
-                <i class="bi bi-arrow-repeat"></i> Recalcular Scores
-            </a>
-            <!-- Botão Novo -->
-            <a href="/admin/enviar_email_negocios_pendentes.php" class="btn btn-warning btn-sm me-2">
-                <i class="bi bi-envelope-exclamation"></i> Notificar Pendentes
-            </a>
-            
-            <a href="/admin/dashboard.php" class="btn btn-secondary btn-sm">Voltar</a>
-        </div>
-    </div>
-
-
-    <p class="mb-4">Acompanhe o andamento de todos os negócios inscritos na plataforma.</p>
-
-    <div class="row mb-4">
-    <!-- Coluna do Card: Ocupa 5/12 em telas médias/grandes -->
-    <div class="col-12 col-md-5"> 
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                            Total de Negócios
-                        </div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                            <?= $totalGeral ?>
-                        </div>
-                        
-                        <div class="mt-2 small d-flex gap-3 flex-wrap">
-                            <span class="text-success">
-                                <i class="bi bi-check-circle-fill"></i> <?= $totalConcluidos ?> Concluídos
-                            </span>
-                            <span class="text-warning text-dark">
-                                <i class="bi bi-hourglass-split"></i> <?= $totalAndamento ?> Em andamento
-                            </span>
-                            <span class="text-danger">
-                                <i class="bi bi-x-circle-fill"></i> <?= $totalEncerrados ?> Encerrados
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-auto ms-auto">
-                        <i class="bi bi-briefcase fa-2x text-gray-300" style="font-size: 2rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Coluna do Botão: Ocupa 7/12 (5+7 = 12). d-flex e justify-content-end empurram o botão pra direita -->
-    <div class="col-12 col-md-7 d-flex align-items-center justify-content-md-end justify-content-center mt-3 mt-md-0">
-        <a href="relatorios_negocios.php" class="btn btn-primary shadow-sm">
-            <i class="bi bi-bar-chart-fill text-white-50"></i> Ver Relatórios Gráficos Detalhados
-        </a>
-    </div>
+<!-- ══════════════════════════════════
+     Cabeçalho
+═══════════════════════════════════ -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios Cadastrados</h4>
+    <small style="color:#6c8070; font-size:.82rem;">Acompanhe o andamento de todos os negócios inscritos na plataforma</small>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="/admin/recalcular_scores.php" class="hd-btn outline">
+      <i class="bi bi-arrow-repeat"></i> Recalcular Scores
+    </a>
+    <a href="/admin/enviar_email_negocios_pendentes.php" class="hd-btn outline">
+      <i class="bi bi-envelope-exclamation"></i> Notificar Pendentes
+    </a>
+    <a href="relatorios_negocios.php" class="hd-btn primary">
+      <i class="bi bi-bar-chart-fill"></i> Ver Relatórios
+    </a>
+    <a href="/admin/dashboard.php" class="hd-btn outline">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+  </div>
 </div>
 
+<!-- ══════════════════════════════════
+     Mini KPIs
+═══════════════════════════════════ -->
+<!-- Mini KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="neg-kpi-card">
+      <div class="neg-kpi-label">Total</div>
+      <div class="neg-kpi-value"><?= $totalGeral ?></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="neg-kpi-card">
+      <div class="neg-kpi-label">Concluídos</div>
+      <div class="neg-kpi-value" style="color:#7a8500;"><?= $totalConcluidos ?></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="neg-kpi-card">
+      <div class="neg-kpi-label">Em Andamento</div>
+      <div class="neg-kpi-value" style="color:#97A327;"><?= $totalAndamento ?></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="neg-kpi-card">
+      <div class="neg-kpi-label">Encerrados</div>
+      <div class="neg-kpi-value" style="color:#842029;"><?= $totalEncerrados ?></div>
+    </div>
+  </div>
+</div>
 
-    <!-- FILTROS -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body py-3">
-            <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label for="nome" class="form-label fw-bold small">Nome do Negócio</label>
-                    <input type="text" name="nome" id="nome" 
-                        value="<?= htmlspecialchars($filtro_nome) ?>" 
-                        class="form-control form-control-sm" 
-                        placeholder="Digite o nome">
-                </div>
-                <div class="col-md-3">
-                    <label for="categoria" class="form-label fw-bold small">Categoria</label>
-                    <select name="categoria" id="categoria" class="form-select form-select-sm">
-                        <option value="">Todas as categorias</option>
-                        <?php foreach ($categorias_disponiveis as $cat): ?>
-                            <option value="<?= htmlspecialchars($cat) ?>" <?= $filtro_categoria === $cat ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($cat) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+<!-- ══════════════════════════════════
+     Filtros
+═══════════════════════════════════ -->
+<div class="filter-card card p-3 mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-12 col-sm-6 col-lg-4">
+      <label class="form-label">Nome Fantasia</label>
+      <div class="search-bar">
+        <i class="bi bi-search"></i>
+        <input type="text" name="nome" class="form-control"
+               placeholder="Buscar negócio…" value="<?= htmlspecialchars($filtro_nome) ?>">
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3">
+      <label class="form-label">Categoria</label>
+      <select name="categoria" class="form-select">
+        <option value="">Todas</option>
+        <?php foreach ($categorias_disponiveis as $cat): ?>
+          <option value="<?= htmlspecialchars($cat) ?>" <?= $filtro_categoria === $cat ? 'selected' : '' ?>>
+            <?= htmlspecialchars($cat) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-2">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-select">
+        <option value="">Todos</option>
+        <option value="concluido" <?= $filtro_status === 'concluido' ? 'selected' : '' ?>>Concluído</option>
+        <option value="andamento" <?= $filtro_status === 'andamento' ? 'selected' : '' ?>>Em Andamento</option>
+        <option value="encerrado" <?= $filtro_status === 'encerrado' ? 'selected' : '' ?>>Encerrado</option>
+        <option value="analise"   <?= $filtro_status === 'analise'   ? 'selected' : '' ?>>Em Análise</option>
+        <option value="aprovado"  <?= $filtro_status === 'aprovado'  ? 'selected' : '' ?>>Aprovado</option>
+      </select>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
+      <button type="submit" class="hd-btn primary w-100">
+        <i class="bi bi-funnel-fill"></i> Filtrar
+      </button>
+      <a href="/admin/negocios.php" class="hd-btn outline">
+        <i class="bi bi-x-lg"></i>
+      </a>
+    </div>
+  </form>
+</div>
 
-                <div class="col-md-3">
-                    <label for="status" class="form-label fw-bold small">Status</label>
-                                        <select name="status" id="status" class="form-select form-select-sm">
-                        <option value="">Todos os status</option>
-                        <option value="concluido" <?= $filtro_status === 'concluido' ? 'selected' : '' ?>>Concluído</option>
-                        <option value="andamento" <?= $filtro_status === 'andamento' ? 'selected' : '' ?>>Em andamento</option>
-                        <option value="encerrado" <?= $filtro_status === 'encerrado' ? 'selected' : '' ?>>Encerrados</option>
-                    </select>
-
-                </div>
-
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary btn-sm w-100">Filtrar</button>
-                </div>
-                
-                <?php if(!empty($filtro_categoria) || !empty($filtro_status) || !empty($filtro_nome)): ?>
-                    <div class="col-md-2">
-                        <a href="negocios.php" class="btn btn-outline-secondary btn-sm w-100">Limpar</a>
-                    </div>
+<!-- ══════════════════════════════════
+     Tabela
+═══════════════════════════════════ -->
+<div class="card section-card mb-4">
+  <div class="table-responsive">
+    <table class="emp-table neg-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nome Fantasia</th>
+          <th>Categoria</th>
+          <th>Empreendedor</th>
+          <th>Etapa Atual</th>
+          <th class="text-center"><a href="<?= linkOrdenacao('escala') ?>" class="neg-sort-link">Escala <?= iconeOrdenacao('escala') ?></a></th>
+          <th class="text-center"><a href="<?= linkOrdenacao('investimento') ?>" class="neg-sort-link">Invest. <?= iconeOrdenacao('investimento') ?></a></th>
+          <th class="text-center"><a href="<?= linkOrdenacao('impacto') ?>" class="neg-sort-link">Impacto <?= iconeOrdenacao('impacto') ?></a></th>
+          <th class="text-center"><a href="<?= linkOrdenacao('geral') ?>" class="neg-sort-link">Geral <?= iconeOrdenacao('geral') ?></a></th>
+          <th>Status</th>
+          <th class="text-center">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php if (empty($negocios)): ?>
+          <tr>
+            <td colspan="11" class="text-center py-4" style="color:#9aab9d;">
+              <i class="bi bi-briefcase" style="font-size:1.8rem; opacity:.4; display:block; margin-bottom:.5rem;"></i>
+              Nenhum negócio encontrado com os filtros selecionados.
+            </td>
+          </tr>
+        <?php else: ?>
+          <?php foreach ($negocios as $n): ?>
+            <tr>
+              <td style="color:#9aab9d; font-size:.78rem; font-family:monospace;">
+                #<?= htmlspecialchars((string)$n['id']) ?>
+              </td>
+              <td style="font-weight:600; color:#1E3425; font-size:.88rem;">
+                <?= htmlspecialchars($n['nome_fantasia']) ?>
+              </td>
+              <td>
+                <span class="neg-cat-badge"><?= htmlspecialchars($n['categoria'] ?: '—') ?></span>
+              </td>
+              <td style="font-size:.85rem; color:#4a5e4f;">
+                <?= htmlspecialchars($n['empreendedor']) ?>
+              </td>
+              <td>
+                <?php if ($n['inscricao_completa']): ?>
+                  <span class="emp-badge" style="background:rgba(205,222,0,.2);color:#7a8500;">
+                    <i class="bi bi-check-circle-fill me-1"></i>Todas as etapas concluídas
+                  </span>
+                <?php else: ?>
+                  <span style="font-size:.8rem; color:#6c8070;">
+                    Etapa: <?= isset($etapas[$n['etapa_atual']]) ? $etapas[$n['etapa_atual']] : ($n['etapa_atual'] ?: 'Início') ?>
+                  </span>
                 <?php endif; ?>
-            </form>
-        </div>
-    </div>
-
-    <div class="card shadow mb-4">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome Fantasia</th>
-                            <th>Categoria</th>
-                            <th>Empreendedor</th>
-                            <th>Etapa Atual</th>
-                            <th>
-                                <a href="<?= linkOrdenacao('escala') ?>" class="text-dark text-decoration-none" title="Ordenar por Potencial de Escala">
-                                    <i class="bi bi-graph-up-arrow text-primary me-1"></i><?= iconeOrdenacao('escala') ?>
-                                </a>
-                            </th>
-                            <th>
-                                <a href="<?= linkOrdenacao('investimento') ?>" class="text-dark text-decoration-none" title="Ordenar por Investimento">
-                                    <i class="bi bi-currency-dollar text-success me-1"></i><?= iconeOrdenacao('investimento') ?>
-                                </a>
-                            </th>
-                            <th>
-                                <a href="<?= linkOrdenacao('impacto') ?>" class="text-dark text-decoration-none" title="Ordenar por Impacto">
-                                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i><?= iconeOrdenacao('impacto') ?>
-                                </a>
-                            </th>
-                            <th>
-                                <a href="<?= linkOrdenacao('geral') ?>" class="text-dark text-decoration-none" title="Ordenar por Score Geral">
-                                    <i class="bi bi-star-fill text-dark me-1"></i><?= iconeOrdenacao('geral') ?>
-                                </a>
-                            </th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <?php if (empty($negocios)): ?>
-                            <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">Nenhum negócio encontrado com os filtros selecionados.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($negocios as $n): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($n['id']) ?></td>
-                                    <td><?= htmlspecialchars($n['nome_fantasia']) ?></td>
-                                    <td><?= htmlspecialchars($n['categoria']) ?></td>
-                                    <td><?= htmlspecialchars($n['empreendedor']) ?></td>
-                                    <td>
-                                        <?php if (!empty($n['inscricao_completa'])): ?>
-                                            <span><i class="bi bi-check-all"></i> Todas as etapas concluídas</span>
-                                        <?php else: ?>
-                                            <span class="text-primary">
-                                                Etapa: <strong><?= isset($etapas[$n['etapa_atual']]) ? $etapas[$n['etapa_atual']] : ($n['etapa_atual'] ?: 'Início') ?></strong>
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?= $n['score_escala'] ?? '-' ?></td>
-                                    <td><?= $n['score_investimento'] ?? '-' ?></td>
-                                    <td><?= $n['score_impacto'] ?? '-' ?></td>
-                                    <td><strong><?= $n['score_geral'] ?? '-' ?></strong></td>
-                                    <td class="text-center">
-                                        <?php if ($n['status_operacional'] === 'encerrado'): ?>
-                                            <span class="badge bg-danger">Encerrado</span>
-                                        <?php elseif ($n['status_vitrine'] === 'aprovado' || $n['publicado_vitrine'] == 1): ?>
-                                            <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Aprovado e Publicado</span>
-                                        <?php elseif ($n['status_vitrine'] === 'em_analise'): ?>
-                                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Aguardando Aprovação</span>
-                                        <?php elseif ($n['status_vitrine'] === 'rejeitado'): ?>
-                                            <span class="badge bg-danger"><i class="bi bi-x-circle-fill"></i> Rejeitado</span>
-                                        <?php elseif ($n['inscricao_completa'] == 1): ?>
-                                            <span class="badge bg-info text-dark">Preenchimento Concluído</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-secondary">Em andamento</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex gap-1 justify-content-center">
-                                            <!-- Visualizar: todos -->
-                                            <a href="/admin/visualizar_negocio.php?id=<?= $n['id'] ?>" class="btn btn-sm btn-info text-white" title="Visualizar">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-
-                                            <!-- Desclassificar -->
-                                            <?php if (is_admin() || is_superadmin()): ?>
-                                                <a href="/admin/desclassificar_negocio.php?id=<?= $n['id'] ?>" 
-                                                   class="btn btn-sm btn-warning"
-                                                   title="Desclassificar"
-                                                   onclick="return confirm('Tem certeza que deseja desclassificar este negócio da premiação?');">
-                                                    <i class="bi bi-slash-circle"></i>
-                                                </a>
-                                            <?php endif; ?>
-
-                                            <!-- Remover -->
-                                            <?php if (is_superadmin()): ?>
-                                                <a href="/admin/remover_negocio.php?id=<?= $n['id'] ?>" 
-                                                   class="btn btn-sm btn-danger"
-                                                   title="Remover"
-                                                   onclick="return confirm('ATENÇÃO: Esta ação irá remover TODOS os dados do negócio. Deseja continuar?');">
-                                                    <i class="bi bi-trash"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+              </td>
+              <td class="text-center"><?= $n['score_escala']      ?? '-' ?></td>
+              <td class="text-center"><?= $n['score_investimento'] ?? '-' ?></td>
+              <td class="text-center"><?= $n['score_impacto']      ?? '-' ?></td>
+              <td class="text-center"><?= $n['score_geral']        ?? '-' ?></td>
+              <td>
+                <?php if ($n['status_operacional'] === 'encerrado'): ?>
+                  <span class="emp-badge" style="background:#fde8ea;color:#842029;">Encerrado</span>
+                <?php elseif ($n['publicado_vitrine']): ?>
+                  <span class="emp-badge" style="background:#CDDE00;color:#1E3425;"><i class="bi bi-eye-fill me-1"></i>Aprovado e Publicado</span>
+                <?php elseif ($n['status_vitrine'] === 'em_analise'): ?>
+                  <span class="emp-badge" style="background:rgba(149,188,204,.25);color:#3a6f82;"><i class="bi bi-hourglass-split me-1"></i>Aguardando Aprovação</span>
+                <?php elseif ($n['status_vitrine'] === 'rejeitado'): ?>
+                  <span class="emp-badge" style="background:#fde8ea;color:#842029;">Rejeitado</span>
+                <?php elseif ($n['inscricao_completa']): ?>
+                  <span class="emp-badge" style="background:rgba(151,163,39,.15);color:#5c6318;">Preenchimento Concluído</span>
+                <?php else: ?>
+                  <span class="emp-badge" style="background:#fff3cd;color:#856404;">Em andamento</span>
+                <?php endif; ?>
+              </td>
+              <td class="text-center">
+                <div class="d-flex gap-1 justify-content-center">
+                  <a href="/admin/visualizar_negocio.php?id=<?= $n['id'] ?>" class="act-btn edit" title="Ver detalhes">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <a href="/admin/recalcular_score.php?id=<?= $n['id'] ?>" class="act-btn" title="Recalcular Score"
+                     style="background:rgba(151,163,39,.12);color:#5c6318;">
+                    <i class="bi bi-arrow-repeat"></i>
+                  </a>
+                  <button type="button" class="act-btn" title="Enviar Notificação"
+                          style="background:rgba(149,188,204,.18);color:#3a6f82;"
+                          onclick="abrirModalNotificacao(<?= (int)$n['id'] ?>, '<?= htmlspecialchars(addslashes((string)$n['nome_fantasia'])) ?>')">
+                    <i class="bi bi-bell"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>

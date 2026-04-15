@@ -2,12 +2,13 @@
 // intro_text_eixo_tematico.php
 // Uso: inclua este arquivo no início da etapa para mostrar o texto padrão de orientação
 ?>
-
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body">
-    <h3 class="fw-bold">
-      <i class="bi bi-fingerprint me-2"></i> Mostre o <strong>DNA da sua solução</strong>: o que você faz, por que existe e quem transforma.
-    </h3>
+<!-- ── Card introdutório ─────────────────────────────────── -->
+<div class="intro-card">
+  <div class="intro-card-header">
+    <div class="header-icon"><i class="bi bi-fingerprint"></i></div>
+    <h3>Mostre o <strong>DNA da sua solução</strong>: o que você faz, por que existe e quem transforma.</h3>
+  </div>
+  <div class="intro-card-body">
     <p>
       Esta é a oportunidade de apresentar, de forma <strong>clara</strong> e <strong>inspiradora</strong>, 
       a essência do seu <strong>negócio de impacto</strong>. Mais do que descrever o que oferece, 
@@ -32,15 +33,17 @@
       <strong>coração do seu negócio</strong>: sua <strong>motivação</strong>, 
       <strong>visão de futuro</strong> e compromisso com um 
       <strong>mundo mais justo, sustentável e inclusivo</strong>.
-    </p>
-    
-    <div class="mt-3">
-      <small class="d-block text-muted">
-        <i class="bi bi-eye text-secondary me-1"></i> Público — será exibido na vitrine
-      </small>
-      <small class="d-block text-muted">
-        <i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Privado — visível apenas para análise interna
-      </small>
+    </p>  
+
+    <div class="intro-legend">
+      <div class="intro-legend-item">
+        <span class="legend-dot pub"><i class="bi bi-eye-fill"></i></span>
+        Público — será exibido na vitrine
+      </div>
+      <div class="intro-legend-item">
+        <span class="legend-dot priv"><i class="bi bi-eye-slash-fill"></i></span>
+        Privado — visível apenas para análise interna
+      </div>
     </div>
   </div>
 </div>

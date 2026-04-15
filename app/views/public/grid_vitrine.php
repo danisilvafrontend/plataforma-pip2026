@@ -1,90 +1,97 @@
 <?php if (!empty($negociosDestaque)): ?>
 <section class="py-5">
     <div class="container">
-        <!-- Grid de negócios -->
-        <div class="row">
+        <div class="row g-4">
             <?php foreach ($negociosDestaque as $n): ?>
-                <div class="col-md-4 mb-4"> <!-- Coluna limpa, sem overflow -->
-                    
-                    <!-- O CARD: Aqui entram as classes position-relative e overflow-hidden -->
-                    <div class="card d-flex justify-content-between h-100 p-3 shadow-sm position-relative overflow-hidden">
-                        
-                        <!-- A Faixa Diagonal (Ajustada para textos longos) -->
-                        <?php
-                        $categoria = trim($n['categoria'] ?? '');
+                <?php
+                    $categoria = trim($n['categoria'] ?? '');
 
-                        $cores_categoria = [
-                            'Ideação' => 'rgba(255, 161, 0, 0.75)',
-                            'Operação' => 'rgba(76, 144, 177, 0.75)',
-                            'Tração/Escala' => 'rgba(36, 139, 101, 0.75)',
-                            'Dinamizador' => 'rgba(135, 32, 184, 0.75)'
-                        ];
+                    $cores_categoria = [
+                        'Ideação' => '#f59e0b',
+                        'Operação' => '#3b82f6',
+                        'Tração/Escala' => '#16a34a',
+                        'Dinamizador' => '#9333ea'
+                    ];
 
-                        $cor_categoria = $cores_categoria[$categoria] ?? 'rgba(13, 110, 253, 0.75)';
-                        ?>
-                        <!-- A Faixa Diagonal -->
-                        <div class="position-absolute" style="top: -5px; left: -5px; width: 130px; height: 130px; z-index: 10;">
-                            <div class="text-white text-center shadow-sm text-uppercase d-flex align-items-center justify-content-center"
-                                style="position: absolute; top: 30px; left: -40px; width: 180px; height: 30px; transform: rotate(-45deg); font-size: 0.6rem; font-weight: bold; line-height: 1; background-color: <?= $cor_categoria ?>;">
-                                <span class="d-inline-block px-2" style="max-width: 100%; white-space: normal;">
-                                    <?= htmlspecialchars($categoria) ?>
-                                </span>
-                            </div>
-                        </div>
+                    $cor_categoria = $cores_categoria[$categoria] ?? '#1E3425';
 
-                        <div class="row d-flex align-items-center">
-                            <div class="col-md-4 mb-2 text-center">
-                                <!-- A Imagem do Logotipo (removi o overflow daqui também) -->
-                                <?php if (!empty($n['logo_negocio'])): ?>
-                                    <img src="<?= htmlspecialchars($n['logo_negocio']) ?>" 
-                                        class="card-logo mt-4 mb-3 position-relative" 
-                                        style="z-index: 1;"
-                                        alt="Logo do negócio">
+                    $temCapa = !empty($n['imagem_destaque']);
+                    $temLogo = !empty($n['logo_negocio']);
+                ?>
+
+                <div class="col-md-6 col-xl-4">
+                    <article class="vitrine-card h-100">
+                        <a href="/negocio.php?id=<?= $n['id'] ?>" class="vitrine-card-link-area">
+                            <div class="vitrine-card-media <?= !$temCapa ? 'sem-capa' : '' ?>">
+                                <?php if ($temCapa): ?>
+                                    <img
+                                        src="<?= htmlspecialchars($n['imagem_destaque']) ?>"
+                                        alt="Imagem de destaque de <?= htmlspecialchars($n['nome_fantasia']) ?>"
+                                        class="vitrine-card-cover"
+                                    >
+                                <?php elseif ($temLogo): ?>
+                                    <div class="vitrine-card-logo-wrap">
+                                        <img
+                                            src="<?= htmlspecialchars($n['logo_negocio']) ?>"
+                                            alt="Logo de <?= htmlspecialchars($n['nome_fantasia']) ?>"
+                                            class="vitrine-card-logo"
+                                        >
+                                    </div>
+                                <?php else: ?>
+                                    <div class="vitrine-card-fallback">
+                                        <span><?= htmlspecialchars(mb_strtoupper(mb_substr($n['nome_fantasia'], 0, 1))) ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($categoria)): ?>
+                                    <span class="vitrine-card-categoria" style="--categoria-cor: <?= htmlspecialchars($cor_categoria) ?>;">
+                                        <?= htmlspecialchars($categoria) ?>
+                                    </span>
                                 <?php endif; ?>
                             </div>
 
-                            <div class="col-md-8 mb-2 text-center">
-                                <h5 class="card-title text-center"><?= htmlspecialchars($n['nome_fantasia']) ?></h5>                        
-                                <span class="small-muted"><?= htmlspecialchars($n['municipio']) ?>/<?= htmlspecialchars($n['estado']) ?></span> 
-                                <div class="d-flex justify-content-center">                  
-                                    <span class="badge m-1 text-wrap text-bg-primary text-center"> <?= htmlspecialchars($n['eixo_tematico_nome'] ?? '') ?> </span>  
-                                </div> 
-                            </div>
-                        </div>
+                            <div class="vitrine-card-body">
+                                <div class="vitrine-card-top">
+                                    <h3 class="vitrine-card-title"><?= htmlspecialchars($n['nome_fantasia']) ?></h3>
 
-                        <div class="row d-flex align-items-center">
-                            <div class="col-md-3 mb-2">
-                                <div class="d-flex justify-content-center">
-                                    <?php if (!empty($n['icone_url'])): ?>
-                                        <img src="<?= htmlspecialchars($n['icone_url']) ?>" alt="ODS" style="max-height:50px;">
+                                    <?php if (!empty($n['municipio']) || !empty($n['estado'])): ?>
+                                        <p class="vitrine-card-local">
+                                            <i class="bi bi-geo-alt"></i>
+                                            <?= htmlspecialchars(trim(($n['municipio'] ?? '') . ' / ' . ($n['estado'] ?? ''), ' /')) ?>
+                                        </p>
                                     <?php endif; ?>
                                 </div>
-                            </div>
-                            <div class="col-md-9 mb-2">
-                                <blockquote class="apresentacao-quote fst-italic text-primary border-start border-4 ps-3">
-                                    <i class="bi bi-quote"></i> <?= htmlspecialchars($n['frase_negocio']) ?>
-                                </blockquote>
-                            </div>
-                        </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-2">
-                                <div class="d-grid">
-                                    <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-primary mt-2">Ver negócio</a>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <div class="d-grid">
-                                    <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-secondary mt-2">Apoiar</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div> <!-- Fim do Card -->
+                                <div class="vitrine-card-meta">
+                                    <?php if (!empty($n['eixo_tematico_nome'])): ?>
+                                        <span class="vitrine-chip vitrine-chip-eixo">
+                                            <?= htmlspecialchars($n['eixo_tematico_nome']) ?>
+                                        </span>
+                                    <?php endif; ?>
 
-                </div> <!-- Fim da Coluna -->
+                                    <?php if (!empty($n['icone_url'])): ?>
+                                        <span class="vitrine-ods">
+                                            <img src="<?= htmlspecialchars($n['icone_url']) ?>" alt="ODS prioritária">
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if (!empty($n['frase_negocio'])): ?>
+                                    <blockquote class="vitrine-card-frase">
+                                        <?= htmlspecialchars($n['frase_negocio']) ?>
+                                    </blockquote>
+                                <?php endif; ?>
+                            </div>
+                        </a>
+
+                        <div class="vitrine-card-actions">
+                            <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-primary">Ver negócio</a>
+                            <a href="/negocio.php?id=<?= $n['id'] ?>#apoiar" class="btn btn-outline-secondary">Apoiar</a>
+                        </div>
+                    </article>
+                </div>
             <?php endforeach; ?>
         </div>
-
     </div>
 </section>
 <?php endif; ?>

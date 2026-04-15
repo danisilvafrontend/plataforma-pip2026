@@ -107,7 +107,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
     
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="fw-bold mb-1">Editar Perfil</h2>
+                    <h2 class="fw-bold mb-1">Editar Dados</h2>
                     <p class="text-muted mb-0">Atualize as informações de contato da sua organização.</p>
                 </div>
                 <a href="dashboard.php" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-2"></i> Voltar ao Painel</a>

@@ -1,8 +1,5 @@
 <?php
 session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
@@ -23,7 +20,7 @@ $parceiro_id = $_SESSION['parceiro_id'];
 // Busca TODOS os dados para o contrato
 $stmt = $pdo->prepare("
     SELECT p.*, 
-           c.tipos_parceria, c.natureza_parceria, c.duracao_meses, c.nivel_engajamento,
+           c.tipos_parceria, c.natureza_parceria, c.nivel_engajamento,
            c.escopo_atuacao, c.escopo_outro, c.oferece_premiacao, c.premio_descricao,
            c.autoriza_marca, c.data_assinatura, c.data_vencimento
     FROM parceiros p
@@ -82,7 +79,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
             <div class="card shadow-sm border-0 rounded-4 mb-5" id="area-contrato">
                 
                 <!-- Cabeçalho do Contrato -->
-                <div class="card-header text-white p-4 border-0 rounded-top-4 d-flex justify-content-between align-items-center flex-wrap gap-3" style="background-color: #00458a;">
+                <div class="card-header text-white p-4 border-0 rounded-top-4 d-flex justify-content-between align-items-center flex-wrap gap-3" style="background-color: #97A327;">
                     <div>
                         <h2 class="mb-0 fw-bold h5 d-flex align-items-center">
                             <i class="bi bi-file-earmark-text me-2"></i>
@@ -111,11 +108,11 @@ include __DIR__ . '/../app/views/public/header_public.php';
 
                     <hr class="my-4" style="border-top: 1px dashed #ccc;">
 
-                    <h6 class="fw-bold mb-3" style="color: #00458a;">CLÁUSULA 1 -- OBJETO</h6>
+                    <h6 class="fw-bold mb-3" style="color: #1E3425;">CLÁUSULA 1 -- OBJETO</h6>
                     <p>1.1. O presente instrumento tem por objeto a formalização da parceria institucional entre as partes no âmbito das iniciativas da Plataforma Impactos Positivos.</p>
                     <p>1.2. A parceria poderá envolver ações de comunicação, visibilidade institucional e apoio estratégico, conforme descrito no formulário eletrônico preenchido pelo APOIADOR, que passa a integrar este instrumento.</p>
 
-                    <h6 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 2 -- CONTRAPARTIDAS</h6>
+                    <h6 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 2 -- CONTRAPARTIDAS</h6>
                     <p>2.1. A PLATAFORMA IMPACTOS POSITIVOS compromete-se a conceder visibilidade institucional ao APOIADOR por meio de seus canais oficiais.</p>
                     <p>2.2. O APOIADOR compromete-se a cumprir as entregas descritas no campo específico do formulário eletrônico:</p>
                     <div class="bg-light p-3 border-start border-4 border-primary rounded ms-3 mb-3 small">
@@ -137,18 +134,18 @@ include __DIR__ . '/../app/views/public/header_public.php';
                         </ul>
                     </div>
 
-                    <h6 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 3 -- VIGÊNCIA</h6>
+                    <h6 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 3 -- VIGÊNCIA</h6>
                     <p>3.1. O presente acordo entra em vigor na data da assinatura eletrônica (<strong><?= $data_assinatura_br ?></strong>) e permanecerá válido até <strong><?= $data_vencimento_br ?></strong>.</p>
                     
-                    <h6 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 4 -- NATUREZA DA RELAÇÃO E APOIO GRATUITO</h6>
+                    <h6 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 4 -- NATUREZA DA RELAÇÃO E APOIO GRATUITO</h6>
                     <p>4.1. A presente parceria possui caráter institucional e colaborativo, não estabelecendo vínculo empregatício, societário ou de exclusividade.</p>
                     <p>4.2. As partes reconhecem que o presente apoio é gratuito, não envolvendo transferência de recursos financeiros entre as partes, salvo se formalizado em documento apartado.</p>
 
-                    <h6 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 5 -- USO DE MARCA, INTEGRIDADE E ESG</h6>
+                    <h6 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 5 -- USO DE MARCA, INTEGRIDADE E ESG</h6>
                     <p>5.1. O APOIADOR autoriza a utilização de sua marca exclusivamente para fins relacionados às ações da parceria.</p>
                     <p>5.2. As partes reafirmam compromisso com elevados padrões de ética (Lei nº 12.846/2013) e declaram compartilhar dos princípios ambientais, sociais e de governança (ESG) da Plataforma.</p>
 
-                    <h6 class="fw-bold mb-3 mt-4" style="color: #00458a;">CLÁUSULA 6 -- DISPOSIÇÕES GERAIS</h6>
+                    <h6 class="fw-bold mb-3 mt-4" style="color: #1E3425;">CLÁUSULA 6 -- DISPOSIÇÕES GERAIS</h6>
                     <p>6.1. As partes comprometem-se a cumprir a LGPD (Lei nº 13.709/2018).</p>
                     <p>6.2. O acordo poderá ser encerrado por qualquer parte mediante comunicação formal.</p>
                     <p>6.3. Fica eleito o foro da Comarca de São Paulo/SP para dirimir eventuais controvérsias.</p>

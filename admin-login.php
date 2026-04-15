@@ -3,10 +3,6 @@
 declare(strict_types=1);
 session_start();
 
-// DEBUG TEMPORÁRIO: comentar/remover após depuração
-ini_set('display_errors','1');
-ini_set('display_startup_errors','1');
-error_reporting(E_ALL);
 
 // Ajuste os requires conforme sua estrutura:
 // Se app está DENTRO de public_html use as linhas abaixo (como seu arquivo atual):

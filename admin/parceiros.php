@@ -1,211 +1,331 @@
 <?php
+// /public_html/admin/parceiros.php
+declare(strict_types=1);
 session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+
+require_once __DIR__ . '/../app/helpers/auth.php';
+require_admin_login();
+
 $config = require __DIR__ . '/../app/config/db.php';
-$pdo = new PDO(
-    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
-    $config['user'],
-    $config['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+$dsn    = "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}";
+$opts   = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+try {
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
+} catch (PDOException $e) {
+    die('Erro na conexão com o banco: ' . $e->getMessage());
+}
 
 // Filtros
-$f_nome = $_GET['nome'] ?? '';
-$f_cnpj = $_GET['cnpj'] ?? '';
+$f_nome   = $_GET['nome']   ?? '';
+$f_cnpj   = $_GET['cnpj']   ?? '';
 $f_status = $_GET['status'] ?? '';
 
-$where = [];
+$where  = [];
 $params = [];
 
 if ($f_nome !== '') {
-    $where[] = "(nome_fantasia LIKE ? OR razao_social LIKE ?)";
+    $where[]  = "(nome_fantasia LIKE ? OR razao_social LIKE ?)";
     $params[] = "%$f_nome%";
     $params[] = "%$f_nome%";
 }
 if ($f_cnpj !== '') {
-    $where[] = "cnpj LIKE ?";
+    $where[]  = "cnpj LIKE ?";
     $params[] = "%$f_cnpj%";
 }
 if ($f_status !== '') {
-    $where[] = "status = ?";
+    $where[]  = "status = ?";
     $params[] = $f_status;
 }
 
-$whereSql = '';
-if (!empty($where)) {
-    $whereSql = "WHERE " . implode(' AND ', $where);
-}
+$whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
 // Paginação
-$limit = 50;
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit  = 50;
+$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($page - 1) * $limit;
 
-// Total para paginação
 $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM parceiros $whereSql");
 $stmtCount->execute($params);
-$totalRecords = $stmtCount->fetchColumn();
-$totalPages = ceil($totalRecords / $limit);
+$totalRecords = (int)$stmtCount->fetchColumn();
+$totalPages   = max(1, (int)ceil($totalRecords / $limit));
 
-// Busca final - ADICIONADO acordo_aceito
-$sql = "SELECT id, nome_fantasia, cnpj, rep_nome, rep_email, status, etapa_atual, criado_em, acordo_aceito 
-        FROM parceiros $whereSql 
-        ORDER BY criado_em DESC 
-        LIMIT $limit OFFSET $offset";
+$sql  = "SELECT id, nome_fantasia, cnpj, rep_nome, rep_email, status, etapa_atual, criado_em, acordo_aceito
+         FROM parceiros $whereSql ORDER BY criado_em DESC LIMIT $limit OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $parceiros = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Mapeamento de Status
-$status_badges = [
-    'em_cadastro' => '<span class="badge bg-secondary">Em Cadastro (Etapa %s)</span>',
-    'analise' => '<span class="badge bg-warning text-dark">Em Análise</span>',
-    'ativo' => '<span class="badge bg-success">Ativo</span>',
-    'inativo' => '<span class="badge bg-danger">Inativo</span>'
-];
+// Helper de badge de status
+function parceiroStatusBadge(string $s, ?int $etapa = null): string {
+    $map = [
+        'em_cadastro' => ['#fff3cd', '#856404'],
+        'analise'     => ['rgba(149,188,204,.25)', '#3a6f82'],
+        'ativo'       => ['#CDDE00', '#1E3425'],
+        'inativo'     => ['#fde8ea', '#842029'],
+    ];
+    [$bg, $color] = $map[strtolower($s)] ?? ['#f0f0f0', '#6c757d'];
+    $label = match(strtolower($s)) {
+        'em_cadastro' => 'Em Cadastro' . ($etapa ? " (Etapa $etapa)" : ''),
+        'analise'     => 'Em Análise',
+        'ativo'       => 'Ativo',
+        'inativo'     => 'Inativo',
+        default       => ucfirst($s),
+    };
+    return "<span class=\"emp-badge\" style=\"background:$bg;color:$color;\">" . htmlspecialchars($label) . "</span>";
+}
 
 $pageTitle = 'Gestão de Parceiros';
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
 
-<!-- Modal para mudar status via AJAX ou formulário -->
-<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form action="processar_status_parceiro.php" method="POST">
-          <div class="modal-header">
-            <h5 class="modal-title">Alterar Status do Parceiro</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" name="parceiro_id" id="modal_parceiro_id">
-            <p>Alterando status de: <strong id="modal_parceiro_nome"></strong></p>
-            
-            <div class="mb-3">
-                <label class="form-label">Novo Status</label>
-                <select class="form-select" name="novo_status" required>
-                    <option value="analise">Em Análise (Aguardando)</option>
-                    <option value="ativo">Aprovar Parceiro (Ativo)</option>
-                    <option value="inativo">Inativar Parceiro</option>
-                </select>
-                <div class="form-text mt-2 text-muted">
-                    <i class="bi bi-info-circle"></i> Ao marcar como <strong>Ativo</strong>, o parceiro receberá acesso às funcionalidades e à Rede de Impacto no painel dele.
-                </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary">Salvar Status</button>
-          </div>
-      </form>
+<!-- ══════════════════════════════════
+     Cabeçalho da página
+═══════════════════════════════════ -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h4 class="fw-bold mb-0" style="color:#1E3425;">Parceiros</h4>
+    <small style="color:#6c8070; font-size:.82rem;">
+      <?= $totalRecords ?> parceiro<?= $totalRecords !== 1 ? 's' : '' ?> encontrado<?= $totalRecords !== 1 ? 's' : '' ?>
+    </small>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="/admin/dashboard.php" class="hd-btn outline">
+      <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     Filtros
+═══════════════════════════════════ -->
+<div class="filter-card card p-3 mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-12 col-sm-6 col-lg-4">
+      <label class="form-label">Nome / Razão Social</label>
+      <div class="search-bar">
+        <i class="bi bi-search"></i>
+        <input type="text" name="nome" class="form-control"
+               placeholder="Buscar parceiro…" value="<?= htmlspecialchars($f_nome) ?>">
+      </div>
     </div>
-  </div>
+    <div class="col-12 col-sm-6 col-lg-3">
+      <label class="form-label">CNPJ</label>
+      <input type="text" name="cnpj" class="form-control"
+             placeholder="00.000.000/0000-00" value="<?= htmlspecialchars($f_cnpj) ?>">
+    </div>
+    <div class="col-12 col-sm-6 col-lg-2">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-select">
+        <option value="">Todos</option>
+        <option value="em_cadastro" <?= $f_status === 'em_cadastro' ? 'selected' : '' ?>>Em Cadastro</option>
+        <option value="analise"     <?= $f_status === 'analise'     ? 'selected' : '' ?>>Em Análise</option>
+        <option value="ativo"       <?= $f_status === 'ativo'       ? 'selected' : '' ?>>Ativo</option>
+        <option value="inativo"     <?= $f_status === 'inativo'     ? 'selected' : '' ?>>Inativo</option>
+      </select>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
+      <button type="submit" class="hd-btn primary w-100">
+        <i class="bi bi-funnel-fill"></i> Filtrar
+      </button>
+      <a href="/admin/parceiros.php" class="hd-btn outline">
+        <i class="bi bi-x-lg"></i>
+      </a>
+    </div>
+  </form>
 </div>
 
-<div class="card shadow-sm mb-4 border-0">
-  <div class="card-body">
-    <form method="GET" class="row g-3">
-      <div class="col-md-4">
-        <label class="form-label text-muted small">Buscar por Nome / Razão</label>
-        <input type="text" name="nome" class="form-control form-control-sm" value="<?=htmlspecialchars($f_nome)?>" placeholder=\"Ex: Instituto XYZ\">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label text-muted small">Buscar por CNPJ</label>
-        <input type="text" name="cnpj" class="form-control form-control-sm" value="<?=htmlspecialchars($f_cnpj)?>">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label text-muted small">Status</label>
-        <select name="status" class="form-select form-select-sm">
-          <option value="">Todos</option>
-          <option value="em_cadastro" <?= $f_status === 'em_cadastro' ? 'selected' : '' ?>>Em Cadastro</option>
-          <option value="analise" <?= $f_status === 'analise' ? 'selected' : '' ?>>Em Análise</option>
-          <option value="ativo" <?= $f_status === 'ativo' ? 'selected' : '' ?>>Ativo</option>
-          <option value="inativo" <?= $f_status === 'inativo' ? 'selected' : '' ?>>Inativo</option>
-        </select>
-      </div>
-      <div class="col-md-2 d-flex align-items-end">
-        <button class="btn btn-primary btn-sm w-100"><i class="bi bi-search me-1"></i> Filtrar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div class="card shadow-sm border-0">
+<!-- ══════════════════════════════════
+     Tabela
+═══════════════════════════════════ -->
+<div class="card section-card mb-4">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
+    <table class="emp-table">
+      <thead>
         <tr>
-          <th>ID</th>
+          <th>#</th>
           <th>Parceiro</th>
           <th>CNPJ</th>
           <th>Representante</th>
+          <th>E-mail</th>
           <th>Status</th>
-          <th class="text-end">Ações</th>
+          <th>Acordo</th>
+          <th>Cadastro</th>
+          <th class="text-center">Ações</th>
         </tr>
       </thead>
       <tbody>
-        <?php if(empty($parceiros)): ?>
-            <tr><td colspan="6" class="text-center py-4 text-muted">Nenhum parceiro encontrado.</td></tr>
+        <?php if (empty($parceiros)): ?>
+          <tr>
+            <td colspan="9" class="text-center py-4" style="color:#9aab9d;">
+              <i class="bi bi-handshake" style="font-size:1.8rem; opacity:.4; display:block; margin-bottom:.5rem;"></i>
+              Nenhum parceiro encontrado para os filtros aplicados.
+            </td>
+          </tr>
         <?php else: ?>
-            <?php foreach($parceiros as $p): ?>
-                <?php 
-                $badge = $status_badges[$p['status']] ?? '';
-                if ($p['status'] === 'em_cadastro') {
-                    $badge = sprintf($badge, $p['etapa_atual']);
-                }
-                ?>
-                <tr>
-                    <td class="text-muted small">#<?= $p['id'] ?></td>
-                    <td class="fw-bold text-primary">
-                        <?= htmlspecialchars($p['nome_fantasia']) ?>
-                        <?php if($p['acordo_aceito'] == 1): ?>
-                            <i class="bi bi-file-earmark-check-fill text-success ms-1" title="Carta-Acordo Assinada"></i>
-                        <?php endif; ?>
-                    </td>
-                    <td><?= htmlspecialchars($p['cnpj']) ?></td>
-                    <td>
-                        <?= htmlspecialchars($p['rep_nome']) ?><br>
-                        <small class="text-muted"><?= htmlspecialchars($p['rep_email']) ?></small>
-                    </td>
-                    <td><?= $badge ?></td>
-                    <td class="text-end text-nowrap">
-                        
-                        <!-- NOVO BOTÃO: Visualizar Carta-Acordo -->
-                        <?php if($p['acordo_aceito'] == 1): ?>
-                        <a href="visualizar_carta_parceiro.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-success" title="Ver Carta-Acordo Assinada" target="_blank">
-                            <i class="bi bi-file-earmark-text"></i>
-                        </a>
-                        <?php endif; ?>
+          <?php foreach ($parceiros as $i => $p): ?>
+            <tr>
+              <td style="color:#9aab9d; font-size:.8rem;"><?= $offset + $i + 1 ?></td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="emp-avatar">
+                    <?= strtoupper(mb_substr($p['nome_fantasia'] ?: $p['rep_nome'] ?: '?', 0, 1)) ?>
+                  </div>
+                  <div>
+                    <div style="font-weight:600; color:#1E3425; font-size:.88rem;">
+                      <?= htmlspecialchars($p['nome_fantasia'] ?: '—') ?>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-size:.84rem; color:#4a5e4f; font-family:monospace;">
+                <?= htmlspecialchars($p['cnpj'] ?: '—') ?>
+              </td>
+              <td style="font-size:.85rem;">
+                <?= htmlspecialchars($p['rep_nome'] ?: '—') ?>
+              </td>
+              <td style="font-size:.82rem; color:#6c8070;">
+                <?= htmlspecialchars($p['rep_email'] ?: '—') ?>
+              </td>
+              <td>
+                <?= parceiroStatusBadge($p['status'] ?? '', $p['etapa_atual'] ?? null) ?>
+              </td>
+              <td>
+                <?php if ($p['acordo_aceito']): ?>
+                  <span class="emp-badge" style="background:rgba(205,222,0,.2);color:#7a8500;">
+                    <i class="bi bi-check-circle-fill me-1"></i>Aceito
+                  </span>
+                <?php else: ?>
+                  <span class="emp-badge" style="background:#fde8ea;color:#842029;">
+                    <i class="bi bi-x-circle-fill me-1"></i>Pendente
+                  </span>
+                <?php endif; ?>
+              </td>
+              <td style="font-size:.8rem; color:#9aab9d; white-space:nowrap;">
+                <?= $p['criado_em'] ? date('d/m/Y', strtotime($p['criado_em'])) : '—' ?>
+              </td>
+              <td class="text-end text-nowrap">
+                <a href="visualizar_parceiro.php?id=<?= (int)$p['id'] ?>"
+                  class="btn btn-sm btn-outline-secondary"
+                  title="Ver cadastro completo">
+                    <i class="bi bi-eye"></i>
+                </a>
 
-                        <!-- Botão de ver Cadastro Completo -->
-                        <a href="visualizar_parceiro.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-secondary ms-1" title="Ver Cadastro Completo">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                        
-                        <!-- Botão de Alterar Status -->
-                        <button type="button" class="btn btn-sm btn-outline-primary ms-1" 
-                                onclick="openStatusModal(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'])) ?>')" 
-                                title="Aprovar/Alterar Status">
-                            <i class="bi bi-arrow-repeat"></i>
-                        </button>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
+                <?php if ((int)($p['acordo_aceito'] ?? 0) === 1): ?>
+                    <a href="visualizar_carta_parceiro.php?id=<?= (int)$p['id'] ?>"
+                      class="btn btn-sm btn-outline-success ms-1"
+                      title="Ver Carta-Acordo">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </a>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary ms-1"
+                            title="Alterar status"
+                            onclick="openStatusModal(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'] ?: $p['razao_social'] ?: 'Parceiro')) ?>', '<?= htmlspecialchars($p['status'] ?? '') ?>')">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                <?php else: ?>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary ms-1"
+                            title="Só é possível alterar o status após a assinatura da carta-acordo"
+                            disabled>
+                        <i class="bi bi-lock"></i>
+                    </button>
+                <?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
         <?php endif; ?>
       </tbody>
     </table>
   </div>
+</div>
 
-<!-- Scripts locais -->
-<script>
-function openStatusModal(id, nome) {
-    document.getElementById('modal_parceiro_id').value = id;
-    document.getElementById('modal_parceiro_nome').innerText = nome;
-    var myModal = new bootstrap.Modal(document.getElementById('statusModal'));
-    myModal.show();
-}
-</script>
+<!-- ══════════════════════════════════
+     Paginação
+═══════════════════════════════════ -->
+<?php if ($totalPages > 1): ?>
+<nav class="d-flex justify-content-center mb-4">
+  <ul class="pagination ip-pagination">
+    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+      <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+      <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+        <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>">
+          <?= $i ?>
+        </a>
+      </li>
+    <?php endfor; ?>
+    <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+      <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+  </ul>
+</nav>
+<?php endif; ?>
+
+<!-- MODAL STATUS PARCEIRO -->
+
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="processar_status_parceiro.php" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alterar Status do Parceiro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="parceiro_id" id="modal_parceiro_id">
+
+                    <p class="mb-3">
+                        Alterando status de <strong id="modal_parceiro_nome">Parceiro</strong>
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="modal_novo_status" class="form-label">Novo status</label>
+                        <select class="form-select" name="novo_status" id="modal_novo_status" required>
+                            <option value="">Selecione</option>
+                            <option value="analise">Em Análise</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
+                    </div>
+
+                    <div class="small text-muted">
+                        O status só pode ser alterado para parceiros com carta-acordo assinada.
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
+
+<script>
+function openStatusModal(id, nome, statusAtual = '') {
+    document.getElementById('modal_parceiro_id').value = id;
+    document.getElementById('modal_parceiro_nome').textContent = nome || 'Parceiro';
+
+    const select = document.getElementById('modal_novo_status');
+    if (select) {
+        select.value = statusAtual || '';
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    modal.show();
+}
+</script>
