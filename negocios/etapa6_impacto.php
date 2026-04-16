@@ -46,17 +46,17 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
 <div class="container py-4" style="max-width: 980px;">
     <div class="mb-4">
-        <h1 class="emp-page-title mb-1">Etapa 7 — Avaliação de Impacto</h1>
+        <h1 class="emp-page-title mb-1">Etapa 6 — Avaliação de Impacto</h1>
         <p class="emp-page-subtitle mb-0">Preencha as informações sobre intencionalidade, medição e resultados de impacto do negócio.</p>
     </div>
 
     <?php
-        $etapaAtual = 7;
+        $etapaAtual = 6;
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_impacto.php';
     ?>
 
-    <form action="/negocios/processar_etapa7.php" method="post" enctype="multipart/form-data">
+    <form action="/negocios/processar_etapa6.php" method="post" enctype="multipart/form-data">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="cadastro">
 

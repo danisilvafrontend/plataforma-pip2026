@@ -41,24 +41,24 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 <div class="container my-5 emp-inner">
 
     <?php
-        $etapaAtual = 5;
+        $etapaAtual = 8;
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_apresentacao_negocios.php';
     ?>
 
-    <?php if (!empty($_SESSION['errors_etapa5'])): ?>
+    <?php if (!empty($_SESSION['errors_etapa8'])): ?>
         <div class="alert alert-danger d-flex align-items-start gap-2">
             <i class="bi bi-exclamation-circle-fill mt-1"></i>
             <ul class="mb-0 ps-2">
-                <?php foreach ($_SESSION['errors_etapa5'] as $error): ?>
+                <?php foreach ($_SESSION['errors_etapa8'] as $error): ?>
                     <li><?= htmlspecialchars($error) ?></li>
                 <?php endforeach; ?>
             </ul>
         </div>
-        <?php unset($_SESSION['errors_etapa5']); ?>
+        <?php unset($_SESSION['errors_etapa8']); ?>
     <?php endif; ?>
 
-    <form action="/negocios/processar_etapa5.php" method="post" enctype="multipart/form-data">
+    <form action="/negocios/processar_etapa8.php" method="post" enctype="multipart/form-data">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="cadastro">
 

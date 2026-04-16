@@ -44,17 +44,17 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
 <div class="container py-4" style="max-width: 980px;">
     <div class="mb-4">
-        <h1 class="emp-page-title mb-1">Etapa 8 — Visão de Futuro</h1>
+        <h1 class="emp-page-title mb-1">Etapa 7 — Visão de Futuro</h1>
         <p class="emp-page-subtitle mb-0">Planejamento estratégico, escala e apoio para os próximos anos.</p>
     </div>
 
     <?php
-        $etapaAtual = 8;
+        $etapaAtual = 7;
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_visao.php';
     ?>
 
-    <form action="/negocios/processar_etapa8.php" method="post">
+    <form action="/negocios/processar_etapa7.php" method="post">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="cadastro">
 

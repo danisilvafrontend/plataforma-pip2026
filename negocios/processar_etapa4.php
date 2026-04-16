@@ -69,7 +69,7 @@ if ($modo === 'cadastro') {
     }
 
     // Avança para a PRÓXIMA etapa
-    header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
+    header("Location: /negocios/etapa5_financeiro.php?id=" . $negocio_id);
     exit;
     
 } else {
@@ -86,10 +86,10 @@ if ($modo === 'cadastro') {
             2 => '/negocios/etapa2_fundadores.php',
             3 => '/negocios/etapa3_eixo_tematico.php',
             4 => '/negocios/etapa4_ods.php',    
-            5 => '/negocios/etapa5_apresentacao.php',
-            6 => '/negocios/etapa6_financeiro.php',
-            7 => '/negocios/etapa7_impacto.php',
-            8 => '/negocios/etapa8_visao.php',
+            5 => '/negocios/etapa5_financeiro.php',
+            6 => '/negocios/etapa6_impacto.php',
+            7 => '/negocios/etapa7_visao.php',
+            8 => '/negocios/etapa8_apresentacao.php',
             9 => '/negocios/etapa9_documentacao.php',
             10 => '/negocios/confirmacao.php'
         ];

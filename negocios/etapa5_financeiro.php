@@ -53,17 +53,17 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
 <div class="container py-4 etapa6-page" style="max-width: 980px;">
     <div class="mb-4">
-        <h1 class="emp-page-title mb-1">Etapa 6 — Dados Financeiros e Modelo de Receita</h1>
+        <h1 class="emp-page-title mb-1">Etapa 5 — Dados Financeiros e Modelo de Receita</h1>
         <p class="emp-page-subtitle mb-0">Preencha as informações financeiras atuais e as perspectivas de crescimento do negócio.</p>
     </div>
 
     <?php
-        $etapaAtual = 6;
+        $etapaAtual = 5;
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_financeiro.php';
     ?>
 
-    <form action="/negocios/processar_etapa6.php" method="post" enctype="multipart/form-data">
+    <form action="/negocios/processar_etapa5.php" method="post" enctype="multipart/form-data">
         <input type="hidden" name="negocio_id" value="<?= (int)$negocio_id ?>">
         <input type="hidden" name="modo" value="cadastro">
 

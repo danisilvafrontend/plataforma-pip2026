@@ -1,16 +1,25 @@
 <?php
-// Assumindo que _shared.php já foi incluído na página principal e define $negocioid e funções de busca
-// Exemplo: require_once '_shared.php'; $financeiro = buscarFinanceiro($negocioid ?? 0);
+// bloco_etapa7.php - Visualização da Etapa 7 (Avaliação de Impacto)
+// Espera: $negocio, $negocio_id, $impacto (array do negocio_impacto)
+
+if (!isset($negocio) || !isset($negocio_id)) return;
+
+// Se $impacto vier como false do fetch, normaliza para []
+$impacto = is_array($impacto) ? $impacto : [];
+
+// Helpers do _shared.php
+$beneficiarios = impacto_beneficiarios($impacto);
+$metricas      = impacto_metricas($impacto);
+$formas        = impacto_formas_medicao($impacto);
+$links         = impacto_links($impacto);
+$pdfs          = impacto_pdfs($impacto);
 ?>
 
-<!-- Bloco 06 - Informações Financeiras -->
 <div class="emp-review-card mb-4">
     <div class="emp-review-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="emp-review-card-title">
-            <i class="bi bi-currency-dollar me-1"></i>
-            Informações Financeiras
+            <i class="bi bi-bar-chart-line me-1"></i> Avaliação de Impacto
             <span class="emp-review-step">(Etapa 6)</span>
-            <i class="bi bi-eye-slash text-danger-emphasis ms-1"></i>
         </div>
 
         <?php
@@ -26,215 +35,191 @@
     </div>
 
     <div class="emp-review-card-body">
-
-        <div class="emp-review-subblock mb-4">
-            <div class="emp-review-subblock-title principal">
-                <i class="bi bi-graph-up-arrow me-1"></i> Estágio de Faturamento
+        <?php if (empty(array_filter($impacto))): ?>
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+                Nenhuma informação de impacto cadastrada ainda.
             </div>
-
-            <?php if (!empty($financeiro['estagio_faturamento'])): ?>
-                <div class="emp-review-finance-highlight">
-                    <div class="emp-review-finance-highlight-text">
-                        <?= htmlspecialchars($financeiro['estagio_faturamento']); ?>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="alert alert-warning text-center mb-0">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    Nenhum estágio de faturamento informado
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <div class="emp-review-subblock mb-4">
-            <div class="emp-review-subblock-title secondary">
-                <i class="bi bi-bar-chart-line me-1"></i> Estrutura financeira
-            </div>
+        <?php else: ?>
 
             <div class="row g-4">
+
                 <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-tag text-info me-1"></i> Faixa de Faturamento
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title principal">
+                            <i class="bi bi-lightbulb-fill text-success me-1"></i> Intencionalidade
+                            <i class="bi bi-eye text-secondary ms-1"></i>
                         </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['faixa_faturamento']) ? htmlspecialchars($financeiro['faixa_faturamento']) : 'Não informado'; ?>
+                        <div class="emp-review-context">Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio?</div>
+                        <?= !empty($impacto['intencionalidade'])
+                            ? '<div class="emp-review-content-box">'.nl2br(e($impacto['intencionalidade'])).'</div>'
+                            : '<div class="emp-review-empty">Não informado</div>'; ?>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-diagram-3-fill text-info me-1"></i> Tipo de Impacto
+                            <i class="bi bi-eye text-secondary ms-1"></i>
+                        </div>
+                        <div class="emp-review-context">Como você classificaria o tipo de impacto que seu negócio gera hoje?</div>
+                        <?= !empty($impacto['tipo_impacto'])
+                            ? '<div class="emp-review-content-box">'.nl2br(e($impacto['tipo_impacto'])).'</div>'
+                            : '<div class="emp-review-empty">Não informado</div>'; ?>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-people-fill text-primary me-1"></i> Beneficiários
+                            <i class="bi bi-eye text-secondary ms-1"></i>
+                        </div>
+                        <div class="emp-review-context">Quem são os principais grupos beneficiados pelo seu negócio?</div>
+                        <div class="emp-review-content-box">
+                            <?= render_badges($beneficiarios, 'primary') ?>
+                            <?php if (!empty($impacto['beneficiario_outro'])): ?>
+                                <div class="mt-2 small-muted">Outro: <?= e($impacto['beneficiario_outro']) ?></div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-piggy-bank text-warning me-1"></i> Modelo de Monetização
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-geo-alt-fill text-warning me-1"></i> Alcance
+                            <i class="bi bi-eye text-secondary ms-1"></i>
                         </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['modelo_monetizacao']) ? htmlspecialchars($financeiro['modelo_monetizacao']) : 'Não informado'; ?>
+                        <div class="emp-review-context">Beneficiários diretos nos últimos 2 anos</div>
+                        <?= !empty($impacto['alcance'])
+                            ? '<div class="emp-review-content-box">'.nl2br(e($impacto['alcance'])).'</div>'
+                            : '<div class="emp-review-empty">Não informado</div>'; ?>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-graph-up-arrow text-success me-1"></i> Métricas
+                            <i class="bi bi-eye-slash text-danger-emphasis ms-1"></i>
+                        </div>
+                        <div class="emp-review-context">Métricas e indicadores utilizados para mensurar o impacto</div>
+                        <div class="emp-review-content-box">
+                            <?= render_badges($metricas, 'success') ?>
+                            <?php if (!empty($impacto['metrica_outro'])): ?>
+                                <div class="mt-2 small-muted">Outra: <?= e($impacto['metrica_outro']) ?></div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-percent text-danger me-1"></i> Margem Bruta
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-clipboard-check text-info me-1"></i> Medição
+                            <i class="bi bi-eye-slash text-danger-emphasis ms-1"></i>
                         </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['margem_bruta']) ? htmlspecialchars($financeiro['margem_bruta']) : 'Não informado'; ?>
+
+                        <div class="emp-review-context">A empresa mede seu impacto socioambiental?</div>
+                        <?= !empty($impacto['medicao'])
+                            ? '<div class="emp-review-content-box mb-3">'.nl2br(e($impacto['medicao'])).'</div>'
+                            : '<div class="emp-review-empty mb-3">Não informado</div>'; ?>
+
+                        <div class="emp-review-context">Como o impacto é medido hoje?</div>
+                        <div class="emp-review-content-box">
+                            <?= render_badges($formas, 'secondary') ?>
+                            <?php if (!empty($impacto['forma_outro'])): ?>
+                                <div class="mt-2 small-muted">Outra: <?= e($impacto['forma_outro']) ?></div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-arrow-up-right text-success me-1"></i> Previsão de Crescimento
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-journal-text text-primary me-1"></i> Reporte
+                            <i class="bi bi-eye-slash text-danger-emphasis ms-1"></i>
                         </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['previsao_crescimento']) ? htmlspecialchars($financeiro['previsao_crescimento']) : 'Não informado'; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <?php if (!empty($financeiro['fontes_receita'])):
-            $fontes = json_decode($financeiro['fontes_receita'], true) ?? [];
-            $fontes = is_array($fontes) ? array_slice($fontes, 0, 3) : [];
-        ?>
-            <div class="emp-review-subblock mb-4">
-                <div class="emp-review-subblock-title secondary">
-                    <i class="bi bi-cash-stack me-1"></i> Fontes de Receita
-                    <span class="emp-review-count">(<?= count($fontes) + (!empty($financeiro['fonte_outro']) ? 1 : 0) ?>)</span>
-                </div>
-
-                <div class="emp-review-links">
-                    <?php foreach ($fontes as $fonte): ?>
-                        <span class="emp-review-link-chip">
-                            <?= htmlspecialchars($fonte ?: 'Outra'); ?>
-                        </span>
-                    <?php endforeach; ?>
-
-                    <?php if (!empty($financeiro['fonte_outro'])): ?>
-                        <span class="emp-review-link-chip">
-                            <?= htmlspecialchars($financeiro['fonte_outro']); ?>
-                        </span>
-                    <?php endif; ?>
-                </div>
-            </div>
-        <?php endif; ?>
-
-        <div class="emp-review-subblock mb-4">
-            <div class="emp-review-subblock-title secondary">
-                <i class="bi bi-diagram-3 me-1"></i> Receitas próprias
-            </div>
-
-            <div class="row g-4">
-                <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card h-100">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-people-fill text-primary me-1"></i> Dependência de Próprios
-                        </div>
-                        <div class="emp-review-finance-card-help">
-                            Mais de 50% da receita vem de produtos/serviços próprios
-                        </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['dependencia_proprios']) ? nl2br(htmlspecialchars($financeiro['dependencia_proprios'])) : 'Não informado'; ?>
-                        </div>
+                        <div class="emp-review-context">Tipo de reporte ou prestação de contas do impacto</div>
+                        <?= !empty($impacto['reporte'])
+                            ? '<div class="emp-review-content-box">'.nl2br(e($impacto['reporte'])).'</div>'
+                            : '<div class="emp-review-empty">Não informado</div>'; ?>
                     </div>
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card h-100">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-calendar-check text-info me-1"></i> Previsão Próprios
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-link-45deg text-success me-1"></i> Links de Resultados
+                            <i class="bi bi-eye text-secondary ms-1"></i>
                         </div>
-                        <div class="emp-review-finance-card-help">
-                            Se não, há previsão de ultrapassar 50% nos próximos 2 anos
-                        </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['previsao_proprios']) ? nl2br(htmlspecialchars($financeiro['previsao_proprios'])) : 'Não informado'; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div class="emp-review-subblock">
-            <div class="emp-review-subblock-title secondary">
-                <i class="bi bi-rocket-takeoff-fill me-1"></i> Estratégia e Captação
-            </div>
-
-            <div class="row g-4">
-                <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card h-100">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-crosshair text-danger me-1"></i> Prioridade estratégica
-                        </div>
-                        <div class="emp-review-finance-card-help">
-                            Próximos 6 meses
-                        </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['prioridade_estrategica']) ? htmlspecialchars($financeiro['prioridade_estrategica']) : 'Não informado'; ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card h-100">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-hand-thumbs-up-fill text-warning me-1"></i> Histórico de Investimento Externo
-                        </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['investimento_externo']) ? nl2br(htmlspecialchars($financeiro['investimento_externo'])) : 'Nenhum histórico registrado'; ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card h-100">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-clipboard2-check-fill text-success me-1"></i> Prontidão para investimento
-                        </div>
-                        <?php if (!empty($financeiro['pronto_investimento'])): ?>
-                            <?php
-                                $statusClass = 'neutral';
-                                if (strpos($financeiro['pronto_investimento'], 'Sim') !== false) {
-                                    $statusClass = 'success';
-                                } elseif (strpos($financeiro['pronto_investimento'], 'Parcialmente') !== false) {
-                                    $statusClass = 'warning';
-                                } elseif (strpos($financeiro['pronto_investimento'], 'Ainda não') !== false) {
-                                    $statusClass = 'danger';
-                                }
-                            ?>
-                            <div class="emp-review-status-pill <?= $statusClass ?>">
-                                <?= htmlspecialchars($financeiro['pronto_investimento']); ?>
+                        <?php if (!empty($links)): ?>
+                            <div class="emp-review-links-list">
+                                <?php foreach ($links as $link): ?>
+                                    <a href="<?= attr($link) ?>" target="_blank" class="emp-review-link-row">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                        <span><?= e($link) ?></span>
+                                    </a>
+                                <?php endforeach; ?>
                             </div>
                         <?php else: ?>
-                            <div class="emp-review-finance-card-value">Não informado</div>
+                            <div class="emp-review-empty">Nenhum link informado</div>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <div class="col-12 col-md-6">
-                    <div class="emp-review-finance-card h-100">
-                        <div class="emp-review-finance-card-title">
-                            <i class="bi bi-wallet2 text-primary me-1"></i> Faixa de investimento buscado
+                <div class="col-12">
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title secondary">
+                            <i class="bi bi-file-earmark-pdf text-danger me-1"></i> PDFs de Resultados
+                            <i class="bi bi-eye text-secondary ms-1"></i>
                         </div>
-                        <div class="emp-review-finance-card-value">
-                            <?= !empty($financeiro['faixa_investimento']) ? htmlspecialchars($financeiro['faixa_investimento']) : 'Não informado'; ?>
-                        </div>
+
+                        <?php if (!empty($pdfs)): ?>
+                            <div class="emp-review-links-list">
+                                <?php foreach ($pdfs as $pdf): ?>
+                                    <a href="/<?= attr($pdf) ?>" target="_blank" class="emp-review-link-row">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                        <span><?= e(basename($pdf)) ?></span>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="emp-review-empty">Nenhum PDF enviado</div>
+                        <?php endif; ?>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <?php if (empty(array_filter($financeiro))): ?>
-            <div class="alert alert-light text-center mt-4 border">
-                <i class="bi bi-info-circle-fill me-2 fs-3"></i>
-                Nenhuma informação financeira cadastrada ainda.
+                <div class="col-12">
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title principal">
+                            <i class="bi bi-bar-chart-fill text-danger me-1"></i> Resultados
+                            <i class="bi bi-eye text-secondary ms-1"></i>
+                        </div>
+                        <div class="emp-review-context">Resultados de impacto mais relevantes alcançados até hoje</div>
+                        <?= !empty($impacto['resultados'])
+                            ? '<div class="emp-review-content-box">'.nl2br(e($impacto['resultados'])).'</div>'
+                            : '<div class="emp-review-empty">Não informado</div>'; ?>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="emp-review-subblock">
+                        <div class="emp-review-subblock-title principal">
+                            <i class="bi bi-forward-fill text-warning me-1"></i> Próximos Passos
+                            <i class="bi bi-eye text-secondary ms-1"></i>
+                        </div>
+                        <?= !empty($impacto['proximos_passos'])
+                            ? '<div class="emp-review-content-box">'.nl2br(e($impacto['proximos_passos'])).'</div>'
+                            : '<div class="emp-review-empty">Não informado</div>'; ?>
+                    </div>
+                </div>
+
             </div>
         <?php endif; ?>
-
     </div>
 </div>

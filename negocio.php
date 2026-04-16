@@ -50,6 +50,69 @@ $ods_relacionadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Galeria
 $galeria = gallery_from_apresentacao($apresentacao);
+
+// Premiação ativa com voto popular em andamento
+$votacaoNegocio   = false;
+$faseVotNegocio   = null;
+$inscricaoNegocio = null;
+$jaVotouNegocio   = false;
+
+$stmtPrem = $pdo->query("
+    SELECT p.id AS premiacao_id, p.data_inicio_votacao, p.data_fim_votacao,
+           pf.id AS fase_id
+    FROM premiacoes p
+    INNER JOIN premiacao_fases pf
+        ON pf.premiacao_id = p.id
+       AND pf.permite_voto_popular = 1
+       AND pf.status = 'em_andamento'
+    WHERE p.status IN ('ativa','planejada')
+    ORDER BY p.ano DESC
+    LIMIT 1
+");
+$dadosVot = $stmtPrem->fetch(PDO::FETCH_ASSOC);
+
+if ($dadosVot) {
+    $agora = time();
+    $ini   = strtotime($dadosVot['data_inicio_votacao'] ?? '');
+    $fim   = strtotime($dadosVot['data_fim_votacao']    ?? '');
+
+    if ($ini && $fim && $agora >= $ini && $agora <= $fim) {
+        // Negócio está inscrito e elegível nesta premiação?
+        $stmtInsc = $pdo->prepare("
+            SELECT id FROM premiacao_inscricoes
+            WHERE negocio_id   = ?
+              AND premiacao_id = ?
+              AND status       = 'elegivel'
+            LIMIT 1
+        ");
+        $stmtInsc->execute([$negocio['id'], $dadosVot['premiacao_id']]);
+        $inscricaoNegocio = $stmtInsc->fetch(PDO::FETCH_ASSOC);
+
+        if ($inscricaoNegocio) {
+            $votacaoNegocio = true;
+            $faseVotNegocio = $dadosVot;
+
+            // Já votou?
+            if (isset($_SESSION['user_id'])) {
+                $tipoEl = $_SESSION['tipo_usuario'] ?? 'empreendedor';
+                $stmtJaV = $pdo->prepare("
+                    SELECT COUNT(*) FROM premiacao_votos_populares
+                    WHERE fase_id      = ?
+                      AND inscricao_id = ?
+                      AND tipo_eleitor = ?
+                      AND eleitor_id   = ?
+                ");
+                $stmtJaV->execute([
+                    $dadosVot['fase_id'],
+                    $inscricaoNegocio['id'],
+                    $tipoEl,
+                    $_SESSION['user_id']
+                ]);
+                $jaVotouNegocio = (int)$stmtJaV->fetchColumn() > 0;
+            }
+        }
+    }
+}
 ?>
 
 <?php include __DIR__ . '/app/views/public/header_public.php'; ?>
@@ -146,10 +209,41 @@ $galeria = gallery_from_apresentacao($apresentacao);
                 <div class="negocio-publico-sidebar">
 
                     <aside class="negocio-side-card">
+                        
                         <h3 class="negocio-side-title">Ações</h3>
                         <p class="negocio-side-text text-muted">Esses botões serão conectados aos módulos nas próximas etapas.</p>
 
                         <div class="negocio-action-grid">
+                            <?php if ($votacaoNegocio): ?>
+                                <div class="negocio-acao-votar mb-3">
+                                    <?php if (!isset($_SESSION['user_id'])): ?>
+                                        <a href="/login.php?redirect=<?= urlencode('/negocio.php?id=' . $negocio['id']) ?>"
+                                        class="btn btn-primary w-100">
+                                            <i class="bi bi-trophy me-2"></i> Votar neste negócio
+                                        </a>
+
+                                    <?php elseif ($jaVotouNegocio): ?>
+                                        <button class="btn btn-success w-100" disabled>
+                                            <i class="bi bi-check-lg me-2"></i> Você já votou aqui
+                                        </button>
+
+                                    <?php else: ?>
+                                        <form method="POST" action="/premiacao/votar.php">
+                                            <input type="hidden" name="inscricao_id" value="<?= (int)$inscricaoNegocio['id'] ?>">
+                                            <input type="hidden" name="fase_id"      value="<?= (int)$faseVotNegocio['fase_id'] ?>">
+                                            <input type="hidden" name="redirect"     value="/negocio.php?id=<?= $negocio['id'] ?>">
+                                            <button type="submit" class="btn btn-primary w-100">
+                                                <i class="bi bi-trophy me-2"></i> Votar neste negócio
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+
+                                    <p class="text-muted small text-center mt-1 mb-0">
+                                        Este negócio está inscrito na premiação.
+                                        <a href="/premiacao.php">Ver todos os inscritos</a>
+                                    </p>
+                                </div>
+                            <?php endif; ?>
                             <a href="#" class="negocio-action-btn" title="Trocar ideias ou formar parcerias">
                                 <i class="bi bi-people"></i>
                                 <span>Conectar</span>

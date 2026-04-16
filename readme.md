@@ -375,3 +375,193 @@ uploads/
 - Rotacionar senha SMTP se exposta
 - **Remover** `sessiontest.php` e arquivos `*debug.php` do ambiente de produção
 - `scripts/createsuperadmin.php` deve ser removido ou protegido após o primeiro uso
+
+# 📋 Regras de Negócio — Módulo de Premiação
+> Plataforma Impactos Positivos · Última atualização: 2026-04-15
+
+---
+
+## 1. Estrutura de Tabelas
+
+| Tabela                        | Responsabilidade                                                  |
+|-------------------------------|-------------------------------------------------------------------|
+| `premiacoes`                  | Edições da premiação (nome, ano, status)                         |
+| `premiacao_categorias`        | Categorias por edição (Ideação, Operação, Tração/Escala etc.)    |
+| `premiacao_fases`             | Fases com datas, permissões e cotas de classificação             |
+| `premiacao_inscricoes`        | Inscrições dos negócios em cada edição                           |
+| `premiacao_votos_populares`   | Votos do público por inscrição e fase                            |
+| `premiacao_votos_juri`        | Votos dos jurados na fase final                                  |
+| `premiacao_selecoes_admin`    | Seleções técnicas feitas pelo admin                              |
+| `premiacao_apuracao_fase`     | Snapshot de apuração por fase/categoria/fonte                    |
+| `premiacao_classificados_fase`| Classificados finais por fase com origem e posição               |
+| `premiacao_resultados_fase`   | Pontuação consolidada por fase                                   |
+| `premiacao_resultados_finais` | Resultado final publicável com vencedor por categoria            |
+
+---
+
+## 2. Tipos de Fase (`premiacao_fases.tipo_fase`)
+
+| tipo_fase            | Voto popular | Avaliação técnica | Júri | Exemplo de uso              |
+|----------------------|:---:|:---:|:---:|-----------------------------|
+| `inscricoes`         | ✗ | ✗ | ✗ | Período de inscrição         |
+| `triagem_documental` | ✗ | ✗ | ✗ | Validação documental         |
+| `classificatoria`    | ✓ | ✓ | ✗ | Classificatória 1 e 2        |
+| `final`              | ✓ | ✗ | ✓ | Fase final                   |
+| `resultado`          | ✗ | ✗ | ✗ | Consolidação e publicação    |
+
+Os campos `permite_voto_popular`, `permite_avaliacao_tecnica` e `permite_juri_final`
+controlam isso diretamente em `premiacao_fases`.
+
+---
+
+## 3. Cotas de Classificação por Fase
+
+Cada fase guarda suas cotas nos campos:
+premiacao_fases.qtd_classificados_popular → quantos vêm do voto popular
+premiacao_fases.qtd_classificados_tecnica → quantos vêm da avaliação técnica
+premiacao_fases.qtd_classificados_final → total final esperado por categoria
+
+text
+
+### Configuração padrão para uma edição
+
+| Fase              | Popular | Técnica | Total final |
+|-------------------|:-------:|:-------:|:-----------:|
+| Classificatória 1 | 10      | 10      | 20          |
+| Classificatória 2 | 3       | 3       | 6           |
+| Fase final        | 1       | —       | 1 por cat.  |
+
+---
+
+## 4. Regra de Apuração por Fase (Classificatórias)
+
+A apuração **é feita por categoria** e segue este algoritmo:
+Buscar top N do voto popular → ranking por total de votos DESC
+
+Buscar top N da avaliação técnica → ranking por nota_tecnica DESC
+
+Unir os dois conjuntos (union, não intersecção)
+
+Remover duplicados (negócio que aparece nos dois entra uma única vez)
+
+Se total < qtd_classificados_final:
+Puxar os próximos colocados do ranking correspondente,
+na ordem: popular primeiro, depois técnica,
+pulando quem já está no conjunto.
+Repetir até completar ou esgotar elegíveis.
+
+text
+
+### Exemplo — Categoria Ideação, Classificatória 1
+Top 10 popular: A B C D E F(=EducaTec) G H I J
+Top 10 técnica: X Y F(=EducaTec) W V U T S R Q
+
+União: A B C D E F G H I J X Y W V U T S R Q → 19 únicos
+Falta 1 vaga → puxa 11º do popular (K), se K não estiver na técnica
+Resultado final: 20 negócios classificados
+
+text
+
+O campo `origem_classificacao` em `premiacao_classificados_fase` registra:
+- `popular` — veio apenas do ranking popular
+- `tecnica` — veio apenas da avaliação técnica
+- `ambos` — aparecia nos dois rankings (deduplicado)
+- `repescagem` — entrou para completar a cota
+
+---
+
+## 5. Critérios de Desempate
+
+Guardado em `premiacao_fases.criterio_desempate`. Ordem aplicada:
+
+1. **`nota_tecnica`** — maior nota na avaliação técnica
+2. **`votos_populares`** — maior contagem de votos do público
+3. **`data_inscricao`** — data/hora mais antiga em `premiacao_inscricoes.created_at`
+4. **`decisao_admin`** — intervenção administrativa registrada em `premiacao_selecoes_admin`
+
+---
+
+## 6. Regra da Fase Final
+
+Cada finalista recebe até **5 pontos**:
+
+| Origem              | Pontos | Campo                                          |
+|---------------------|:------:|------------------------------------------------|
+| Voto popular final  | 1      | `premiacao_resultados_fase.ponto_voto_popular` |
+| Voto de jurado 1    | 1      | `premiacao_votos_juri`                         |
+| Voto de jurado 2    | 1      | `premiacao_votos_juri`                         |
+| Voto de jurado 3    | 1      | `premiacao_votos_juri`                         |
+| Voto de jurado 4    | 1      | `premiacao_votos_juri`                         |
+| **Total máximo**    | **5**  | `premiacao_resultados_finais.total_pontos`     |
+
+- `ponto_voto_popular = 1` se o negócio for o mais votado pelo público na categoria
+- Cada jurado vota **uma vez por categoria** (`uk_voto_juri_unico` garante isso)
+- Vence quem tiver **maior `total_pontos`**
+- Empate na final → aplicar critérios da seção 5 acima
+
+---
+
+## 7. Status de Inscrição (`premiacao_inscricoes.status`)
+
+| Valor                | Significado                                              |
+|----------------------|----------------------------------------------------------|
+| `rascunho`           | Inscrição iniciada, não enviada                          |
+| `enviada`            | Empreendedor confirmou e enviou                          |
+| `em_triagem`         | Admin está analisando documentação                       |
+| `elegivel`           | Aprovado na triagem — entra nas fases de votação         |
+| `inelegivel`         | Reprovado na triagem — fora da premiação                 |
+| `classificada_fase_1`| Passou para a Classificatória 2                          |
+| `classificada_fase_2`| Passou para a Fase Final                                 |
+| `finalista`          | Está na Fase Final                                       |
+| `vencedora`          | Vencedor da categoria                                    |
+| `eliminada`          | Eliminado em alguma fase                                 |
+
+---
+
+## 8. Status de Fase (`premiacao_fases.status`)
+
+| Valor         | Significado                                |
+|---------------|--------------------------------------------|
+| `rascunho`    | Em configuração, invisível ao público      |
+| `agendada`    | Configurada, ainda não iniciou             |
+| `em_andamento`| Período ativo — votação/avaliação aberta   |
+| `encerrada`   | Período encerrado, aguardando apuração     |
+| `apurada`     | Apuração concluída e resultado registrado  |
+
+---
+
+## 9. Quem pode votar (`premiacao_votos_populares`)
+
+O campo `tipo_eleitor` define o perfil do votante:
+
+| Valor            | Descrição                    |
+|------------------|------------------------------|
+| `empreendedor`   | Usuário logado como fundador |
+| `parceiro`       | Parceiro cadastrado          |
+| `sociedade_civil`| Usuário da sociedade civil   |
+
+A UNIQUE KEY impede voto duplicado:
+```sql
+UNIQUE KEY (fase_id, inscricao_id, tipo_eleitor, eleitor_id)
+```
+Ou seja: **um voto por pessoa por negócio por fase**.
+
+---
+
+## 10. Fluxo completo resumido
+premiacoes
+└─► premiacao_categorias (categorias da edição)
+└─► premiacao_fases (fases com datas e cotas)
+└─► premiacao_inscricoes (negócios inscritos + status)
+└─► premiacao_votos_populares (votos do público)
+└─► premiacao_selecoes_admin (seleções técnicas)
+└─► premiacao_votos_juri (votos dos jurados)
+└─► premiacao_classificados_fase (resultado da apuração)
+└─► premiacao_resultados_fase (pontuação por fase)
+└─► premiacao_resultados_finais (vencedores publicáveis)
+
+text
+
+---
+
+> **Arquivo de referência do schema:** `scripts/schema_premiacao.sql`

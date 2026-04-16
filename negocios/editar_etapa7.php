@@ -7,7 +7,6 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: /login.php");
     exit;
 }
-
 $config = require __DIR__ . '/../app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -24,6 +23,7 @@ if ($negocio_id === 0) {
 
 $_SESSION['negocio_id'] = $negocio_id;
 
+// Busca dados do negócio
 $stmt = $pdo->prepare("SELECT * FROM negocios WHERE id = ? AND empreendedor_id = ?");
 $stmt->execute([$negocio_id, $_SESSION['user_id']]);
 $negocio = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -32,15 +32,15 @@ if (!$negocio) {
     die("Negócio não encontrado ou você não tem permissão. ID: " . $negocio_id);
 }
 
-$stmt = $pdo->prepare("SELECT * FROM negocio_impacto WHERE negocio_id = ?");
+// Busca dados da visão já cadastrados
+$stmt = $pdo->prepare("SELECT * FROM negocio_visao WHERE negocio_id = ?");
 $stmt->execute([$negocio_id]);
-$impacto = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$visao = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-$beneficiarios = json_decode($impacto['beneficiarios'] ?? '[]', true);
-$metricas = json_decode($impacto['metricas'] ?? '[]', true);
-$formas_medicao = json_decode($impacto['formas_medicao'] ?? '[]', true);
-$links = json_decode($impacto['resultados_links'] ?? '[]', true);
-$pdfs = json_decode($impacto['resultados_pdfs'] ?? '[]', true);
+// Decodifica arrays
+$apoios = json_decode($visao['apoios'] ?? '[]', true);
+$areas  = json_decode($visao['areas'] ?? '[]', true);
+$temas  = json_decode($visao['temas'] ?? '[]', true);
 
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
@@ -52,7 +52,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <h1 class="emp-page-title mb-1">
                 Editar: <?= htmlspecialchars($negocio['nome_fantasia'] ?? '') ?>
             </h1>
-            <p class="emp-page-subtitle mb-0">Etapa 7 — Avaliação de Impacto</p>
+            <p class="emp-page-subtitle mb-0">Etapa 7 — Visão de Futuro</p>
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
@@ -68,7 +68,8 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         </div>
     </div>
 
-    <form action="/negocios/processar_etapa7.php" method="post" enctype="multipart/form-data">
+
+    <form action="/negocios/processar_etapa7.php" method="post">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="editar">
 
@@ -77,52 +78,48 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                 <div class="form-section mb-4">
                     <div class="form-section-title">
-                        <i class="bi bi-bullseye"></i> Intencionalidade e tipo de impacto
+                        <i class="bi bi-binoculars"></i> Visão estratégica e sustentabilidade
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">
-                            <i class="bi bi-eye text-secondary me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio?
-                        </label>
-
-                        <?php
-                        $opcoesIntencionalidade = [
-                            "integrado" => "Lucro com impacto intencional integrado ao modelo. A geração de receita está diretamente ligada à solução de um problema social ou ambiental. O impacto positivo faz parte central do modelo de negócio e é intencional.",
-                            "prioridade" => "Missão de impacto como prioridade principal. A razão de existir do negócio é gerar impacto social e/ou ambiental. A sustentabilidade financeira é importante, mas serve principalmente para viabilizar a missão.",
-                            "secundario" => "Lucro como foco principal, com impacto secundário. O principal objetivo do negócio é o retorno financeiro. O impacto positivo pode existir, mas não é o foco central nem está estruturado como parte estratégica do modelo."
-                        ];
-
-                        foreach ($opcoesIntencionalidade as $chave => $texto) {
-                            $valorSalvo = $impacto['intencionalidade'] ?? '';
-                            $checked = '';
-                            if ($valorSalvo === $chave || (!empty($valorSalvo) && strpos($texto, substr($valorSalvo, 0, 20)) !== false)) {
-                                $checked = 'checked';
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a visão estratégica do fundador(a) para os próximos 5 anos?</label>
+                        <select name="visao_estrategica" class="form-select" required>
+                            <option value="" <?= empty($visao['visao_estrategica']) ? 'selected' : '' ?>>Selecione uma opção</option>
+                            <?php
+                            $opcoesVisao = [
+                                "Consolidar presença no mercado local com mais profundidade",
+                                "Expandir regionalmente ou para novos estados no Brasil",
+                                "Crescer em escala nacional como referência em impacto",
+                                "Internacionalizar o modelo para ampliar alcance",
+                                "Pivotar o modelo de negócio com base em aprendizados",
+                                "Outro"
+                            ];
+                            foreach ($opcoesVisao as $op) {
+                                $sel = ($visao['visao_estrategica'] ?? '') === $op ? 'selected' : '';
+                                echo "<option value=\"$op\" $sel>$op</option>";
                             }
                             ?>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio"
-                                    name="intencionalidade" value="<?= $chave ?>"
-                                    id="intenc_<?= $chave ?>" <?= $checked ?> required>
-                                <label class="form-check-label" for="intenc_<?= $chave ?>">
-                                    <?= $texto ?>
-                                </label>
-                            </div>
-                        <?php } ?>
+                        </select>
+                        <input type="text" name="visao_outro" class="form-control mt-2 d-none"
+                               value="<?= htmlspecialchars($visao['visao_outro'] ?? '') ?>"
+                               placeholder="Se marcou 'Outro', especifique aqui" maxlength="120">
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje?</label>
-                        <select name="tipo_impacto" class="form-select" required>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como você avalia a sustentabilidade financeira de longo prazo do seu negócio?</label>
+                        <select name="sustentabilidade" class="form-select" required>
+                            <option value="" <?= empty($visao['sustentabilidade']) ? 'selected' : '' ?>>Selecione uma opção</option>
                             <?php
-                            $opcoesTipoImpacto = [
-                                "Impacto direto – atinge beneficiários de forma imediata e mensurável.",
-                                "Impacto indireto – afeta o entorno, cadeia de valor ou sociedade como consequência da atuação.",
-                                "Impacto em cadeia – influencia atores secundários por meio de parceiros, políticas públicas ou clientes.",
-                                "Impacto sistêmico – contribui para transformação estrutural de um setor, território ou comportamento social."
+                            $opcoesSust = [
+                                "Alta sustentabilidade – Receita diversificada, margens saudáveis e plano de crescimento validado",
+                                "Moderada sustentabilidade – Produto validado, mas com necessidade de novas fontes de receita/melhoria na margem",
+                                "Sustentabilidade projetada – Modelo em desenvolvimento, com expectativa de break-even em até 2 anos",
+                                "Dependente de capital externo – Sustentação atual via editais, doações ou patrocínios",
+                                "Modelo ainda em validação – Sem plano financeiro claro ou histórico de receita"
                             ];
-                            foreach ($opcoesTipoImpacto as $op) {
-                                $sel = ($impacto['tipo_impacto'] ?? '') === $op ? 'selected' : '';
-                                echo "<option $sel>$op</option>";
+                            foreach ($opcoesSust as $op) {
+                                $sel = ($visao['sustentabilidade'] ?? '') === $op ? 'selected' : '';
+                                echo "<option value=\"$op\" $sel>$op</option>";
                             }
                             ?>
                         </select>
@@ -131,218 +128,113 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                 <div class="form-section mb-4">
                     <div class="form-section-title">
-                        <i class="bi bi-people"></i> Beneficiários e alcance
+                        <i class="bi bi-arrows-angle-expand"></i> Escala e apoios buscados
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label">
-                            <i class="bi bi-eye text-secondary me-1"></i> Quem são os principais grupos beneficiados pelo seu negócio? (até 3)
-                        </label>
-
-                        <?php
-                        $beneficiariosLista = [
-                            "Agricultores familiares","Crianças e adolescentes","Ex-infratores","Extrativistas","Idosos","Indígenas","Juventude",
-                            "LGBTQIAP+","Migrantes","Minorias étnicas","Mulheres","Pessoas com deficiência","Pessoas com problemas de saúde",
-                            "Pessoas de baixa renda","Pessoas em risco de tráfico de pessoas","Pessoas em situação de rua","Pessoas em situação de violência",
-                            "Quilombolas","Trabalhadores migrantes, apátridas ou comunidades vulneráveis","Comunidade local","Futuras gerações","População em geral","Outro"
-                        ];
-                        foreach ($beneficiariosLista as $b): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="beneficiarios[]" value="<?= $b ?>"
-                                    id="<?= md5($b) ?>" <?= in_array($b, $beneficiarios) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="<?= md5($b) ?>"><?= $b ?></label>
-                            </div>
-                        <?php endforeach; ?>
-
-                        <input type="text" name="beneficiario_outro" id="beneficiario_outro"
-                            class="form-control mt-2 <?= in_array("Outro", $beneficiarios) ? '' : 'd-none' ?>"
-                            value="<?= htmlspecialchars($impacto['beneficiario_outro'] ?? '') ?>"
-                            placeholder="Se marcou 'Outro', especifique aqui"
-                            maxlength="120"
-                            <?= in_array("Outro", $beneficiarios) ? 'required' : '' ?>>
-                    </div>
-
-                    <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos</label>
-                        <select name="alcance" class="form-select" required>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a sua ambição de escala nos próximos anos?</label>
+                        <select name="escala" class="form-select" required>
+                            <option value="" <?= empty($visao['escala']) ? 'selected' : '' ?>>Selecione uma opção</option>
                             <?php
-                            $opcoesAlcance = ["1 a 50","51 a 100","101 a 200","201 a 500","Acima de 500"];
-                            foreach ($opcoesAlcance as $op) {
-                                $sel = ($impacto['alcance'] ?? '') === $op ? 'selected' : '';
-                                echo "<option $sel>$op</option>";
+                            $opcoesEscala = [
+                                "Escalar localmente (mais profundidade e alcance na mesma região)",
+                                "Escalar nacionalmente (atuar em novas regiões/mercados do Brasil)",
+                                "Escalar internacionalmente (expandir o modelo para fora do país)",
+                                "Manter o modelo atual como negócio de nicho ou territorial",
+                                "Ainda em definição"
+                            ];
+                            foreach ($opcoesEscala as $op) {
+                                $sel = ($visao['escala'] ?? '') === $op ? 'selected' : '';
+                                echo "<option value=\"$op\" $sel>$op</option>";
                             }
                             ?>
                         </select>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual o tipo de apoio financeiro ou estratégico que você busca atualmente?</label>
+                        <?php
+                        $apoiosLista = [
+                            "Investimento Anjo","Venture Capital (VC)","Parcerias corporativas ou estratégicas",
+                            "Editais públicos e subsídios","Financiamento bancário ou crédito com impacto",
+                            "Doações filantrópicas ou blended finance","Outro"
+                        ];
+                        foreach ($apoiosLista as $a): ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="apoios[]" value="<?= $a ?>"
+                                    id="<?= md5($a) ?>" <?= in_array($a, $apoios) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="<?= md5($a) ?>"><?= $a ?></label>
+                            </div>
+                        <?php endforeach; ?>
+                        <input type="text" name="apoio_outro" class="form-control mt-2"
+                               value="<?= htmlspecialchars($visao['apoio_outro'] ?? '') ?>"
+                               placeholder="Se marcou 'Outro', especifique aqui" maxlength="120">
                     </div>
                 </div>
 
                 <div class="form-section mb-4">
                     <div class="form-section-title">
-                        <i class="bi bi-bar-chart"></i> Métricas e medição
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Métricas e indicadores utilizados para mensurar o impacto</label>
-                        <?php
-                        $metricasLista = [
-                            "Número de pessoas atendidas","Geração de renda ou empregos","Redução de emissões de CO₂",
-                            "Área preservada ou protegida","Resíduos reciclados ou reaproveitados","Melhoria em indicadores de saúde ou educação",
-                            "Área reflorestada, regenerada ou recuperada","Outro"
-                        ];
-                        foreach ($metricasLista as $m): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="metricas[]" value="<?= $m ?>"
-                                    id="<?= md5($m) ?>" <?= in_array($m, $metricas) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="<?= md5($m) ?>"><?= $m ?></label>
-                            </div>
-                        <?php endforeach; ?>
-
-                        <input type="text" name="metrica_outro" id="metrica_outro"
-                            class="form-control mt-2 <?= in_array("Outro", $metricas) ? '' : 'd-none' ?>"
-                            value="<?= htmlspecialchars($impacto['metrica_outro'] ?? '') ?>"
-                            placeholder="Se marcou 'Outro', especifique aqui"
-                            maxlength="120"
-                            <?= in_array("Outro", $metricas) ? 'required' : '' ?>>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental?</label>
-                        <select name="medicao" class="form-select" required>
-                            <?php
-                            $opcoesMedicao = [
-                                "Sim – utilizamos auditoria ou certificação externa",
-                                "Sim – fazemos medição e controle internamente",
-                                "Ainda não medimos, mas temos indicadores definidos",
-                                "Ainda não medimos e não temos indicadores"
-                            ];
-                            foreach ($opcoesMedicao as $op) {
-                                $sel = ($impacto['medicao'] ?? '') === $op ? 'selected' : '';
-                                echo "<option $sel>$op</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como o impacto é medido hoje?</label>
-                        <?php
-                        $formasLista = [
-                            "Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)",
-                            "Relatórios internos manuais ou dashboards próprios",
-                            "Parcerias com especialistas, consultorias ou ONGs",
-                            "Não fazemos medição formal ainda",
-                            "Outro"
-                        ];
-                        foreach ($formasLista as $fm): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="formas_medicao[]" value="<?= $fm ?>"
-                                    id="<?= md5($fm) ?>" <?= in_array($fm, $formas_medicao) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="<?= md5($fm) ?>"><?= $fm ?></label>
-                            </div>
-                        <?php endforeach; ?>
-
-                        <input type="text" name="forma_outro" id="forma_outro"
-                            class="form-control mt-2 <?= in_array("Outro", $formas_medicao) ? '' : 'd-none' ?>"
-                            value="<?= htmlspecialchars($impacto['forma_outro'] ?? '') ?>"
-                            placeholder="Se marcou 'Outro', especifique aqui"
-                            maxlength="120"
-                            <?= in_array("Outro", $formas_medicao) ? 'required' : '' ?>>
+                        <i class="bi bi-building-gear"></i> Áreas para fortalecimento
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto?</label>
-                        <select name="reporte" class="form-select" required>
-                            <?php
-                            $opcoesReporte = [
-                                "Sim – relatórios regulares para investidores, apoiadores ou público geral",
-                                "Sim – relatórios internos não publicados",
-                                "Não – mas pretendemos criar esse processo",
-                                "Não fazemos nenhum tipo de reporte de impacto"
-                            ];
-                            foreach ($opcoesReporte as $op) {
-                                $sel = ($impacto['reporte'] ?? '') === $op ? 'selected' : '';
-                                echo "<option $sel>$op</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-section mb-4">
-                    <div class="form-section-title">
-                        <i class="bi bi-graph-up-arrow"></i> Resultados e evidências
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold"><i class="bi bi-graph-up-arrow text-secondary me-1"></i> Quais são os resultados de impacto mais relevantes alcançados até hoje?</label>
-                        <small class="text-muted d-block mb-2">Descreva brevemente os principais resultados (até 1000 caracteres).</small>
-                        <textarea name="resultados" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['resultados'] ?? '') ?></textarea>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold"><i class="bi bi-link-45deg text-secondary me-1"></i> Links externos (máx. 4)</label>
-
-                            <div class="alert alert-info py-2 px-3 small mb-3">
-                                <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de links:</strong> vídeos institucionais, apresentações (Pitch Deck no Canva/Google Slides), matérias na mídia, ou painéis interativos de resultados.
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais áreas do seu negócio você gostaria de fortalecer com apoio externo? (até 3)</label>
+                        <?php
+                        $areasLista = [
+                            "Capital de giro ou fluxo de caixa","Expansão comercial e abertura de mercado",
+                            "Desenvolvimento de tecnologia ou produto","Reforço da estrutura operacional (equipamentos, logística etc.)",
+                            "Formação de equipe e qualificação técnica","Comunicação estratégica e branding",
+                            "Medição e gestão do impacto socioambiental","Governança e profissionalização da gestão","Outro"
+                        ];
+                        foreach ($areasLista as $ar): ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="areas[]" value="<?= $ar ?>"
+                                    id="<?= md5($ar) ?>" <?= in_array($ar, $areas) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="<?= md5($ar) ?>"><?= $ar ?></label>
                             </div>
-
-                            <div id="links-container">
-                                <?php
-                                if (!empty($links)):
-                                    foreach ($links as $link): ?>
-                                        <input type="url" name="resultados_link[]" class="form-control mb-2"
-                                               value="<?= htmlspecialchars($link) ?>" placeholder="https://...">
-                                    <?php endforeach;
-                                endif; ?>
-                                <input type="url" name="resultados_link[]" class="form-control mb-2" placeholder="Adicionar novo link">
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addLink()"><i class="bi bi-plus-circle me-1"></i> Adicionar link</button>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> PDFs (máx. 4, até 5MB cada)</label>
-
-                            <div class="alert alert-info py-2 px-3 small mb-3">
-                                <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de PDFs:</strong> relatórios de impacto anuais, certificados, dossiês de resultados ou documentos de validação do negócio.
-                            </div>
-
-                            <div id="pdfs-container">
-                                <?php
-                                if (!empty($pdfs)):
-                                    foreach ($pdfs as $pdf): ?>
-                                        <div class="mb-2 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
-                                            <a href="/<?= htmlspecialchars($pdf) ?>" target="_blank" class="text-truncate d-inline-block" style="max-width: 70%;"><i class="bi bi-file-earmark-text me-1"></i> Ver PDF atual</a>
-                                            <div class="form-check m-0">
-                                                <input class="form-check-input" type="checkbox" name="remover_pdf[]" value="<?= htmlspecialchars($pdf) ?>" id="remover<?= md5($pdf) ?>">
-                                                <label class="form-check-label text-danger small" for="remover<?= md5($pdf) ?>">Remover</label>
-                                            </div>
-                                        </div>
-                                    <?php endforeach;
-                                endif; ?>
-                                <input type="file" name="resultados_pdf[]" class="form-control mb-2" accept="application/pdf">
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="addPdf()"><i class="bi bi-plus-circle me-1"></i> Adicionar PDF</button>
-                        </div>
+                        <?php endforeach; ?>
+                        <input type="text" name="area_outro" class="form-control mt-2"
+                               value="<?= htmlspecialchars($visao['area_outro'] ?? '') ?>"
+                               placeholder="Se marcou 'Outro', especifique aqui" maxlength="120">
                     </div>
                 </div>
 
                 <div class="form-section">
                     <div class="form-section-title">
-                        <i class="bi bi-signpost-2"></i> Próximos passos
+                        <i class="bi bi-mortarboard"></i> Temas de aprendizagem e troca
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto?</label>
-                        <small class="text-muted">Conte-nos como pretende escalar, medir ou qualificar ainda mais seu impacto nos próximos 12 a 24 meses (até 1000 caracteres).</small>
-                        <textarea name="proximos_passos" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['proximos_passos'] ?? '') ?></textarea>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Em quais temas você gostaria de aprender ou trocar com outros empreendedores/mentores? (até 3)</label>
+                        <?php
+                        $temasLista = [
+                            "Finanças para impacto (valuation, métricas, captação)",
+                            "ESG e gestão do impacto",
+                            "Marketing digital e posicionamento de marca",
+                            "Gestão de pessoas e cultura organizacional",
+                            "Tecnologia e inovação aplicada ao impacto",
+                            "Expansão e modelos de escala",
+                            "Liderança e tomada de decisão",
+                            "Relacionamento com investidores e stakeholders",
+                            "Outro"
+                        ];
+                        foreach ($temasLista as $t): ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="temas[]" value="<?= $t ?>"
+                                    id="<?= md5($t) ?>" <?= in_array($t, $temas) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="<?= md5($t) ?>"><?= $t ?></label>
+                            </div>
+                        <?php endforeach; ?>
+                        <input type="text" name="tema_outro" class="form-control mt-2"
+                            value="<?= htmlspecialchars($visao['tema_outro'] ?? '') ?>"
+                            placeholder="Se marcou 'Outro', especifique aqui" maxlength="120">
                     </div>
                 </div>
 
             </div>
 
             <div class="col-12 col-lg-4">
-                <div class="etapa7-sticky-side">
+                <div class="etapa8-sticky-side">
 
                     <div class="emp-card mb-4">
                         <div class="emp-card-header">
@@ -350,11 +242,11 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         </div>
 
                         <p class="small text-muted mb-2">
-                            Revise com cuidado os dados sobre intencionalidade, beneficiários, métricas e resultados para garantir coerência com a atuação real do negócio.
+                            Revise a visão de futuro com foco em clareza estratégica, sustentabilidade financeira e prioridades reais de crescimento.
                         </p>
 
                         <p class="small text-muted mb-0">
-                            Sempre que possível, mantenha evidências atualizadas, como links, relatórios e PDFs de comprovação.
+                            Use esta etapa para mostrar onde o negócio quer chegar e quais apoios podem acelerar esse caminho.
                         </p>
                     </div>
 
@@ -374,7 +266,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                                 </a>
                             <?php endif; ?>
 
-                            <a href="/negocios/editar_etapa6.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
+                            <a href="/negocios/editar_etapa7.php?id=<?= $negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
                                 <i class="bi bi-arrow-left me-1"></i> Etapa Anterior
                             </a>
 
@@ -391,77 +283,61 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 </div>
 
 <script>
-function addLink() {
-    const container = document.getElementById('links-container');
-    const inputs = container.querySelectorAll('input[name="resultados_link[]"]');
-    if (inputs.length >= 4) {
-        alert("Máximo de 4 links permitidos.");
-        return;
-    }
-    const input = document.createElement('input');
-    input.type = 'url';
-    input.name = 'resultados_link[]';
-    input.className = 'form-control mb-2';
-    input.placeholder = 'Adicionar novo link';
-    container.appendChild(input);
-}
-
-function addPdf() {
-    const container = document.getElementById('pdfs-container');
-    const inputs = container.querySelectorAll('input[name="resultados_pdf[]"]');
-    if (inputs.length >= 4) {
-        alert("Máximo de 4 PDFs permitidos.");
-        return;
-    }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.name = 'resultados_pdf[]';
-    input.className = 'form-control mb-2';
-    input.accept = 'application/pdf';
-    container.appendChild(input);
-}
-</script>
-
-<script>
 document.addEventListener("DOMContentLoaded", function() {
     const outrosMap = {
-        "beneficiarios[]": document.getElementById("beneficiario_outro"),
-        "metricas[]": document.getElementById("metrica_outro"),
-        "formas_medicao[]": document.getElementById("forma_outro")
+        "visao_estrategica": document.querySelector("input[name='visao_outro']"),
+        "apoios[]": document.querySelector("input[name='apoio_outro']"),
+        "areas[]": document.querySelector("input[name='area_outro']"),
+        "temas[]": document.querySelector("input[name='tema_outro']")
     };
 
-    const outros = document.querySelectorAll("input[value='Outro']");
+    const outros = document.querySelectorAll("input[value='Outro'], select[name='visao_estrategica']");
 
-    outros.forEach(function(outroCheckbox) {
-        const outroInput = outrosMap[outroCheckbox.name];
-        if (!outroInput) return;
+    outros.forEach(function(outroCampo) {
+        let outroInput = null;
 
-        function toggleOutro() {
-            if (outroCheckbox.checked) {
+        if (outroCampo.name === "visao_estrategica") {
+            outroInput = outrosMap["visao_estrategica"];
+            outroCampo.addEventListener("change", function() {
+                if (this.value === "Outro") {
+                    outroInput.classList.remove("d-none");
+                    outroInput.setAttribute("required", "required");
+                } else {
+                    outroInput.classList.add("d-none");
+                    outroInput.removeAttribute("required");
+                    outroInput.value = "";
+                }
+            });
+
+            if (outroCampo.value === "Outro") {
                 outroInput.classList.remove("d-none");
                 outroInput.setAttribute("required", "required");
-            } else {
-                outroInput.classList.add("d-none");
-                outroInput.removeAttribute("required");
-                outroInput.value = "";
             }
+        } else {
+            outroInput = outrosMap[outroCampo.name];
+            if (!outroInput) return;
+
+            function toggleOutro() {
+                if (outroCampo.checked) {
+                    outroInput.classList.remove("d-none");
+                    outroInput.setAttribute("required", "required");
+                } else {
+                    outroInput.classList.add("d-none");
+                    outroInput.removeAttribute("required");
+                    outroInput.value = "";
+                }
+            }
+
+            toggleOutro();
+            outroCampo.addEventListener("change", toggleOutro);
         }
-
-        toggleOutro();
-        outroCheckbox.addEventListener("change", toggleOutro);
     });
-});
-</script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
     const camposTexto = document.querySelectorAll("input[type='text'], textarea");
-
     camposTexto.forEach(campo => {
         campo.addEventListener("input", function() {
             const regex = /[a-zA-ZÀ-ÿ]/g;
             const letras = (this.value.match(regex) || []).length;
-
             if (letras < 5) {
                 this.setCustomValidity("Digite um texto válido (mínimo 5 letras reais).");
             } else {

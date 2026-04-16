@@ -1,6 +1,5 @@
 <?php
 session_start();
-
 if (!isset($_SESSION['user_id'])) {
     header("Location: /login.php");
     exit;
@@ -14,204 +13,253 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
-$errors = []; // Inicializa o array de erros localmente
-
 $negocio_id = (int)($_POST['negocio_id'] ?? 0);
 if ($negocio_id === 0) {
-    $errors[] = "Negócio inválido.";
-    $_SESSION['errors_etapa6'] = $errors;
-    header("Location: /negocios/etapa6_financeiro.php?id=" . $negocio_id);
+    $_SESSION['errors_etapa6'][] = "Negócio inválido.";
+    header("Location: /negocios/etapa6_impacto.php?id=" . $negocio_id);
     exit;
 }
 
 // Captura dos campos
-$estagio_faturamento   = $_POST['estagio_faturamento'] ?? null;
-$faixa_faturamento     = $_POST['faixa_faturamento'] ?? null;
-$fontes_receita        = $_POST['fontes_receita'] ?? [];
-$fonte_outro           = trim($_POST['fonte_outro'] ?? '');
-$modelo_monetizacao    = $_POST['modelo_monetizacao'] ?? null;
-$margem_bruta          = $_POST['margem_bruta'] ?? null;
-$dependencia_proprios  = $_POST['dependencia_proprios'] ?? null;
-$previsao_proprios     = $_POST['previsao_proprios'] ?? null;
-$previsao_crescimento  = $_POST['previsao_crescimento'] ?? null;
-$investimento_externo  = $_POST['investimento_externo'] ?? null;
-$prioridade_estrategica = $_POST['prioridade_estrategica'] ?? null;
-$pronto_investimento    = $_POST['pronto_investimento'] ?? null;
-$faixa_investimento     = $_POST['faixa_investimento'] ?? null;
+$intencionalidade   = $_POST['intencionalidade'] ?? null;
+$tipo_impacto       = $_POST['tipo_impacto'] ?? null;
+$beneficiarios      = $_POST['beneficiarios'] ?? [];
+$beneficiario_outro = trim($_POST['beneficiario_outro'] ?? '');
+$alcance            = $_POST['alcance'] ?? null;
+$metricas           = $_POST['metricas'] ?? [];
+$metrica_outro      = trim($_POST['metrica_outro'] ?? '');
+$medicao            = $_POST['medicao'] ?? null;
+$formas_medicao     = $_POST['formas_medicao'] ?? [];
+$forma_outro        = trim($_POST['forma_outro'] ?? '');
+$reporte            = $_POST['reporte'] ?? null;
+$resultados         = $_POST['resultados'] ?? null;
+$proximos_passos    = $_POST['proximos_passos'] ?? null;
 
-// Limita fontes de receita a no máximo 3
-if (is_array($fontes_receita)) {
-    $fontes_receita = array_slice($fontes_receita, 0, 3);
-}
-$fontesJson = json_encode($fontes_receita);
+// Limite de beneficiários e métricas
+$beneficiarios = array_slice($beneficiarios, 0, 3);
+$metricas = array_slice($metricas, 0, 8);
+$formas_medicao = array_slice($formas_medicao, 0, 4);
 
-// ===== Validações extras =====
+// Links externos (até 4)
+$links = $_POST['resultados_link'] ?? [];
+$links = array_filter($links, fn($l) => !empty(trim($l)));
+$links = array_slice($links, 0, 4);
 
-// Se "Outro (especificar)" foi marcado, fonte_outro é obrigatório
-if (in_array("Outro (especificar)", $fontes_receita)) {
-    if ($fonte_outro === '') {
-        $errors[] = "Você marcou 'Outro', mas não especificou a fonte.";
-    } elseif (mb_strlen($fonte_outro) > 120) {
-        $errors[] = "A fonte 'Outro' deve ter no máximo 120 caracteres.";
+// PDFs existentes
+$stmt = $pdo->prepare("SELECT resultados_pdfs FROM negocio_impacto WHERE negocio_id = ?");
+$stmt->execute([$negocio_id]);
+$impactoExistente = $stmt->fetch(PDO::FETCH_ASSOC);
+$existentes = json_decode($impactoExistente['resultados_pdfs'] ?? '[]', true);
+
+// Inicializa array final
+$pdfs = [];
+
+// Upload de novos PDFs (até 4, cada ≤ 5MB)
+if (!empty($_FILES['resultados_pdf']['name'][0])) {
+    $uploadDir = __DIR__ . '/../uploads/negocios/documentos/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    foreach ($_FILES['resultados_pdf']['name'] as $index => $name) {
+        if ($index >= 4) break;
+        $tmpName = $_FILES['resultados_pdf']['tmp_name'][$index];
+        $size = $_FILES['resultados_pdf']['size'][$index];
+        $error = $_FILES['resultados_pdf']['error'][$index];
+
+        if ($error === UPLOAD_ERR_OK && $size <= 5 * 1024 * 1024) {
+            $ext = pathinfo($name, PATHINFO_EXTENSION);
+            if (strtolower($ext) === 'pdf') {
+                $newName = uniqid("impacto_", true) . ".pdf";
+                $destPath = $uploadDir . $newName;
+                if (move_uploaded_file($tmpName, $destPath)) {
+                    $pdfs[] = "uploads/negocios/documentos/" . $newName;
+                }
+            }
+        }
     }
 }
 
-// Se dependencia_proprios = "Não", previsao_proprios é obrigatório
-if ($dependencia_proprios === "Não" && empty($previsao_proprios)) {
-    $errors[] = "Se mais de 50% não vem de próprios, é necessário informar a previsão.";
+// Mantém existentes que não foram removidos
+$remover = $_POST['remover_pdf'] ?? [];
+foreach ($existentes as $pdf) {
+    if (!in_array($pdf, $remover)) {
+        $pdfs[] = $pdf;
+    }
 }
 
+// Limita a 4 PDFs
+$pdfs = array_slice($pdfs, 0, 4);
+
+// Limita proximos_passos a 1000 caracteres
+if ($proximos_passos && strlen($proximos_passos) > 1000) {
+    $proximos_passos = substr($proximos_passos, 0, 1000);
+}
+
+// ===== Validações extras =====
+if (in_array("Outro", $beneficiarios)) {
+    if ($beneficiario_outro === '') {
+        $_SESSION['errors_etapa6'][] = "Você marcou 'Outro' em beneficiários, mas não especificou.";
+    } elseif (mb_strlen($beneficiario_outro) > 120) {
+        $_SESSION['errors_etapa6'][] = "O campo 'Outro' em beneficiários deve ter no máximo 120 caracteres.";
+    }
+}
+
+if (in_array("Outro", $metricas)) {
+    if ($metrica_outro === '') {
+        $_SESSION['errors_etapa6'][] = "Você marcou 'Outro' em métricas, mas não especificou.";
+    } elseif (mb_strlen($metrica_outro) > 120) {
+        $_SESSION['errors_etapa6'][] = "O campo 'Outro' em métricas deve ter no máximo 120 caracteres.";
+    }
+}
+
+if (in_array("Outro", $formas_medicao)) {
+    if ($forma_outro === '') {
+        $_SESSION['errors_etapa6'][] = "Você marcou 'Outro' em formas de medição, mas não especificou.";
+    } elseif (mb_strlen($forma_outro) > 120) {
+        $_SESSION['errors_etapa6'][] = "O campo 'Outro' em formas de medição deve ter no máximo 120 caracteres.";
+    }
+}
+// VALIDAR TEXTOS
 function textoValido($texto) {
     $texto = trim($texto);
     // Pelo menos 5 letras no total, não precisa ser consecutivas
     return preg_match_all('/[a-zA-ZÀ-ÿ]/', $texto) >= 5;
 }
-
 // Validações de texto
-if ($fonte_outro && !textoValido($fonte_outro)) {
-    $errors[] = "O campo 'Outro' em Fontes de Receita deve conter texto válido.";
+if ($beneficiario_outro && !textoValido($beneficiario_outro)) {
+    $_SESSION['errors_etapa6'][] = "O campo 'Outro' em Beneficiários deve conter texto válido.";
 }
 
-if ($modelo_monetizacao && !textoValido($modelo_monetizacao)) {
-    $errors[] = "O campo 'Modelo de Monetização' deve conter texto válido.";
+if ($metrica_outro && !textoValido($metrica_outro)) {
+    $_SESSION['errors_etapa6'][] = "O campo 'Outro' em Métricas deve conter texto válido.";
 }
 
-// Se houver erros, salva na sessão e volta para a etapa
-if (!empty($errors)) {
-    $_SESSION['errors_etapa6'] = $errors;
-    if (($_POST['modo'] ?? 'cadastro') === 'editar') {
-        header("Location: /negocios/editar_etapa6.php?id=" . $negocio_id);
-    } else {
-        header("Location: /negocios/etapa6_financeiro.php?id=" . $negocio_id);
-    }
+if ($forma_outro && !textoValido($forma_outro)) {
+    $_SESSION['errors_etapa6'][] = "O campo 'Outro' em Formas de Medição deve conter texto válido.";
+}
+
+if ($resultados && !textoValido($resultados)) {
+    $_SESSION['errors_etapa6'][] = "O campo 'Resultados' deve conter texto válido.";
+}
+
+if ($proximos_passos && !textoValido($proximos_passos)) {
+    $_SESSION['errors_etapa6'][] = "O campo 'Próximos Passos' deve conter texto válido.";
+}
+
+// Se houver erros, volta para etapa
+if (!empty($_SESSION['errors_etapa6'])) {
+    header("Location: /negocios/etapa6_impacto.php?id=" . $negocio_id);
     exit;
 }
 
-// Se chegou aqui, não tem erros. Limpa a sessão de erros antigos para garantir
-unset($_SESSION['errors_etapa6']);
-
 // Insert/Update
 $stmt = $pdo->prepare("
-    INSERT INTO negocio_financeiro (
-    negocio_id, estagio_faturamento, faixa_faturamento,
-    fontes_receita, fonte_outro, modelo_monetizacao,
-    margem_bruta, dependencia_proprios, previsao_proprios,
-    previsao_crescimento, investimento_externo,
-    prioridade_estrategica, pronto_investimento, faixa_investimento,
-    criado_em, atualizado_em
-) VALUES (
-    :negocio_id, :estagio_faturamento, :faixa_faturamento,
-    :fontes_receita, :fonte_outro, :modelo_monetizacao,
-    :margem_bruta, :dependencia_proprios, :previsao_proprios,
-    :previsao_crescimento, :investimento_externo,
-    :prioridade_estrategica, :pronto_investimento, :faixa_investimento,
-    NOW(), NOW()
-)
-ON DUPLICATE KEY UPDATE
-    estagio_faturamento = VALUES(estagio_faturamento),
-    faixa_faturamento = VALUES(faixa_faturamento),
-    fontes_receita = VALUES(fontes_receita),
-    fonte_outro = VALUES(fonte_outro),
-    modelo_monetizacao = VALUES(modelo_monetizacao),
-    margem_bruta = VALUES(margem_bruta),
-    dependencia_proprios = VALUES(dependencia_proprios),
-    previsao_proprios = VALUES(previsao_proprios),
-    previsao_crescimento = VALUES(previsao_crescimento),
-    investimento_externo = VALUES(investimento_externo),
-    prioridade_estrategica = VALUES(prioridade_estrategica),
-    pronto_investimento = VALUES(pronto_investimento),
-    faixa_investimento = VALUES(faixa_investimento),
-    atualizado_em = NOW()
+    INSERT INTO negocio_impacto (
+        negocio_id, intencionalidade, tipo_impacto, beneficiarios, beneficiario_outro,
+        alcance, metricas, metrica_outro, medicao, formas_medicao, forma_outro,
+        reporte, resultados, resultados_links, resultados_pdfs, proximos_passos,
+        criado_em, atualizado_em
+    ) VALUES (
+        :negocio_id, :intencionalidade, :tipo_impacto, :beneficiarios, :beneficiario_outro,
+        :alcance, :metricas, :metrica_outro, :medicao, :formas_medicao, :forma_outro,
+        :reporte, :resultados, :resultados_links, :resultados_pdfs, :proximos_passos,
+        NOW(), NOW()
+    )
+    ON DUPLICATE KEY UPDATE
+        intencionalidade = VALUES(intencionalidade),
+        tipo_impacto = VALUES(tipo_impacto),
+        beneficiarios = VALUES(beneficiarios),
+        beneficiario_outro = VALUES(beneficiario_outro),
+        alcance = VALUES(alcance),
+        metricas = VALUES(metricas),
+        metrica_outro = VALUES(metrica_outro),
+        medicao = VALUES(medicao),
+        formas_medicao = VALUES(formas_medicao),
+        forma_outro = VALUES(forma_outro),
+        reporte = VALUES(reporte),
+        resultados = VALUES(resultados),
+        resultados_links = VALUES(resultados_links),
+        resultados_pdfs = VALUES(resultados_pdfs),
+        proximos_passos = VALUES(proximos_passos),
+        atualizado_em = NOW()
 ");
 
 $params = [
-   'negocio_id'            => $negocio_id,
-    'estagio_faturamento'   => $estagio_faturamento,
-    'faixa_faturamento'     => $faixa_faturamento,
-    'fontes_receita'        => $fontesJson,
-    'fonte_outro'           => $fonte_outro,
-    'modelo_monetizacao'    => $modelo_monetizacao,
-    'margem_bruta'          => $margem_bruta,
-    'dependencia_proprios'  => $dependencia_proprios,
-    'previsao_proprios'     => $previsao_proprios,
-    'previsao_crescimento'  => $previsao_crescimento,
-    'investimento_externo'  => $investimento_externo,
-    'prioridade_estrategica'=> $prioridade_estrategica,
-    'pronto_investimento'   => $pronto_investimento,
-    'faixa_investimento'    => $faixa_investimento
+    'negocio_id'        => $negocio_id,
+    'intencionalidade'  => $intencionalidade,
+    'tipo_impacto'      => $tipo_impacto,
+    'beneficiarios'     => json_encode($beneficiarios),
+    'beneficiario_outro'=> $beneficiario_outro,
+    'alcance'           => $alcance,
+    'metricas'          => json_encode($metricas),
+    'metrica_outro'     => $metrica_outro,
+    'medicao'           => $medicao,
+    'formas_medicao'    => json_encode($formas_medicao),
+    'forma_outro'       => $forma_outro,
+    'reporte'           => $reporte,
+    'resultados'        => $resultados,
+    'resultados_links'  => json_encode($links),
+    'resultados_pdfs'   => json_encode($pdfs),
+    'proximos_passos'   => $proximos_passos
 ];
 
 $stmt->execute($params);
 
 // ==========================
-// Cálculo do Score Investimento
+// Cálculo do Score Impacto
 // ==========================
-$stmt = $pdo->prepare("SELECT componente, peso FROM pesos_scores WHERE tipo_score='INVESTIMENTO'");
+$stmt = $pdo->prepare("SELECT componente, peso FROM pesos_scores WHERE tipo_score='IMPACTO'");
 $stmt->execute();
 $pesos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$scoreInvestimento = 0;
+$scoreImpacto = 0;
 foreach ($pesos as $p) {
     $componente = $p['componente'];
     $peso = (float)$p['peso'];
 
     // Normaliza respostas para opções do lookup
     switch ($componente) {
-        case 'estagio':
-            // Usa estagio_faturamento para mapear
-            if (strpos($estagio_faturamento, 'sem faturamento') !== false) $opcao = 'ideacao';
-            elseif (strpos($estagio_faturamento, 'break-even') !== false) $opcao = 'operacao';
-            elseif (strpos($estagio_faturamento, 'lucro') !== false) $opcao = 'escala';
-            else $opcao = 'tracao';
+        case 'intencionalidade':
+            if (strpos($intencionalidade, 'integrado') !== false) $opcao = 'lucro_com_impacto_integrado';
+            elseif (strpos($intencionalidade, 'prioridade') !== false) $opcao = 'missao_acima_lucro';
+            else $opcao = 'impacto_secundario';
             break;
 
-        case 'receita':
-            if ($faixa_faturamento === 'Não houve faturamento ainda') $opcao = 'sem_receita';
-            elseif ($faixa_faturamento === 'Até R$ 100 mil') $opcao = 'ate_100k';
-            elseif ($faixa_faturamento === 'R$ 100 mil – R$ 500 mil') $opcao = '100k_500k';
-            elseif ($faixa_faturamento === 'R$ 500 mil – R$ 1 milhão') $opcao = '500k_1m';
-            elseif (strpos($faixa_faturamento, 'Acima de 20 milhões') !== false) $opcao = 'acima_1m'; // ajuste conforme lookup
-            else $opcao = 'nao_informado';
+        case 'tipo_impacto':
+            if (strpos($tipo_impacto, 'sistêmico') !== false) $opcao = 'sistemico';
+            elseif (strpos($tipo_impacto, 'cadeia') !== false) $opcao = 'cadeia';
+            elseif (strpos($tipo_impacto, 'direto') !== false) $opcao = 'direto';
+            else $opcao = 'indireto';
             break;
 
-        case 'margem_bruta':
-            if ($margem_bruta === 'Acima de 60%') $opcao = 'acima_60';
-            elseif ($margem_bruta === 'Entre 40% e 60%') $opcao = '40_60';
-            elseif ($margem_bruta === 'Entre 20% e 40%') $opcao = '20_40';
-            elseif ($margem_bruta === 'Menor que 20%') $opcao = 'abaixo_20';
-            elseif ($margem_bruta === 'Ainda não mensurada') $opcao = 'nao_informado';
-            else $opcao = 'nao_informado';
+        case 'alcance':
+            if ($alcance === 'Acima de 500') $opcao = 'mais_500';
+            elseif ($alcance === '201 a 500') $opcao = '201_500';
+            elseif ($alcance === '101 a 200') $opcao = '101_200';
+            elseif ($alcance === '51 a 100') $opcao = '51_100';
+            else $opcao = '1_50';
             break;
 
-        case 'crescimento':
-            if ($previsao_crescimento === 'Crescimento acima de 100%') $opcao = 'acima_50';
-            elseif ($previsao_crescimento === 'Crescimento entre 50% e 100%') $opcao = '20_50';
-            elseif ($previsao_crescimento === 'Crescimento de até 50%') $opcao = 'abaixo_20';
-            elseif ($previsao_crescimento === 'Estável ou retração esperada') $opcao = 'estagnado';
-            else $opcao = 'nao_informado';
+        case 'mensuracao':
+            if ($medicao && strpos($medicao, 'auditoria') !== false) $opcao = 'auditoria_framework';
+            elseif (in_array("Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)", $formas_medicao)) $opcao = 'framework_reconhecido';
+            elseif (in_array("Relatórios internos manuais ou dashboards próprios", $formas_medicao)) $opcao = 'dashboard_interno';
+            elseif (in_array("Não fazemos medição formal ainda", $formas_medicao)) $opcao = 'nao_mede';
+            else $opcao = 'relatorio_manual';
             break;
 
-        case 'modelo_receita':
-            if (in_array('Venda direta recorrente (assinaturas, mensalidades)', $fontes_receita)) $opcao = 'recorrente_assinatura_contrato';
-            elseif (in_array('Venda direta única (produto ou serviço)', $fontes_receita)) $opcao = 'transacional_esporadico';
-            elseif (in_array('Consultoria / mentoria / treinamento', $fontes_receita)) $opcao = 'hibrido';
-            elseif (in_array('Modelo ainda não definido', $fontes_receita)) $opcao = 'nao_informado';
-            else $opcao = 'b2b_estruturado'; // exemplo
+        case 'evidencias':
+            if (!empty($resultados) && (!empty($links) || !empty($pdfs))) $opcao = 'documentado_com_links';
+            elseif (!empty($resultados)) $opcao = 'parcial';
+            elseif (empty($resultados)) $opcao = 'vazio';
+            else $opcao = 'narrativa';
             break;
 
-        case 'captacao_previa':
-            if ($investimento_externo === 'Sim, Série A ou superior') $opcao = 'vc_seed_serie';
-            elseif ($investimento_externo === 'Sim, pré-seed / seed') $opcao = 'vc_seed_serie';
-            elseif ($investimento_externo === 'Sim, investimento anjo') $opcao = 'anjo';
-            elseif ($investimento_externo === 'Apenas recursos próprios (bootstrapping)') $opcao = 'bootstrapping';
-            elseif ($investimento_externo === 'Não') $opcao = 'nunca_captou';
-            elseif ($investimento_externo === 'Doações') $opcao = 'grants_donations_primary';
-            else $opcao = 'nao_informado';
-            break;
-
-        case 'governanca':
-            // Aqui você pode usar dependencia_proprios + etapa 1 (CNPJ/CPF) para inferir
-            $opcao = 'formalizada_parcial'; // exemplo
+        case 'visao_5anos':
+            if (!empty($proximos_passos) && strlen($proximos_passos) > 50) $opcao = 'clara_mensuravel';
+            elseif (!empty($proximos_passos)) $opcao = 'clara_sem_metricas';
+            else $opcao = 'vazio';
             break;
 
         default:
@@ -223,27 +271,24 @@ foreach ($pesos as $p) {
     $stmt2->execute([$componente, $opcao]);
     $valor = (int)($stmt2->fetchColumn() ?: 0);
 
-    $scoreInvestimento += $valor * $peso;
+    $scoreImpacto += $valor * $peso;
 }
 
 // Penalidades
 $penalty = 0;
-if ($estagio_faturamento && strpos($estagio_faturamento, 'sem faturamento') !== false && $faixa_faturamento === 'Não houve faturamento ainda') {
+if ($opcao === 'nao_mede' && $opcao === 'vazio') {
     $penalty += 10;
 }
-if ($margem_bruta === 'Menor que 20%' && $faixa_faturamento === 'R$ 500 mil – R$ 1 milhão') {
-    $penalty += 5;
-}
 
-$scoreInvestimento = max(0, min(100, round($scoreInvestimento - $penalty)));
+$scoreImpacto = max(0, min(100, round($scoreImpacto - $penalty)));
 
 // Salva no banco
 $stmt = $pdo->prepare("
-    INSERT INTO scores_negocios (negocio_id, score_investimento, atualizado_em)
+    INSERT INTO scores_negocios (negocio_id, score_impacto, atualizado_em)
     VALUES (?, ?, NOW())
-    ON DUPLICATE KEY UPDATE score_investimento=VALUES(score_investimento), atualizado_em=NOW()
+    ON DUPLICATE KEY UPDATE score_impacto=VALUES(score_impacto), atualizado_em=NOW()
 ");
-$stmt->execute([$negocio_id, $scoreInvestimento]);
+$stmt->execute([$negocio_id, $scoreImpacto]);
 
 // --------- Redirecionamento Inteligente ---------
 $modo = $_POST['modo'] ?? 'cadastro';
@@ -267,7 +312,7 @@ if ($modo === 'cadastro') {
     }
 
     // Avança para a PRÓXIMA etapa
-    header("Location: /negocios/etapa7_impacto.php?id=" . $negocio_id);
+    header("Location: /negocios/etapa7_visao.php?id=" . $negocio_id);
     exit;
     
 } else {
@@ -284,10 +329,10 @@ if ($modo === 'cadastro') {
             2 => '/negocios/etapa2_fundadores.php',
             3 => '/negocios/etapa3_eixo_tematico.php',
             4 => '/negocios/etapa4_ods.php',    
-            5 => '/negocios/etapa5_apresentacao.php',
-            6 => '/negocios/etapa6_financeiro.php',
-            7 => '/negocios/etapa7_impacto.php',
-            8 => '/negocios/etapa8_visao.php',
+            5 => '/negocios/etapa5_financeiro.php',
+            6 => '/negocios/etapa6_impacto.php',
+            7 => '/negocios/etapa7_visao.php',
+            8 => '/negocios/etapa8_apresentacao.php',
             9 => '/negocios/etapa9_documentacao.php',
             10 => '/negocios/confirmacao.php'
         ];
