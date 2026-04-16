@@ -196,22 +196,95 @@ include __DIR__ . '/../app/views/admin/header.php';
                 <span class="admin-page-kicker">Decisão administrativa</span>
                 <h2 class="admin-decisao-title">Aguardando aprovação de vitrine</h2>
                 <p class="mb-0">
-                    Este negócio foi enviado para análise. Revise as informações e os documentos antes de aprovar a publicação ou rejeitar o cadastro.
+                    Revise as informações e os documentos antes de aprovar a publicação ou indeferir o cadastro.
                 </p>
             </div>
 
             <div class="admin-decisao-acoes">
                 <a href="/admin/aprovar_negocio.php?id=<?= $negocio_id ?>" class="btn btn-success btn-lg">
-                    <i class="bi bi-check-circle me-2"></i>
-                    Aprovar e publicar
+                    <i class="bi bi-check-circle me-2"></i>Aprovar e publicar
                 </a>
 
-                <a href="/admin/rejeitar_negocio.php?id=<?= $negocio_id ?>" class="btn btn-outline-danger btn-lg">
-                    <i class="bi bi-x-circle me-2"></i>
-                    Rejeitar cadastro
-                </a>
+                <!-- Botão que abre o modal de indeferimento -->
+                <button type="button" class="btn btn-outline-danger btn-lg"
+                        data-bs-toggle="modal" data-bs-target="#modalIndeferir">
+                    <i class="bi bi-x-circle me-2"></i>Indeferir cadastro
+                </button>
             </div>
         </div>
+
+        <!-- ===== MODAL DE INDEFERIMENTO ===== -->
+        <div class="modal fade" id="modalIndeferir" tabindex="-1" aria-labelledby="modalIndeferirLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="POST" action="/admin/notificar_negocio.php">
+                        <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
+
+                        <div class="modal-header border-danger">
+                            <h5 class="modal-title text-danger" id="modalIndeferirLabel">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Indeferir cadastro
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <p class="text-muted mb-3">
+                                Selecione os itens com pendências. O empreendedor receberá um e-mail automático listando cada item que precisa ser corrigido, e o negócio ficará com status <strong>indeferido</strong> até o reenvio.
+                            </p>
+
+                            <p class="fw-semibold mb-2">Itens com pendência:</p>
+                            <div class="row g-2 mb-4">
+                                <?php
+                                $opcoes = [
+                                    'dados_basicos'   => 'Dados básicos (nome, CNPJ, endereço) (Etapa 1 Dados do Negócio)',
+                                    'fundadores'      => 'Dados dos fundadores (Etapa 2 Fundadores)',
+                                    'eixo_tematico'   => 'Eixo temático / subáreas (Etapa 3 Eixo Temático)',
+                                    'ods'             => 'ODS selecionadas (Etapa 4 ODS)',
+                                    'financeiro'      => 'Informações financeiras (Etapa 5 Dados Financeiros)',
+                                    'impacto'         => 'Dados de impacto social (Etapa 6 Avaliação de Impacto)',
+                                    'visao'           => 'Visão de futuro e mercado (Etapa 7 Visão de Futuro)',
+                                    'logotipo'        => 'Logotipo do negócio (Etapa 8 Apresentação)',
+                                    'galeria_imagens' => 'Imagens da galeria (Etapa 8 Apresentação)',
+                                    'video'           => 'Link de vídeo de apresentação (Etapa 8 Apresentação)',
+                                    'descricao'       => 'Descrição / pitch do negócio (Etapa 8 Apresentação)',
+                                    'documentos'      => 'Documentação Legal Etapa 9 (CNDT / Ambiental)',
+                                ];
+                                foreach ($opcoes as $val => $label): ?>
+                                    <div class="col-12 col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                name="pendencias[]" value="<?= $val ?>"
+                                                id="pend_<?= $val ?>">
+                                            <label class="form-check-label" for="pend_<?= $val ?>">
+                                                <?= $label ?>
+                                            </label>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="observacao_livre" class="form-label fw-semibold">
+                                    Observação adicional <span class="text-muted fw-normal">(opcional)</span>
+                                </label>
+                                <textarea class="form-control" id="observacao_livre"
+                                        name="observacao_livre" rows="3"
+                                        placeholder="Ex: O logotipo enviado está com fundo transparente, por favor envie em formato PNG com fundo branco."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-send me-1"></i>Indeferir e notificar empreendedor
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- ===== FIM DO MODAL ===== -->
+
     <?php endif; ?>
 
     <div class="text-center mt-4">
