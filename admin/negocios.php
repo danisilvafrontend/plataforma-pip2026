@@ -24,6 +24,12 @@ try {
     $filtro_nome = $_GET['nome'] ?? '';
     if (!empty($filtro_nome)) { $where[] = "n.nome_fantasia LIKE ?"; $params[] = "%" . $filtro_nome . "%"; }
 
+    $filtro_empreendedor = $_GET['empreendedor'] ?? '';
+    if (!empty($filtro_empreendedor)) {
+        $where[] = "CONCAT(TRIM(e.nome), ' ', TRIM(e.sobrenome)) LIKE ?";
+        $params[] = "%" . $filtro_empreendedor . "%";
+    }
+
     $filtro_categoria = $_GET['categoria'] ?? '';
     if (!empty($filtro_categoria)) { $where[] = "n.categoria = ?"; $params[] = $filtro_categoria; }
 
@@ -59,6 +65,22 @@ try {
     $campo_sql = $colunas_permitidas[$coluna_ordem] ?? 'n.created_at';
     $dir_sql   = in_array(strtoupper($direcao_ordem), $direcoes_permitidas) ? strtoupper($direcao_ordem) : 'DESC';
     $sql .= " ORDER BY {$campo_sql} {$dir_sql}";
+
+    // Paginação
+    $por_pagina = 50;
+    $pagina_atual = max(1, (int)($_GET['pagina'] ?? 1));
+    $offset = ($pagina_atual - 1) * $por_pagina;
+
+    // Total de registros para calcular páginas
+    $sqlCount = "SELECT COUNT(*) FROM negocios n JOIN empreendedores e ON n.empreendedor_id = e.id LEFT JOIN scores_negocios s ON n.id = s.negocio_id";
+    if (!empty($where)) { $sqlCount .= " WHERE " . implode(" AND ", $where); }
+    $stmtCount = $pdo->prepare($sqlCount);
+    $stmtCount->execute($params);
+    $total_registros = (int)$stmtCount->fetchColumn();
+    $total_paginas = (int)ceil($total_registros / $por_pagina);
+
+    // Query com LIMIT
+    $sql .= " LIMIT {$por_pagina} OFFSET {$offset}";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -171,7 +193,7 @@ include __DIR__ . '/../app/views/admin/header.php';
 ═══════════════════════════════════ -->
 <div class="filter-card card p-3 mb-4">
   <form method="GET" class="row g-2 align-items-end">
-    <div class="col-12 col-sm-6 col-lg-4">
+    <div class="col-12 col-sm-6 col-lg-3">
       <label class="form-label">Nome Fantasia</label>
       <div class="search-bar">
         <i class="bi bi-search"></i>
@@ -180,6 +202,14 @@ include __DIR__ . '/../app/views/admin/header.php';
       </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
+      <label class="form-label">Empreendedor</label>
+      <div class="search-bar">
+        <i class="bi bi-search"></i>
+        <input type="text" name="empreendedor" class="form-control"
+              placeholder="Buscar por nome…" value="<?= htmlspecialchars($filtro_empreendedor) ?>">
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-2">
       <label class="form-label">Categoria</label>
       <select name="categoria" class="form-select">
         <option value="">Todas</option>
@@ -202,7 +232,7 @@ include __DIR__ . '/../app/views/admin/header.php';
         <option value="indeferido" <?= $filtro_status === 'indeferido' ? 'selected' : '' ?>>Indeferido</option>
       </select>
     </div>
-    <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
+    <div class="col-12 col-sm-6 col-lg-2 d-flex gap-2">
       <button type="submit" class="hd-btn primary w-100">
         <i class="bi bi-funnel-fill"></i> Filtrar
       </button>
@@ -322,4 +352,71 @@ include __DIR__ . '/../app/views/admin/header.php';
   </div>
 </div>
 
+<?php if ($total_paginas > 1): ?>
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mt-3 mb-4">
+
+    <div class="text-muted small">
+        Exibindo <strong><?= number_format(min($offset + 1, $total_registros)) ?></strong>
+        a <strong><?= number_format(min($offset + $por_pagina, $total_registros)) ?></strong>
+        de <strong><?= number_format($total_registros) ?></strong> negócios
+    </div>
+
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+
+            <?php
+            // Monta a query string preservando todos os filtros ativos
+            $get_base = $_GET;
+            unset($get_base['pagina']);
+            $qs = http_build_query($get_base);
+            $qs_sep = $qs ? $qs . '&' : '';
+            ?>
+
+            <!-- Anterior -->
+            <li class="page-item <?= $pagina_atual <= 1 ? 'disabled' : '' ?>">
+                <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $pagina_atual - 1 ?>">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+
+            <?php
+            // Mostra no máximo 7 páginas ao redor da atual
+            $inicio = max(1, $pagina_atual - 3);
+            $fim    = min($total_paginas, $pagina_atual + 3);
+
+            if ($inicio > 1): ?>
+                <li class="page-item">
+                    <a class="page-link" href="?<?= $qs_sep ?>pagina=1">1</a>
+                </li>
+                <?php if ($inicio > 2): ?>
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <?php for ($p = $inicio; $p <= $fim; $p++): ?>
+                <li class="page-item <?= $p === $pagina_atual ? 'active' : '' ?>">
+                    <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $p ?>"><?= $p ?></a>
+                </li>
+            <?php endfor; ?>
+
+            <?php if ($fim < $total_paginas): ?>
+                <?php if ($fim < $total_paginas - 1): ?>
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                <?php endif; ?>
+                <li class="page-item">
+                    <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $total_paginas ?>"><?= $total_paginas ?></a>
+                </li>
+            <?php endif; ?>
+
+            <!-- Próximo -->
+            <li class="page-item <?= $pagina_atual >= $total_paginas ? 'disabled' : '' ?>">
+                <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $pagina_atual + 1 ?>">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+  </div>
+<?php endif; ?>
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
