@@ -219,20 +219,28 @@ include __DIR__ . '/../app/views/empreendedor/header.php'; ?>
         </div>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-lg-12">
+    <nav class="admin-negocio-nav"> 
+        <a href="#etapa-1">Etapa 1</a>
+        <a href="#etapa-2">Etapa 2</a>
+        <a href="#etapa-3">Etapa 3</a>
+        <a href="#etapa-4">Etapa 4</a>
+        <a href="#etapa-5">Etapa 5</a>
+        <a href="#etapa-6">Etapa 6</a>
+        <a href="#etapa-7">Etapa 7</a>
+        <a href="#etapa-8">Etapa 8</a>
+        <a href="#etapa-9">Etapa 9</a>
+    </nav>
 
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa1.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa2.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa3.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa4.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa5.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa6.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa7.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa8.php'; ?>
-            <?php include __DIR__ . '/blocos-cadastros/bloco_etapa9.php'; ?>
-
-        </div>
+    <div class="admin-negocio-content mt-4">
+        <section id="etapa-1" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa1.php'; ?></section>
+        <section id="etapa-2" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa2.php'; ?></section>
+        <section id="etapa-3" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa3.php'; ?></section>
+        <section id="etapa-4" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa4.php'; ?></section>
+        <section id="etapa-5" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa5.php'; ?></section>
+        <section id="etapa-6" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa6.php'; ?></section>
+        <section id="etapa-7" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa7.php'; ?></section>
+        <section id="etapa-8" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa8.php'; ?></section>
+        <section id="etapa-9" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa9.php'; ?></section>
     </div>
 
     <!-- Ações da Revisão -->

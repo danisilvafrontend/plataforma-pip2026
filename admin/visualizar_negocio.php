@@ -151,7 +151,7 @@ include __DIR__ . '/../app/views/admin/header.php';
         </div>
     </div>
 
-    <nav class="admin-negocio-nav">
+    <nav class="admin-negocio-nav"> 
         <a href="#etapa-1">Etapa 1</a>
         <a href="#etapa-2">Etapa 2</a>
         <a href="#etapa-3">Etapa 3</a>
