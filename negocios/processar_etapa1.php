@@ -139,8 +139,10 @@ foreach ($urls as $k => $u) {
         $errors[] = "URL inválida em {$k}. Use http:// ou https://";
     }
 }
-if (empty($interesse_marketplace) || !in_array($interesse_marketplace, ['Sim', 'Não'])) {
-    $errors[] = "Por favor, responda se tem interesse no futuro marketplace.";
+if ($modo === 'cadastro') {
+    if (empty($interesse_marketplace) || !in_array($interesse_marketplace, ['Sim', 'Não'])) {
+        $errors[] = "Por favor, responda se tem interesse no futuro marketplace.";
+    }
 }
 if (!empty($errors)) {
     $_SESSION['errors_etapa1'] = $errors;

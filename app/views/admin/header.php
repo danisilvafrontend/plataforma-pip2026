@@ -171,31 +171,31 @@ function isActive(string $current, string $page): string {
          role="button"
          aria-expanded="<?= $isPremiacaoActive ? 'true' : 'false' ?>"
          aria-controls="PremiacaoSubmenu">
-        <i class="bi bi-bar-chart-fill"></i> Premiação
+        <i class="bi bi-trophy me-1"></i> Premiação
         <i class="bi bi-chevron-down chevron"></i>
       </a>
       <div class="collapse <?= $isPremiacaoActive ? 'show' : '' ?>" id="PremiacaoSubmenu">
         <ul class="nav flex-column submenu">
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_edicoes.php') ?>" href="/admin/premiacao_edicoes.php">
-            <i class="bi bi-graph-up"></i> Edições Premiação
+            <i class="bi bi-trophy-fill"></i> Edições Premiação
           </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_periodos.php') ?>" href="/admin/premiacao_periodos.php">
-            <i class="bi bi-graph-up"></i> Periodo Premiação
+            <i class="bi bi-trophy-fill"></i> Periodo Premiação
           </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_inscricoes.php') ?>" href="/admin/premiacao_inscricoes.php">
-            <i class="bi bi-graph-up"></i> Inscrições
+            <i class="bi bi-trophy-fill"></i> Inscrições
           </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_categorias.php') ?>" href="/admin/premiacao_categorias.php">
-            <i class="bi bi-graph-up"></i> Categorias
+            <i class="bi bi-trophy-fill"></i> Categorias
           </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_voto_popular.php') ?>" href="/admin/premiacao_voto_popular.php">
-            <i class="bi bi-graph-up"></i> Votos Popular
+            <i class="bi bi-trophy-fill"></i> Votos Popular
           </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_juri.php') ?>" href="/admin/premiacao_juri.php">
-            <i class="bi bi-graph-up"></i> Juri
+            <i class="bi bi-trophy-fill"></i> Juri
           </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_resultados.php') ?>" href="/admin/premiacao_resultados.php">
-            <i class="bi bi-graph-up"></i> Resultados
+            <i class="bi bi-trophy-fill"></i> Resultados
           </a></li>
         </ul>
       </div>

@@ -94,6 +94,19 @@ $desafios_map = [
                         </div>
                     <?php endif; ?>
 
+                    <?php if (!empty($apresentacao['imagem_destaque'])): ?>
+                        <div class="mb-3">
+                            <div class="emp-review-label mb-1">
+                                <i class="bi bi-eye text-secondary me-1"></i> Imagem de Capa
+                            </div>
+                            <img src="<?= htmlspecialchars($apresentacao['imagem_destaque']) ?>"
+                                alt="Imagem de capa"
+                                class="img-fluid rounded w-100"
+                                style="aspect-ratio:16/9; object-fit:cover; border:2px solid #CDDE00;"
+                                loading="lazy">
+                        </div>
+                    <?php endif; ?>
+
                     <?php if (!empty($apresentacao['frase_negocio'])): ?>
                         <blockquote class="emp-review-quote">
                             <i class="bi bi-eye text-secondary me-1"></i>
