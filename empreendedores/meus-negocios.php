@@ -282,11 +282,12 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         $statusPremiacao = $n['premiacao_status'] ?? null;
         $podeParticipar = $completo && $publicado && !$encerrado;
 
+        // DEPOIS
         $vitrineBadge = match($statusVitrine) {
-            'aprovado'   => ['bg' => '#e8f5e9', 'color' => '#2e7d32', 'text' => 'Aprovado',   'icon' => 'bi-check-circle-fill'],
-            'em_analise' => ['bg' => '#fff8e1', 'color' => '#f57f17', 'text' => 'Em Análise', 'icon' => 'bi-hourglass-split'],
-            'rejeitado'  => ['bg' => '#fdecea', 'color' => '#c62828', 'text' => 'Rejeitado',  'icon' => 'bi-x-circle-fill'],
-            default      => ['bg' => '#f5f5f5', 'color' => '#757575', 'text' => 'Pendente',   'icon' => 'bi-clock'],
+            'aprovado'    => ['bg' => '#e8f5e9', 'color' => '#2e7d32', 'text' => 'Aprovado',    'icon' => 'bi-check-circle-fill'],
+            'em_analise'  => ['bg' => '#fff8e1', 'color' => '#f57f17', 'text' => 'Em Análise',  'icon' => 'bi-hourglass-split'],
+            'indeferido'  => ['bg' => '#fdecea', 'color' => '#c62828', 'text' => 'Indeferido',  'icon' => 'bi-x-circle-fill'],
+            default       => ['bg' => '#f5f5f5', 'color' => '#757575', 'text' => 'Pendente',    'icon' => 'bi-clock'],
         };
 
         $premiacaoBadge = badgePremiacao($statusPremiacao);
