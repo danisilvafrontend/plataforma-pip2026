@@ -37,7 +37,9 @@ try {
     } elseif ($filtro_status === 'analise') {
         $where[] = "n.status_vitrine = 'em_analise'";
     } elseif ($filtro_status === 'aprovado') {
-        $where[] = "n.status_vitrine = 'aprovado'";
+    $where[] = "n.status_vitrine = 'aprovado'";
+    } elseif ($filtro_status === 'indeferido') {
+        $where[] = "n.status_vitrine = 'indeferido'";
     }
 
     $sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_completa,
@@ -197,6 +199,7 @@ include __DIR__ . '/../app/views/admin/header.php';
         <option value="encerrado" <?= $filtro_status === 'encerrado' ? 'selected' : '' ?>>Encerrado</option>
         <option value="analise"   <?= $filtro_status === 'analise'   ? 'selected' : '' ?>>Em Análise</option>
         <option value="aprovado"  <?= $filtro_status === 'aprovado'  ? 'selected' : '' ?>>Aprovado</option>
+        <option value="indeferido" <?= $filtro_status === 'indeferido' ? 'selected' : '' ?>>Indeferido</option>
       </select>
     </div>
     <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
@@ -272,14 +275,25 @@ include __DIR__ . '/../app/views/admin/header.php';
               <td>
                 <?php if ($n['status_operacional'] === 'encerrado'): ?>
                   <span class="emp-badge" style="background:#fde8ea;color:#842029;">Encerrado</span>
+
                 <?php elseif ($n['publicado_vitrine']): ?>
-                  <span class="emp-badge" style="background:#CDDE00;color:#1E3425;"><i class="bi bi-eye-fill me-1"></i>Aprovado e Publicado</span>
+                  <span class="emp-badge" style="background:#CDDE00;color:#1E3425;">
+                    <i class="bi bi-eye-fill me-1"></i>Aprovado e Publicado
+                  </span>
+
                 <?php elseif ($n['status_vitrine'] === 'em_analise'): ?>
-                  <span class="emp-badge" style="background:rgba(149,188,204,.25);color:#3a6f82;"><i class="bi bi-hourglass-split me-1"></i>Aguardando Aprovação</span>
-                <?php elseif ($n['status_vitrine'] === 'rejeitado'): ?>
-                  <span class="emp-badge" style="background:#fde8ea;color:#842029;">Rejeitado</span>
+                  <span class="emp-badge" style="background:rgba(149,188,204,.25);color:#3a6f82;">
+                    <i class="bi bi-hourglass-split me-1"></i>Aguardando Aprovação
+                  </span>
+
+                <?php elseif ($n['status_vitrine'] === 'indeferido'): ?>
+                  <span class="emp-badge" style="background:#fde8ea;color:#842029;">
+                    <i class="bi bi-x-circle me-1"></i>Indeferido — Aguardando Revisão
+                  </span>
+
                 <?php elseif ($n['inscricao_completa']): ?>
                   <span class="emp-badge" style="background:rgba(151,163,39,.15);color:#5c6318;">Preenchimento Concluído</span>
+
                 <?php else: ?>
                   <span class="emp-badge" style="background:#fff3cd;color:#856404;">Em andamento</span>
                 <?php endif; ?>
