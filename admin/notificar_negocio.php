@@ -149,11 +149,19 @@ try {
             </div>
         ";
 
+        $email_renderizado = render_email_from_db($subject, $bodyHtml);
+
         $headers  = "MIME-Version: 1.0\r\n";
         $headers .= "Content-type: text/html; charset=utf-8\r\n";
-        $headers .= "From: Plataforma Impactos Positivos <nao-responda@dscriacaoweb.com.br>\r\n";
+        $headers .= "From: Plataforma Impactos Positivos <nao-responda@impactospositivos.com>\r\n";
 
-        send_mail($emailDestino, $nome_empreendedor, $subject, $bodyHtml, $headers);
+        send_mail(
+            $emailDestino,
+            $nome_empreendedor,
+            $email_renderizado['subject'],
+            $email_renderizado['bodyHtml'],
+            $headers
+        );
     }
 
     $pdo->commit();
