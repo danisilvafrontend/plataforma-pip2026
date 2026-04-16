@@ -63,6 +63,49 @@ $stmtPremiacaoAtiva = $pdo->query("
 $premiacaoAtiva = $stmtPremiacaoAtiva->fetch(PDO::FETCH_ASSOC);
 $premiacaoIdAtiva = (int)($premiacaoAtiva['id'] ?? 0);
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'excluir_negocio') {
+    try {
+        $negocioId = (int)($_POST['negocio_id'] ?? 0);
+
+        // Confirma que pertence ao empreendedor e NÃO está completo
+        $stmtCheck = $pdo->prepare("
+            SELECT id FROM negocios
+            WHERE id = ? AND empreendedor_id = ? AND (inscricao_completa IS NULL OR inscricao_completa = 0)
+            LIMIT 1
+        ");
+        $stmtCheck->execute([$negocioId, $_SESSION['user_id']]);
+
+        if (!$stmtCheck->fetch()) {
+            throw new Exception('Negócio não encontrado ou não pode ser excluído.');
+        }
+
+        // Remove registros relacionados antes de excluir o negócio
+        foreach ([
+            "DELETE FROM negocio_apresentacao WHERE negocio_id = ?",
+            "DELETE FROM negocio_fundadores WHERE negocio_id = ?",
+            "DELETE FROM negocio_subareas WHERE negocio_id = ?",
+            "DELETE FROM negocio_ods WHERE negocio_id = ?",
+            "DELETE FROM negocio_financeiro WHERE negocio_id = ?",
+            "DELETE FROM negocio_impacto WHERE negocio_id = ?",
+            "DELETE FROM negocios_documentos WHERE negocio_id = ?",
+            "DELETE FROM negocio_visao WHERE negocio_id = ?",
+            "DELETE FROM scores_negocios WHERE negocio_id = ?",
+        ] as $sqlDel) {
+            $pdo->prepare($sqlDel)->execute([$negocioId]);
+        }
+
+        $pdo->prepare("DELETE FROM negocios WHERE id = ? AND empreendedor_id = ?")->execute([$negocioId, $_SESSION['user_id']]);
+
+        $_SESSION['success_message'] = 'Negócio excluído com sucesso.';
+        header('Location: /empreendedores/meus-negocios.php');
+        exit;
+    } catch (Throwable $e) {
+        $_SESSION['errors_message'] = $e->getMessage();
+        header('Location: /empreendedores/meus-negocios.php');
+        exit;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_inscricao_premiacao') {
     try {
         if ($premiacaoIdAtiva <= 0) {
@@ -458,6 +501,10 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <?php endfor; ?>
                   </ul>
                 </div>
+                <button class="btn-emp-icon text-danger" title="Excluir negócio"
+                      onclick="abrirModalExcluir(<?= (int)$n['id'] ?>, '<?= htmlspecialchars(addslashes($n['nome_fantasia'])) ?>')">
+                  <i class="bi bi-trash3"></i>
+              </button>
               <?php endif; ?>
 
             </div>
@@ -590,6 +637,44 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
   </div>
 </div>
 
+<!-- Modal Excluir Negócio -->
+<div class="modal fade" id="modalExcluir" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px; border:none;">
+      <form method="post">
+        <input type="hidden" name="acao" value="excluir_negocio">
+        <input type="hidden" name="negocio_id" id="modal_excluir_negocio_id" value="">
+
+        <div class="modal-header" style="border-bottom:1px solid #f0f4ed;">
+          <h5 class="modal-title text-danger">
+            <i class="bi bi-trash3 me-2"></i>Excluir Negócio
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="p-3 rounded mb-3" style="background:#fff5f5; border:1px solid #ffd7d7;">
+            <p class="small mb-1 fw-semibold text-danger">
+              <i class="bi bi-exclamation-triangle me-1"></i> Esta ação é irreversível
+            </p>
+            <p class="small text-muted mb-0">
+              Todos os dados do negócio <strong id="modal_excluir_nome"></strong> serão permanentemente removidos.
+              Só é possível excluir negócios que ainda estão em andamento.
+            </p>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="border-top:1px solid #f0f4ed;">
+          <button type="button" class="btn-emp-outline" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger rounded-pill px-4">
+            <i class="bi bi-trash3 me-1"></i> Excluir permanentemente
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
   function abrirModalPremiacao(negocioId, desejaParticipar, aceiteRegulamento, aceiteVeracidade) {
   document.getElementById('modal_premiacao_negocio_id').value = negocioId;
@@ -601,6 +686,11 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 function abrirModalOcultar(id) {
   document.getElementById('modal_ocultar_negocio_id').value = id;
   new bootstrap.Modal(document.getElementById('modalOcultar')).show();
+}
+function abrirModalExcluir(id, nome) {
+    document.getElementById('modal_excluir_negocio_id').value = id;
+    document.getElementById('modal_excluir_nome').textContent = nome;
+    new bootstrap.Modal(document.getElementById('modalExcluir')).show();
 }
 
 </script>
