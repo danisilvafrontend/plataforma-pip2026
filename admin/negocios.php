@@ -133,6 +133,24 @@ $etapas = [
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
 
+<?php if (!empty($_SESSION['sucesso'])): ?>
+  <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+    <i class="bi bi-check-circle me-2"></i>
+    <?= htmlspecialchars($_SESSION['sucesso']) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <?php unset($_SESSION['sucesso']); ?>
+<?php endif; ?>
+
+<?php if (!empty($_SESSION['erro'])): ?>
+  <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <?= htmlspecialchars($_SESSION['erro']) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <?php unset($_SESSION['erro']); ?>
+<?php endif; ?>
+
 <!-- ══════════════════════════════════
      Cabeçalho
 ═══════════════════════════════════ -->
