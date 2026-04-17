@@ -60,21 +60,18 @@ try {
     $etapa_nome = $etapas_nomes[(int)$negocio['etapa_atual']] ?? "Etapa {$negocio['etapa_atual']}";
 
     $bloco_extra = '';
-    if ($mensagem_extra !== '') {
-        $bloco_extra = '
-            <div style="background:#f0f4ed; border-left:4px solid #CDDE00;
-                        padding:14px 18px; margin:20px 0; border-radius:4px;">
-                <p style="margin:0; font-size:14px; color:#1E3425;">
-                    <strong>Mensagem da equipe:</strong><br>
-                    ' . nl2br(htmlspecialchars($mensagem_extra)) . '
-                </p>
-            </div>';
-    }
+        if ($mensagem_extra !== '') {
+            $bloco_extra = '
+                <div style="background:#f0f4ed; border-left:4px solid #CDDE00;
+                            padding:14px 18px; margin:20px 0; border-radius:4px;">
+                    <p style="margin:0; font-size:14px; color:#1E3425;">
+                        <strong>Mensagem da equipe:</strong><br>
+                        ' . nl2br(htmlspecialchars($mensagem_extra)) . '
+                    </p>
+                </div>';
+        }
 
-    // Injeta o bloco extra no body antes do fechamento da div
-    $bodyHtml = $bloco_extra !== ''
-    ? substr_replace($template['body_html'], $bloco_extra, strpos($template['body_html'], '</div>'), 0)
-    : $template['body_html'];
+        $bodyHtml = $template['body_html'] . $bloco_extra;
 
     $rendered = render_email_from_db($template['subject'], $bodyHtml, [
         'nome'          => $negocio['nome'],
@@ -98,6 +95,6 @@ try {
 
 } catch (Throwable $e) {
     error_log('Erro notificacao negocio: ' . $e->getMessage());
-    $_SESSION['erro'] = 'Erro ao enviar a notificação.';
+    $_SESSION['erro'] = 'Erro: ' . $e->getMessage();
     header('Location: negocios.php'); exit;
 }
