@@ -506,45 +506,192 @@ function addLinkField() {
 </script>
 
 <script>
-document.getElementById('logo_negocio').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        const validTypes = ['image/png','image/jpeg','image/jpg','image/webp'];
-        if (!validTypes.includes(file.type)) {
-            alert('Arquivo inválido! Apenas PNG, JPG, JPEG ou WebP são aceitos.');
-            this.value = '';
-        }
-    }
-});
+// ══════════════════════════════════════════════════
+// Validação de uploads — frontend (etapa 8)
+// ══════════════════════════════════════════════════
 
-const inputDestaque = document.getElementById('imagemDestaque');
-if (inputDestaque) {
-    inputDestaque.addEventListener('change', function () {
-        const file = this.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = e => {
-            document.getElementById('novoDestaqueImg').src = e.target.result;
-            document.getElementById('novoDestaquePreview').classList.remove('d-none');
-            document.getElementById('uploadLabelDestaque').style.display = 'none';
-        };
-        reader.readAsDataURL(file);
+const MB = 1024 * 1024;
+
+// Config de cada campo: { maxMB, tipos, maxFiles }
+const uploadConfig = {
+    logo_negocio:      { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
+    imagemDestaque:    { maxMB: 5,  tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
+    apresentacao_pdf:  { maxMB: 5,  tipos: ['application/pdf'],                                 maxFiles: 1 },
+    galeria_imagens:   { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/bmp'], maxFiles: 10 },
+};
+
+// Cria (ou reutiliza) um elemento de feedback abaixo do input
+function getFeedbackEl(input) {
+    let el = input.parentElement.querySelector('.upload-feedback');
+    if (!el) {
+        el = document.createElement('div');
+        el.className = 'upload-feedback mt-1';
+        input.parentElement.appendChild(el);
+    }
+    return el;
+}
+
+function setErro(input, msg) {
+    const el = getFeedbackEl(input);
+    el.innerHTML = `<div class="alert alert-danger py-2 px-3 mb-0 small">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>${msg}
+    </div>`;
+    input.dataset.valid = 'false';
+}
+
+function setOk(input, msg) {
+    const el = getFeedbackEl(input);
+    el.innerHTML = `<div class="text-success small mt-1">
+        <i class="bi bi-check-circle-fill me-1"></i>${msg}
+    </div>`;
+    input.dataset.valid = 'true';
+}
+
+function clearFeedback(input) {
+    const el = getFeedbackEl(input);
+    if (el) el.innerHTML = '';
+    delete input.dataset.valid;
+}
+
+function formatBytes(bytes) {
+    return (bytes / MB).toFixed(2) + ' MB';
+}
+
+function validarInput(input, cfg) {
+    const files = Array.from(input.files);
+
+    if (files.length === 0) {
+        clearFeedback(input);
+        return true;
+    }
+
+    // Qtd máxima de arquivos
+    if (files.length > cfg.maxFiles) {
+        setErro(input, `Máximo de ${cfg.maxFiles} arquivo(s) permitido. Você selecionou ${files.length}.`);
+        input.value = '';
+        return false;
+    }
+
+    const erros = [];
+    const validos = [];
+
+    files.forEach(file => {
+        const tipoOk   = cfg.tipos.includes(file.type);
+        const tamanhoOk = file.size <= cfg.maxMB * MB;
+
+        if (!tipoOk) {
+            erros.push(`<strong>${file.name}</strong>: tipo não permitido (${file.type || 'desconhecido'}).`);
+        } else if (!tamanhoOk) {
+            erros.push(`<strong>${file.name}</strong>: ${formatBytes(file.size)} — limite é ${cfg.maxMB}MB.`);
+        } else {
+            validos.push(file.name);
+        }
     });
 
-    const chkRemover = document.getElementById('removerImagemDestaque');
-    if (chkRemover) {
-        chkRemover.addEventListener('change', function () {
-            const label = document.getElementById('removerDestaqueLabel');
-            if (this.checked) {
-                label.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> Cancelar remoção';
-                document.getElementById('destaque-preview-atual').style.opacity = '0.4';
-            } else {
-                label.innerHTML = '<i class="bi bi-trash me-1"></i> Remover capa';
-                document.getElementById('destaque-preview-atual').style.opacity = '1';
+    if (erros.length > 0) {
+        setErro(input, erros.join('<br>'));
+        input.value = '';
+        return false;
+    }
+
+    const label = validos.length === 1
+        ? `${validos[0]} (${formatBytes(files[0].size)})`
+        : `${validos.length} arquivo(s) selecionado(s)`;
+    setOk(input, label);
+    return true;
+}
+
+// Bind em cada input
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Logo
+    const logo = document.getElementById('logo_negocio');
+    if (logo) logo.addEventListener('change', () => validarInput(logo, uploadConfig.logo_negocio));
+
+    // Imagem de destaque
+    const destaque = document.getElementById('imagemDestaque');
+    if (destaque) {
+        destaque.addEventListener('change', function () {
+            const ok = validarInput(destaque, uploadConfig.imagemDestaque);
+            if (!ok) return;
+
+            // Preview (mantém comportamento existente)
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('novoDestaqueImg').src = e.target.result;
+                document.getElementById('novoDestaquePreview').classList.remove('d-none');
+                document.getElementById('uploadLabelDestaque').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Remover capa (comportamento existente)
+        const chkRemover = document.getElementById('removerImagemDestaque');
+        if (chkRemover) {
+            chkRemover.addEventListener('change', function () {
+                const label = document.getElementById('removerDestaqueLabel');
+                if (this.checked) {
+                    label.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> Cancelar remoção';
+                    document.getElementById('destaque-preview-atual').style.opacity = '0.4';
+                } else {
+                    label.innerHTML = '<i class="bi bi-trash me-1"></i> Remover capa';
+                    document.getElementById('destaque-preview-atual').style.opacity = '1';
+                }
+            });
+        }
+    }
+
+    // PDF
+    const pdf = document.querySelector('input[name="apresentacao_pdf"]');
+    if (pdf) pdf.addEventListener('change', () => validarInput(pdf, uploadConfig.apresentacao_pdf));
+
+    // Galeria
+    const galeria = document.querySelector('input[name="galeria_imagens[]"]');
+    if (galeria) galeria.addEventListener('change', () => validarInput(galeria, uploadConfig.galeria_imagens));
+
+    // Bloqueia o submit se houver qualquer input com erro
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const inputs = [logo, destaque, pdf, galeria].filter(Boolean);
+        let bloqueado = false;
+
+        inputs.forEach(input => {
+            if (input.dataset.valid === 'false') {
+                bloqueado = true;
+                // Scrolla até o primeiro erro
+                if (!bloqueado || inputs.indexOf(input) === 0) {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+            // Valida no submit caso o usuário não tenha interagido
+            if (input.files && input.files.length > 0 && !input.dataset.valid) {
+                const cfg = input.id === 'logo_negocio'   ? uploadConfig.logo_negocio  :
+                            input.id === 'imagemDestaque'  ? uploadConfig.imagemDestaque :
+                            input.name === 'apresentacao_pdf' ? uploadConfig.apresentacao_pdf :
+                            uploadConfig.galeria_imagens;
+                if (!validarInput(input, cfg)) bloqueado = true;
             }
         });
-    }
-}
+
+        if (bloqueado) {
+            e.preventDefault();
+            // Mensagem geral no topo do formulário
+            let aviso = document.getElementById('upload-aviso-geral');
+            if (!aviso) {
+                aviso = document.createElement('div');
+                aviso.id = 'upload-aviso-geral';
+                aviso.className = 'alert alert-danger mb-3';
+                aviso.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Corrija os erros nos arquivos antes de salvar.</strong>';
+                document.querySelector('form').prepend(aviso);
+            }
+            aviso.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            const aviso = document.getElementById('upload-aviso-geral');
+            if (aviso) aviso.remove();
+        }
+    }, true); // capture=true para rodar antes da validação HTML5
+});
 </script>
 
 <script>
