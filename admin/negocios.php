@@ -419,4 +419,56 @@ include __DIR__ . '/../app/views/admin/header.php';
     </nav>
   </div>
 <?php endif; ?>
+
+<!-- MODAL NOTIFICAÇÃO INDIVIDUAL -->
+<div class="modal fade" id="modalNotificacao" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px; border:none;">
+      <form action="/admin/processar_notificacao_negocio.php" method="POST">
+        <input type="hidden" name="negocio_id" id="notif_negocio_id">
+
+        <div class="modal-header" style="border-bottom:1px solid #f0f4ed;">
+          <h5 class="modal-title" style="color:#1E3425;">
+            <i class="bi bi-bell me-2" style="color:#CDDE00;"></i>
+            Notificar Empreendedor
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="p-3 rounded mb-3" style="background:#f7f9f5; border:1px solid #e6ece1;">
+            <div class="small fw-semibold mb-1" style="color:#1E3425;">
+              <i class="bi bi-briefcase me-1"></i> Negócio
+            </div>
+            <div class="fw-bold" id="notif_nome_negocio" style="color:#1E3425;"></div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.88rem;">Mensagem adicional
+              <span class="text-muted fw-normal">(opcional)</span>
+            </label>
+            <textarea name="mensagem_extra" class="form-control" rows="3" maxlength="500"
+                      placeholder="Ex: Notamos que seu cadastro está na Etapa 5. Podemos ajudar?"></textarea>
+            <div class="form-text">Será inserida no corpo do e-mail padrão.</div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="border-top:1px solid #f0f4ed;">
+          <button type="button" class="btn-emp-outline" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="hd-btn primary">
+            <i class="bi bi-send me-1"></i> Enviar notificação
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirModalNotificacao(id, nome) {
+    document.getElementById('notif_negocio_id').value = id;
+    document.getElementById('notif_nome_negocio').textContent = nome;
+    new bootstrap.Modal(document.getElementById('modalNotificacao')).show();
+}
+</script>
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
