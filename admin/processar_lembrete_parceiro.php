@@ -122,6 +122,17 @@ try {
                 </a>
             </p>
 
+            <div style="background:#f0f4ed; border-left:4px solid #CDDE00;
+            padding:15px 18px; margin:25px 0; border-radius:4px;">
+                <p style="margin:0; font-size:14px; color:#1E3425;">
+                    <strong>🌟 O que vem depois?</strong><br>
+                    Após assinar a carta-acordo e ter sua parceria aprovada pela nossa equipe,
+                    você poderá criar o <strong>perfil público da sua organização</strong> na
+                    Plataforma Impactos Positivos — ganhando visibilidade para toda a nossa
+                    rede de empreendedores, investidores e parceiros de impacto.
+                </p>
+            </div>
+
             <p>
                 Se tiver qualquer dúvida ou dificuldade, é só responder este e-mail — nossa
                 equipe está aqui para ajudar.
