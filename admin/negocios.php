@@ -58,7 +58,7 @@ try {
 
     if (!empty($where)) { $sql .= " WHERE " . implode(" AND ", $where); }
 
-    $colunas_permitidas  = ['created_at' => 'n.created_at', 'escala' => 's.score_escala', 'investimento' => 's.score_investimento', 'impacto' => 's.score_impacto', 'geral' => 's.score_geral'];
+    $colunas_permitidas = ['created_at' => 'n.created_at', 'etapa' => 'n.etapa_atual', 'escala' => 's.score_escala', 'investimento' => 's.score_investimento', 'impacto' => 's.score_impacto', 'geral' => 's.score_geral'];
     $direcoes_permitidas = ['ASC', 'DESC'];
     $coluna_ordem  = $_GET['ordem'] ?? 'created_at';
     $direcao_ordem = $_GET['dir']   ?? 'DESC';
@@ -255,7 +255,7 @@ include __DIR__ . '/../app/views/admin/header.php';
           <th>Nome Fantasia</th>
           <th>Categoria</th>
           <th>Empreendedor</th>
-          <th>Etapa Atual</th>
+          <th><a href="<?= linkOrdenacao('etapa') ?>" class="neg-sort-link">Etapa <?= iconeOrdenacao('etapa') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('escala') ?>" class="neg-sort-link">Escala <?= iconeOrdenacao('escala') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('investimento') ?>" class="neg-sort-link">Invest. <?= iconeOrdenacao('investimento') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('impacto') ?>" class="neg-sort-link">Impacto <?= iconeOrdenacao('impacto') ?></a></th>
