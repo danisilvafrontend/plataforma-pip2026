@@ -72,6 +72,15 @@ try {
   <meta name="theme-color" content="#1E3425">
 
   <?php if (!empty($extraHead ?? null)) echo $extraHead; ?>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QB72YGX3EV"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-QB72YGX3EV');
+  </script>
 </head>
 <body>
 <div class="gtranslate_wrapper"></div>
@@ -92,7 +101,11 @@ try {
 
     <div class="collapse navbar-collapse" id="mainNav">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center gap-1">
-
+        <li class="nav-item">
+          <a class="nav-link" href="/">
+            <i class="bi bi-house"></i> Início
+          </a>
+        </li>
         <li class="nav-item">
           <a class="nav-link" href="/vitrine_nacional.php">
             <i class="bi bi-grid me-1"></i> Vitrine Nacional
