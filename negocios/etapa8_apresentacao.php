@@ -512,7 +512,6 @@ function addLinkField() {
 
 const MB = 1024 * 1024;
 
-// Config de cada campo: { maxMB, tipos, maxFiles }
 const uploadConfig = {
     logo_negocio:      { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
     imagemDestaque:    { maxMB: 5,  tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
@@ -520,7 +519,6 @@ const uploadConfig = {
     galeria_imagens:   { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/bmp'], maxFiles: 10 },
 };
 
-// Cria (ou reutiliza) um elemento de feedback abaixo do input
 function getFeedbackEl(input) {
     let el = input.parentElement.querySelector('.upload-feedback');
     if (!el) {
@@ -565,7 +563,6 @@ function validarInput(input, cfg) {
         return true;
     }
 
-    // Qtd máxima de arquivos
     if (files.length > cfg.maxFiles) {
         setErro(input, `Máximo de ${cfg.maxFiles} arquivo(s) permitido. Você selecionou ${files.length}.`);
         input.value = '';
@@ -576,7 +573,7 @@ function validarInput(input, cfg) {
     const validos = [];
 
     files.forEach(file => {
-        const tipoOk   = cfg.tipos.includes(file.type);
+        const tipoOk    = cfg.tipos.includes(file.type);
         const tamanhoOk = file.size <= cfg.maxMB * MB;
 
         if (!tipoOk) {
@@ -601,7 +598,6 @@ function validarInput(input, cfg) {
     return true;
 }
 
-// Bind em cada input
 document.addEventListener('DOMContentLoaded', function () {
 
     // Logo
@@ -615,19 +611,28 @@ document.addEventListener('DOMContentLoaded', function () {
             const ok = validarInput(destaque, uploadConfig.imagemDestaque);
             if (!ok) return;
 
-            // Preview (mantém comportamento existente)
             const file = this.files[0];
             if (!file) return;
+
             const reader = new FileReader();
             reader.onload = e => {
+                // Atualiza o preview
                 document.getElementById('novoDestaqueImg').src = e.target.result;
                 document.getElementById('novoDestaquePreview').classList.remove('d-none');
-                document.getElementById('uploadLabelDestaque').style.display = 'none';
+
+                // Mantém o label visível como "Trocar imagem" para permitir nova seleção
+                const labelEl = document.getElementById('uploadLabelDestaque');
+                labelEl.style.display = '';
+                labelEl.innerHTML = `
+                    <i class="bi bi-arrow-repeat upload-icon-destaque" style="font-size:2rem;"></i>
+                    <span class="upload-text-main">Clique para trocar a imagem</span>
+                    <span class="upload-text-sub">JPG, PNG ou WebP · Máx. 5MB · Proporção 16:9 recomendada</span>
+                `;
             };
             reader.readAsDataURL(file);
         });
 
-        // Remover capa (comportamento existente)
+        // Remover capa
         const chkRemover = document.getElementById('removerImagemDestaque');
         if (chkRemover) {
             chkRemover.addEventListener('change', function () {
@@ -651,32 +656,32 @@ document.addEventListener('DOMContentLoaded', function () {
     const galeria = document.querySelector('input[name="galeria_imagens[]"]');
     if (galeria) galeria.addEventListener('change', () => validarInput(galeria, uploadConfig.galeria_imagens));
 
-    // Bloqueia o submit se houver qualquer input com erro
+    // Bloqueia submit se houver erro
     document.querySelector('form').addEventListener('submit', function (e) {
         const inputs = [logo, destaque, pdf, galeria].filter(Boolean);
         let bloqueado = false;
+        let primeiroErro = null;
 
         inputs.forEach(input => {
+            // Re-valida no submit caso o usuário não tenha interagido
+            if (input.files && input.files.length > 0 && !input.dataset.valid) {
+                const cfg = input.id === 'logo_negocio'      ? uploadConfig.logo_negocio     :
+                            input.id === 'imagemDestaque'     ? uploadConfig.imagemDestaque    :
+                            input.name === 'apresentacao_pdf' ? uploadConfig.apresentacao_pdf  :
+                            uploadConfig.galeria_imagens;
+                validarInput(input, cfg);
+            }
+
             if (input.dataset.valid === 'false') {
                 bloqueado = true;
-                // Scrolla até o primeiro erro
-                if (!bloqueado || inputs.indexOf(input) === 0) {
-                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-            // Valida no submit caso o usuário não tenha interagido
-            if (input.files && input.files.length > 0 && !input.dataset.valid) {
-                const cfg = input.id === 'logo_negocio'   ? uploadConfig.logo_negocio  :
-                            input.id === 'imagemDestaque'  ? uploadConfig.imagemDestaque :
-                            input.name === 'apresentacao_pdf' ? uploadConfig.apresentacao_pdf :
-                            uploadConfig.galeria_imagens;
-                if (!validarInput(input, cfg)) bloqueado = true;
+                if (!primeiroErro) primeiroErro = input;
             }
         });
 
         if (bloqueado) {
             e.preventDefault();
-            // Mensagem geral no topo do formulário
+            if (primeiroErro) primeiroErro.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
             let aviso = document.getElementById('upload-aviso-geral');
             if (!aviso) {
                 aviso = document.createElement('div');
@@ -690,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const aviso = document.getElementById('upload-aviso-geral');
             if (aviso) aviso.remove();
         }
-    }, true); // capture=true para rodar antes da validação HTML5
+    }, true);
 });
 </script>
 
