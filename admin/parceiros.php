@@ -228,12 +228,18 @@ include __DIR__ . '/../app/views/admin/header.php';
                         <i class="bi bi-arrow-repeat"></i>
                     </button>
                 <?php else: ?>
-                    <button type="button"
-                            class="btn btn-sm btn-outline-secondary ms-1"
-                            title="Só é possível alterar o status após a assinatura da carta-acordo"
-                            disabled>
-                        <i class="bi bi-lock"></i>
-                    </button>
+                  <button type="button"
+                          class="btn btn-sm btn-outline-warning ms-1"
+                          title="Lembrar de assinar a carta-acordo"
+                          onclick="abrirModalLembrete(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'] ?: $p['razao_social'] ?: 'Parceiro')) ?>', '<?= htmlspecialchars(addslashes($p['rep_nome'] ?: '')) ?>', '<?= htmlspecialchars(addslashes($p['rep_email'] ?: '')) ?>')">
+                      <i class="bi bi-envelope-exclamation"></i>
+                  </button>
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary ms-1"
+                          title="Só é possível alterar o status após a assinatura da carta-acordo"
+                          disabled>
+                      <i class="bi bi-lock"></i>
+                  </button>
                 <?php endif; ?>
               </td>
             </tr>
@@ -270,6 +276,70 @@ include __DIR__ . '/../app/views/admin/header.php';
   </ul>
 </nav>
 <?php endif; ?>
+
+<!-- MODAL LEMBRETE CARTA-ACORDO -->
+<div class="modal fade" id="modalLembrete" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px; border:none;">
+            <form action="processar_lembrete_parceiro.php" method="POST">
+                <input type="hidden" name="parceiro_id" id="lembrete_parceiro_id">
+
+                <div class="modal-header" style="border-bottom:1px solid #f0f4ed;">
+                    <h5 class="modal-title" style="color:#1E3425;">
+                        <i class="bi bi-envelope-exclamation me-2" style="color:#CDDE00;"></i>
+                        Enviar Lembrete — Carta-Acordo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Info do parceiro -->
+                    <div class="p-3 rounded mb-4" style="background:#f7f9f5; border:1px solid #e6ece1;">
+                        <div class="small fw-semibold mb-1" style="color:#1E3425;">
+                            <i class="bi bi-building me-1"></i> Parceiro
+                        </div>
+                        <div class="fw-bold" id="lembrete_nome_parceiro" style="color:#1E3425;"></div>
+                        <div class="small text-muted mt-1">
+                            <i class="bi bi-person me-1"></i>
+                            <span id="lembrete_rep_nome"></span> —
+                            <span id="lembrete_rep_email"></span>
+                        </div>
+                    </div>
+
+                    <!-- Aviso -->
+                    <div class="p-3 rounded mb-3" style="background:#fff8e1; border-left:4px solid #f59e0b;">
+                        <p class="small mb-0" style="color:#856404;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Um e-mail será enviado ao representante lembrando-o de assinar a
+                            <strong>carta-acordo</strong> e finalizar o cadastro para que a parceria
+                            seja formalizada.
+                        </p>
+                    </div>
+
+                    <!-- Mensagem personalizada opcional -->
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold" style="font-size:.88rem; color:#1E3425;">
+                            Mensagem adicional <span class="text-muted fw-normal">(opcional)</span>
+                        </label>
+                        <textarea name="mensagem_extra" class="form-control" rows="3"
+                                  maxlength="500"
+                                  placeholder="Ex: Estamos aguardando sua assinatura para darmos início às ações previstas…"></textarea>
+                        <div class="form-text">Máx. 500 caracteres. Será inserida no corpo do e-mail.</div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer" style="border-top:1px solid #f0f4ed;">
+                    <button type="button" class="btn-emp-outline" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="hd-btn primary">
+                        <i class="bi bi-send me-1"></i> Enviar lembrete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- MODAL STATUS PARCEIRO -->
 
@@ -316,6 +386,13 @@ include __DIR__ . '/../app/views/admin/header.php';
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
 
 <script>
+function abrirModalLembrete(id, nome, repNome, repEmail) {
+  document.getElementById('lembrete_parceiro_id').value   = id;
+  document.getElementById('lembrete_nome_parceiro').textContent = nome;
+  document.getElementById('lembrete_rep_nome').textContent  = repNome  || '—';
+  document.getElementById('lembrete_rep_email').textContent = repEmail || '—';
+  new bootstrap.Modal(document.getElementById('modalLembrete')).show();
+}
 function openStatusModal(id, nome, statusAtual = '') {
     document.getElementById('modal_parceiro_id').value = id;
     document.getElementById('modal_parceiro_nome').textContent = nome || 'Parceiro';
