@@ -25,8 +25,8 @@ $mensagem_extra = trim($_POST['mensagem_extra'] ?? '');
 $etapas_nomes = [
     1 => 'Dados do Negócio',  2 => 'Fundadores',
     3 => 'Eixo Temático',     4 => 'ODS',
-    5 => 'Apresentação',      6 => 'Financeiro',
-    7 => 'Impacto',           8 => 'Visão de Futuro',
+    5 => 'Financeiro',        6 => 'Impacto',
+    7 => 'Visão de Futuro',   8 => 'Apresentação',
     9 => 'Documentação',      10 => 'Revisão Final',
 ];
 
@@ -72,14 +72,16 @@ try {
     }
 
     // Injeta o bloco extra no body antes do fechamento da div
-    $bodyHtml = str_replace('</div>', $bloco_extra . '</div>', $template['body_html'], $count = 1);
+    $bodyHtml = $bloco_extra !== ''
+    ? substr_replace($template['body_html'], $bloco_extra, strpos($template['body_html'], '</div>'), 0)
+    : $template['body_html'];
 
     $rendered = render_email_from_db($template['subject'], $bodyHtml, [
         'nome'          => $negocio['nome'],
         'nome_fantasia' => $negocio['nome_fantasia'],
         'etapa_atual'   => $negocio['etapa_atual'],
         'etapa_nome'    => $etapa_nome,
-        'link_cadastro' => get_base_url() . '/empreendedores/meus-negocios.php',
+        'link_cadastro' => (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/empreendedores/meus-negocios.php',
         'ano'           => date('Y'),
     ]);
 
