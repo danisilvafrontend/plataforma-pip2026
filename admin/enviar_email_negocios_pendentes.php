@@ -90,9 +90,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])) {
             }
         }
 
+               // Atualiza o template no banco com o conteúdo usado no envio
+        $stmtUpd = $pdo->prepare("
+            UPDATE email_templates SET subject = ?, body_html = ?, updated_at = NOW()
+            WHERE slug = 'negocios_pendentes'
+        ");
+        $stmtUpd->execute([$subject, $bodyHtml]);
+
         $msg = "✅ {$enviados} e-mail(s) enviado(s) com sucesso" .
-               ($filtro_etapa !== '' ? " para negócios na Etapa {$filtro_etapa}" : " para todos os pendentes") . ".";
+               ($filtro_etapa !== '' ? " para negócios na Etapa {$filtro_etapa}" : " para todos os pendentes") .
+               ". Template salvo.";
     }
+}
+
+// Salvar template sem enviar
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_template'])) {
+    $subject  = trim($_POST['subject']   ?? '');
+    $bodyHtml = trim($_POST['body_html'] ?? '');
+
+    $stmtUpd = $pdo->prepare("
+        UPDATE email_templates SET subject = ?, body_html = ?, updated_at = NOW()
+        WHERE slug = 'negocios_pendentes'
+    ");
+    $stmtUpd->execute([$subject, $bodyHtml]);
+
+    // Recarrega o template atualizado
+    $stmtTpl->execute();
+    $template = $stmtTpl->fetch();
+
+    $msg = "💾 Template salvo com sucesso.";
 }
 
 $pageTitle = 'Notificar Negócios Pendentes';
@@ -198,11 +224,14 @@ include __DIR__ . '/../app/views/admin/header.php';
                       rows="10"><?= htmlspecialchars($template['body_html']) ?></textarea>
           </div>
 
-          <div class="d-flex justify-content-end gap-2">
-            <button type="submit" name="enviar" value="1" class="hd-btn primary"
-                    onclick="return confirm('Confirma o envio para <?= count($pendentes) ?> destinatário(s)?')">
-              <i class="bi bi-send me-1"></i> Enviar para <?= count($pendentes) ?> negócio(s)
-            </button>
+          <div class="d-flex justify-content-end gap-2 flex-wrap">
+              <button type="submit" name="salvar_template" value="1" class="hd-btn outline">
+                  <i class="bi bi-floppy me-1"></i> Salvar template
+              </button>
+              <button type="submit" name="enviar" value="1" class="hd-btn primary"
+                      onclick="return confirm('Confirma o envio para <?= count($pendentes) ?> destinatário(s)?')">
+                  <i class="bi bi-send me-1"></i> Enviar para <?= count($pendentes) ?> negócio(s)
+              </button>
           </div>
         </form>
       <?php elseif (!$template): ?>
@@ -230,7 +259,7 @@ include __DIR__ . '/../app/views/admin/header.php';
             Etapa <?= $num ?>: <?= $nome ?>
           </a>
           <span class="emp-badge" style="background:<?= $num <= 3 ? '#fde8ea' : ($num <= 6 ? '#fff3cd' : 'rgba(205,222,0,.2)') ?>;
-                                        color:<?= $num <= 3 ? '#842029' : ($num <= 6 ? '#856404' : '#7a8500') ?>;">
+            color:<?= $num <= 3 ? '#842029' : ($num <= 6 ? '#856404' : '#7a8500') ?>;">
             <?= $total ?>
           </span>
         </div>
