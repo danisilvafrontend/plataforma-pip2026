@@ -2,9 +2,12 @@
 // /premiacao.php — Página pública de votação da premiação ativa
 session_start();
 
+require_once __DIR__ . '/app/helpers/premiacao_auth.php';
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
+
 $config  = require __DIR__ . '/app/config/db.php';
 $pdo = new PDO(
     "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
@@ -50,22 +53,26 @@ if ($premiacao && $faseAtiva) {
     $fim   = $premiacao['data_fim_votacao']    ? strtotime($premiacao['data_fim_votacao'])    : 0;
     $votacaoAbertaPorData = ($ini && $fim && $agora >= $ini && $agora <= $fim);
 }
-$votacaoAberta   = $faseAtiva && $votacaoAbertaPorData;
-$usuarioLogado   = isset($_SESSION['user_id']);
-$tipoEleitor     = $_SESSION['tipo_usuario'] ?? 'empreendedor'; // empreendedor | parceiro | sociedade_civil
+$votacaoAberta = $faseAtiva && $votacaoAbertaPorData;
+
+// ── Actor unificado (empreendedor, parceiro, sociedade_civil) ─────────────────
+$actor         = premiacao_current_actor();
+$usuarioLogado = $actor !== null && $actor['contexto'] === 'frontend';
+$usuarioId     = $actor['id']   ?? null;
+$tipoEleitor   = $actor['tipo'] ?? 'empreendedor';
 
 // ── 3. Votos já dados pelo usuário nesta fase ────────────────────────────────
 $votosDoUsuario = [];
-if ($usuarioLogado && $faseAtiva) {
+if ($usuarioLogado && $faseAtiva && $usuarioId) {
     $stmtVotos = $pdo->prepare("
         SELECT pi.negocio_id
         FROM premiacao_votos_populares pvp
         INNER JOIN premiacao_inscricoes pi ON pi.id = pvp.inscricao_id
-        WHERE pvp.fase_id     = ?
-          AND pvp.eleitor_id  = ?
+        WHERE pvp.fase_id      = ?
+          AND pvp.eleitor_id   = ?
           AND pvp.tipo_eleitor = ?
     ");
-    $stmtVotos->execute([$faseAtiva['id'], $_SESSION['user_id'], $tipoEleitor]);
+    $stmtVotos->execute([$faseAtiva['id'], $usuarioId, $tipoEleitor]);
     $votosDoUsuario = $stmtVotos->fetchAll(PDO::FETCH_COLUMN);
 }
 
@@ -98,11 +105,11 @@ $params = [
     ':fid_count' => (int)($faseAtiva['id'] ?? 0),
 ];
 
-if (!empty($_GET['categoria'])) { $sql .= " AND n.categoria = :categoria";            $params[':categoria'] = $_GET['categoria']; }
-if (!empty($_GET['estado']))    { $sql .= " AND n.estado = :estado";                  $params[':estado']    = $_GET['estado'];    }
-if (!empty($_GET['municipio'])) { $sql .= " AND n.municipio = :municipio";            $params[':municipio'] = $_GET['municipio']; }
-if (!empty($_GET['eixo']))      { $sql .= " AND n.eixo_principal_id = :eixo";         $params[':eixo']      = $_GET['eixo'];      }
-if (!empty($_GET['ods']))       { $sql .= " AND n.ods_prioritaria_id = :ods";         $params[':ods']       = $_GET['ods'];       }
+if (!empty($_GET['categoria'])) { $sql .= " AND n.categoria = :categoria";        $params[':categoria'] = $_GET['categoria']; }
+if (!empty($_GET['estado']))    { $sql .= " AND n.estado = :estado";              $params[':estado']    = $_GET['estado'];    }
+if (!empty($_GET['municipio'])) { $sql .= " AND n.municipio = :municipio";        $params[':municipio'] = $_GET['municipio']; }
+if (!empty($_GET['eixo']))      { $sql .= " AND n.eixo_principal_id = :eixo";     $params[':eixo']      = $_GET['eixo'];      }
+if (!empty($_GET['ods']))       { $sql .= " AND n.ods_prioritaria_id = :ods";     $params[':ods']       = $_GET['ods'];       }
 
 $sql .= " ORDER BY n.nome_fantasia";
 $stmt = $pdo->prepare($sql);
@@ -129,7 +136,6 @@ $municipios = $pdo->prepare("SELECT DISTINCT n.municipio $qBase ORDER BY n.munic
 $municipios->execute([$premiacaoId]);
 $municipios = $municipios->fetchAll(PDO::FETCH_COLUMN);
 
-// ODS — JOIN precisa vir ANTES do WHERE, então não reusa $qBase
 $ods = $pdo->prepare("
     SELECT DISTINCT o.id, o.nome, o.icone_url
     FROM negocios n
@@ -142,7 +148,6 @@ $ods = $pdo->prepare("
 $ods->execute([$premiacaoId]);
 $ods = $ods->fetchAll(PDO::FETCH_ASSOC);
 
-// Eixos — mesmo motivo
 $eixos = $pdo->prepare("
     SELECT DISTINCT et.id, et.nome
     FROM negocios n
@@ -314,7 +319,7 @@ include __DIR__ . '/app/views/public/header_public.php';
     <?php if (!empty($negocios)): ?>
         <div class="row g-4">
             <?php foreach ($negocios as $n):
-                $cores = ['Ideação'=>'#f59e0b','Operação'=>'#3b82f6','Tração/Escala'=>'#16a34a','Dinamizador'=>'#9333ea'];
+                $cores   = ['Ideação'=>'#f59e0b','Operação'=>'#3b82f6','Tração/Escala'=>'#16a34a','Dinamizador'=>'#9333ea'];
                 $corCat  = $cores[$n['categoria']] ?? '#1E3425';
                 $jaVotou = in_array($n['id'], $votosDoUsuario);
             ?>
@@ -346,7 +351,6 @@ include __DIR__ . '/app/views/public/header_public.php';
                                 </span>
                             <?php endif; ?>
 
-                            <!-- Badge de votos (só exibe se votação aberta ou já tem votos) -->
                             <?php if ($votacaoAberta || (int)$n['total_votos'] > 0): ?>
                                 <span class="vitrine-card-votos-badge">
                                     <i class="bi bi-trophy-fill me-1"></i>
@@ -385,7 +389,7 @@ include __DIR__ . '/app/views/public/header_public.php';
                         </div>
                     </a>
 
-                    <!-- ── Ações do card ── -->
+                    <!-- Ações do card -->
                     <div class="vitrine-card-actions">
                         <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-primary">
                             Ver negócio

@@ -198,39 +198,39 @@ function isActive(string $current, string $page): string {
       </div>
     </li>
   </ul>
-  <?php if (is_superadmin()): ?>
-  <span class="nav-group-label">Sistema</span>
-  <ul class="nav flex-column mb-1">
-    <!-- Configurações (dropdown) -->
-    <li class="nav-item">
-      <a class="nav-link <?= $isConfigActive ? 'active' : '' ?>"
-         href="#configSubmenu"
-         data-bs-toggle="collapse"
-         role="button"
-         aria-expanded="<?= $isConfigActive ? 'true' : 'false' ?>"
-         aria-controls="configSubmenu">
-        <i class="bi bi-gear-fill"></i> Configurações
-        <i class="bi bi-chevron-down chevron"></i>
-      </a>
-      <div class="collapse <?= $isConfigActive ? 'show' : '' ?>" id="configSubmenu">
-        <ul class="nav flex-column submenu">
-          <li><a class="nav-link <?= isActive($currentPage, '/admin/importar_negocios.php') ?>" href="/admin/importar_negocios.php">
-            <i class="bi bi-upload"></i> Importar Negócios
-          </a></li>
-          <li><a class="nav-link <?= isActive($currentPage, '/admin/importar_empreendedores.php') ?>" href="/admin/importar_empreendedores.php">
-            <i class="bi bi-upload"></i> Importar Empreendedores
-          </a></li>
-          <li><a class="nav-link <?= isActive($currentPage, '/admin/gerenciar_notificacoes.php') ?>" href="/admin/gerenciar_notificacoes.php">
-            <i class="bi bi-megaphone"></i> Gerenciar Notificações
-          </a></li>
-          <li><a class="nav-link <?= isActive($currentPage, '/admin/atribuir_negocio.php') ?>" href="/admin/atribuir_negocio.php">
-            <i class="bi bi-diagram-3"></i> Atribuir Negócios
-          </a></li>
-        </ul>
-      </div>
-    </li>
-  </ul>
-<?php endif; ?>
+  <?php if (($_SESSION['admin_role'] ?? '') === 'superadmin'): ?>
+    <span class="nav-group-label">Sistema</span>
+    <ul class="nav flex-column mb-1">
+      <!-- Configurações (dropdown) -->
+      <li class="nav-item">
+        <a class="nav-link <?= $isConfigActive ? 'active' : '' ?>"
+          href="#configSubmenu"
+          data-bs-toggle="collapse"
+          role="button"
+          aria-expanded="<?= $isConfigActive ? 'true' : 'false' ?>"
+          aria-controls="configSubmenu">
+          <i class="bi bi-gear-fill"></i> Configurações
+          <i class="bi bi-chevron-down chevron"></i>
+        </a>
+        <div class="collapse <?= $isConfigActive ? 'show' : '' ?>" id="configSubmenu">
+          <ul class="nav flex-column submenu">
+            <li><a class="nav-link <?= isActive($currentPage, '/admin/importar_negocios.php') ?>" href="/admin/importar_negocios.php">
+              <i class="bi bi-upload"></i> Importar Negócios
+            </a></li>
+            <li><a class="nav-link <?= isActive($currentPage, '/admin/importar_empreendedores.php') ?>" href="/admin/importar_empreendedores.php">
+              <i class="bi bi-upload"></i> Importar Empreendedores
+            </a></li>
+            <li><a class="nav-link <?= isActive($currentPage, '/admin/gerenciar_notificacoes.php') ?>" href="/admin/gerenciar_notificacoes.php">
+              <i class="bi bi-megaphone"></i> Gerenciar Notificações
+            </a></li>
+            <li><a class="nav-link <?= isActive($currentPage, '/admin/atribuir_negocio.php') ?>" href="/admin/atribuir_negocio.php">
+              <i class="bi bi-diagram-3"></i> Atribuir Negócios
+            </a></li>
+          </ul>
+        </div>
+      </li>
+    </ul>
+  <?php endif; ?>
   <div class="sidebar-footer">
     <i class="bi bi-droplet-fill me-1" style="color:var(--ip-lime);"></i>
     Impactos Positivos 2026

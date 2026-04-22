@@ -2,6 +2,11 @@
 // /premiacao/votar.php — Endpoint POST para registrar voto popular
 session_start();
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+require_once __DIR__ . '/../app/helpers/premiacao_auth.php';
+
 header('Content-Type: application/json; charset=utf-8');
 
 $config = require __DIR__ . '/../app/config/db.php';
@@ -26,9 +31,15 @@ function jsonOk(string $msg, array $extra = []): never {
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonErro('Método não permitido.', 405);
 }
-if (!isset($_SESSION['user_id'])) {
+
+$actor = premiacao_current_actor();
+
+if (!$actor || $actor['contexto'] !== 'frontend') {
     jsonErro('Você precisa estar logado para votar.', 401);
 }
+
+$eleitorId   = $actor['id'];
+$tipoEleitor = $actor['tipo'];
 
 $inscricaoId = (int)($_POST['inscricao_id'] ?? 0);
 $faseId      = (int)($_POST['fase_id']      ?? 0);
@@ -64,10 +75,11 @@ if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
 
 // ── Valida inscrição: deve ser elegível e pertencer à mesma premiação ─────────
 $stmtInsc = $pdo->prepare("
-    SELECT id, negocio_id FROM premiacao_inscricoes
-    WHERE id = ?
-      AND premiacao_id = ?
-      AND status = 'elegivel'
+    SELECT pi.id, pi.negocio_id, pi.categoria_id
+    FROM premiacao_inscricoes pi
+    WHERE pi.id = ?
+      AND pi.premiacao_id = ?
+      AND pi.status = 'elegivel'
     LIMIT 1
 ");
 $stmtInsc->execute([$inscricaoId, $fase['premiacao_id']]);
@@ -77,21 +89,15 @@ if (!$inscricao) {
     jsonErro('Inscrição não encontrada ou negócio não elegível.');
 }
 
-// ── Detecta tipo do eleitor ───────────────────────────────────────────────────
-$tipoEleitor = $_SESSION['tipo_usuario'] ?? 'empreendedor';
-if (!in_array($tipoEleitor, ['empreendedor', 'parceiro', 'sociedade_civil'], true)) {
-    $tipoEleitor = 'empreendedor';
-}
-
 // ── Verifica voto duplicado ───────────────────────────────────────────────────
 $stmtDup = $pdo->prepare("
     SELECT COUNT(*) FROM premiacao_votos_populares
-    WHERE fase_id     = ?
+    WHERE fase_id      = ?
       AND inscricao_id = ?
       AND tipo_eleitor = ?
-      AND eleitor_id  = ?
+      AND eleitor_id   = ?
 ");
-$stmtDup->execute([$faseId, $inscricaoId, $tipoEleitor, $_SESSION['user_id']]);
+$stmtDup->execute([$faseId, $inscricaoId, $tipoEleitor, $eleitorId]);
 if ((int)$stmtDup->fetchColumn() > 0) {
     jsonErro('Você já votou neste negócio.');
 }
@@ -99,12 +105,19 @@ if ((int)$stmtDup->fetchColumn() > 0) {
 // ── Registra o voto ───────────────────────────────────────────────────────────
 $stmtInsert = $pdo->prepare("
     INSERT INTO premiacao_votos_populares
-        (fase_id, inscricao_id, tipo_eleitor, eleitor_id, criado_em)
-    VALUES (?, ?, ?, ?, NOW())
+        (premiacao_id, fase_id, categoria_id, inscricao_id, tipo_eleitor, eleitor_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, NOW())
 ");
-$stmtInsert->execute([$faseId, $inscricaoId, $tipoEleitor, $_SESSION['user_id']]);
+$stmtInsert->execute([
+    $fase['premiacao_id'],
+    $faseId,
+    $inscricao['categoria_id'],
+    $inscricaoId,
+    $tipoEleitor,
+    $eleitorId
+]);
 
-// ── Se requisição AJAX responde JSON; se form POST normal faz redirect ─────────
+// ── Se requisição AJAX responde JSON; se form POST normal faz redirect ────────
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 

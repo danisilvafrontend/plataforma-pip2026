@@ -54,3 +54,4 @@ function require_role(array $roles): void {
         exit;
     }
 }
+
