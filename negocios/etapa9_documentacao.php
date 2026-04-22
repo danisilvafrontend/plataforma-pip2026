@@ -158,7 +158,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </p>
 
             <div class="d-flex justify-content-between flex-wrap gap-2">
-                <a href="etapa8_visao.php" class="btn-emp-outline">
+                <a href="/negocios/editar_etapa8.php?id=<?= $negocio_id ?>" class="btn-emp-outline">
                     <i class="bi bi-arrow-left me-1"></i> Voltar
                 </a>
 

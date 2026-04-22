@@ -214,7 +214,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         </div>
 
         <div class="d-flex flex-wrap gap-2 justify-content-between mt-4">
-            <a href="/negocios/editar_etapa7.php?id=<?= $negocio_id ?>" class="btn-emp-outline">
+            <a href="/negocios/editar_etapa6.php?id=<?= $negocio_id ?>" class="btn-emp-outline">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
             <button type="submit" class="btn-emp-primary">

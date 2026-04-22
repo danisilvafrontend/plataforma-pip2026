@@ -336,7 +336,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         </div>
 
         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-            <a href="/negocios/editar_etapa6.php?id=<?= $negocio_id ?>" class="btn btn-secondary me-md-2">← Voltar</a>
+            <a href="/negocios/editar_etapa5.php?id=<?= $negocio_id ?>" class="btn btn-secondary me-md-2">← Voltar</a>
             <button type="submit" class="btn btn-primary">Salvar e avançar</button>
         </div>
     </form>

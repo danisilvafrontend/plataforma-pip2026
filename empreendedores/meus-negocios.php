@@ -247,15 +247,15 @@ $negocios = $stmt->fetchAll();
 $etapas = [
     1 => 'Dados do Negócio',       2 => 'Fundadores',
     3 => 'Eixo Temático',          4 => 'Conexão com os ODS',
-    5 => 'Apresentação',           6 => 'Dados Financeiros',
-    7 => 'Avaliação de Impacto',   8 => 'Visão de Futuro',
+    5 => 'Dados Financeiros',      6 => 'Avaliação de Impacto',
+    7 => 'Visão de Futuro',        8 => 'Apresentação do Negócio',
     9 => 'Documentação',           10 => 'Revisão e Confirmação'
 ];
 $arquivosEtapas = [
     1 => 'etapa1_dados_negocio.php', 2 => 'etapa2_fundadores.php',
     3 => 'etapa3_eixo_tematico.php', 4 => 'etapa4_ods.php',
-    5 => 'etapa5_apresentacao.php',  6 => 'etapa6_financeiro.php',
-    7 => 'etapa7_impacto.php',       8 => 'etapa8_visao.php',
+    5 => 'etapa5_financeiro.php',  6 => 'etapa6_impacto.php',
+    7 => 'etapa7_visao.php',       8 => 'etapa8_apresentacao.php',
     9 => 'etapa9_documentacao.php',  10 => 'confirmacao.php'
 ];
 

@@ -393,7 +393,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         </div>
 
         <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mt-4 etapa6-actions">
-            <a href="/negocios/editar_etapa5.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline">
+            <a href="/negocios/editar_etapa4.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline">
                 <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
 

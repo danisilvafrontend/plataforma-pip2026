@@ -483,7 +483,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
         <!-- Botões -->
         <div class="d-flex justify-content-end gap-2 mb-5">
-            <a href="/negocios/editar_etapa4.php?id=<?= $negocio_id ?>" class="btn-emp-outline">
+            <a href="/negocios/editar_etapa7.php?id=<?= $negocio_id ?>" class="btn-emp-outline">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
             <button type="submit" class="btn-emp-primary">
