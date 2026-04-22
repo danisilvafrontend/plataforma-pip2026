@@ -125,6 +125,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <i class="bi bi-card-checklist me-1"></i> Voltar à Revisão
                 </a>
             <?php endif; ?>
+           
             <a href="/empreendedores/meus-negocios.php" class="btn-emp-outline">
                 <i class="bi bi-arrow-left me-1"></i> Meus Negócios
             </a>
@@ -425,16 +426,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         </div>
                     </div>
                 <?php endforeach; ?>
-
-                <div class="d-flex gap-3 mt-4 pt-3 border-top">
-                    <button type="submit" class="btn-emp-primary">
-                        <i class="bi bi-floppy me-2"></i> Salvar Alterações
-                    </button>
-                    <a href="/empreendedores/meus-negocios.php" class="btn-emp-outline">
-                        Cancelar
-                    </a>
-                </div>
-
             </div><!-- /col-lg-8 -->
 
             <!-- COLUNA LATERAL -->
@@ -452,7 +443,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 </div>
 
                 <div class="emp-card">
-                    <div class="emp-card-header"><i class="bi bi-floppy-fill"></i> Salvar</div>
+                    <div class="emp-card-header"><i class="bi bi-floppy-fill"></i>Salvar</div>
                     <p class="small mb-3" style="color:#9aab9d;">
                         Salve as alterações dos fundadores. Os demais dados do negócio não serão afetados.
                     </p>
@@ -465,6 +456,10 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                             <i class="bi bi-card-checklist me-2"></i> Voltar à Revisão
                         </a>
                     <?php endif; ?>
+                    <a href="/negocios/editar_etapa1.php?id=<?= (int)$negocio_id ?>"
+                        class="btn-emp-outline w-100 justify-content-center mb-2">
+                        <i class="bi bi-arrow-left me-2"></i> Etapa Anterior
+                    </a>
                     <a href="/empreendedores/meus-negocios.php"
                        class="btn-emp-outline w-100 justify-content-center">
                         <i class="bi bi-arrow-left me-2"></i> Meus Negócios

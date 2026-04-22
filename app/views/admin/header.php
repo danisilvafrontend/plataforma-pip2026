@@ -7,7 +7,7 @@ if (!isset($pageTitle)) $pageTitle = 'Painel — Impactos Positivos';
 $currentPage = $_SERVER['REQUEST_URI'];
 
 // Grupos de páginas para submenu ativo
-$usuariosPages   = ['/admin/administradores.php', '/admin/empreendedores.php', '/admin/parceiros.php', '/admin/usuarios.php'];
+$usuariosPages   = ['/admin/administradores.php', '/admin/empreendedores.php', '/admin/usuarios.php'];
 $relatoriosPages = ['/admin/relatorios_negocios.php'];
 $PremiacaoPages = [
     '/admin/premiacao_edicoes.php',
@@ -198,7 +198,7 @@ function isActive(string $current, string $page): string {
       </div>
     </li>
   </ul>
-  
+  <?php if (is_superadmin()): ?>
   <span class="nav-group-label">Sistema</span>
   <ul class="nav flex-column mb-1">
     <!-- Configurações (dropdown) -->
@@ -230,7 +230,7 @@ function isActive(string $current, string $page): string {
       </div>
     </li>
   </ul>
-
+<?php endif; ?>
   <div class="sidebar-footer">
     <i class="bi bi-droplet-fill me-1" style="color:var(--ip-lime);"></i>
     Impactos Positivos 2026

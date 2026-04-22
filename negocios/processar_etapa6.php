@@ -146,6 +146,28 @@ if ($resultados && !textoValido($resultados)) {
 if ($proximos_passos && !textoValido($proximos_passos)) {
     $_SESSION['errors_etapa6'][] = "O campo 'Próximos Passos' deve conter texto válido.";
 }
+// ── Validações obrigatórias ausentes ──────────────────────────
+if (empty($intencionalidade)) {
+    $_SESSION['errors_etapa6'][] = "Informe a intencionalidade do negócio.";
+}
+if (empty($tipo_impacto)) {
+    $_SESSION['errors_etapa6'][] = "Informe o tipo de impacto.";
+}
+if (empty($beneficiarios)) {
+    $_SESSION['errors_etapa6'][] = "Selecione pelo menos um beneficiário.";
+}
+if (empty($alcance)) {
+    $_SESSION['errors_etapa6'][] = "Informe o alcance do impacto.";
+}
+if (empty($medicao)) {
+    $_SESSION['errors_etapa6'][] = "Informe a forma de medição.";
+}
+if (empty($reporte)) {
+    $_SESSION['errors_etapa6'][] = "Informe a frequência de reporte.";
+}
+if (empty($proximos_passos)) {
+    $_SESSION['errors_etapa6'][] = "O campo 'Próximos Passos' é obrigatório.";
+}
 
 // Se houver erros, volta para etapa
 if (!empty($_SESSION['errors_etapa6'])) {

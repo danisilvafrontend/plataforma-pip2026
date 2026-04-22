@@ -64,7 +64,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a visão estratégica do fundador(a) para os próximos 5 anos?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a visão estratégica do fundador(a) para os próximos 5 anos? *</label>
                 <select name="visao_estrategica" class="form-select" required>
                     <option value="" <?= empty($visao['visao_estrategica']) ? 'selected' : '' ?>>Selecione uma opção</option>
                     <?php
@@ -88,7 +88,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como você avalia a sustentabilidade financeira de longo prazo do seu negócio?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como você avalia a sustentabilidade financeira de longo prazo do seu negócio? *</label>
                 <select name="sustentabilidade" class="form-select" required>
                     <option value="" <?= empty($visao['sustentabilidade']) ? 'selected' : '' ?>>Selecione uma opção</option>
                     <?php
@@ -114,7 +114,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a sua ambição de escala nos próximos anos?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a sua ambição de escala nos próximos anos? *</label>
                 <select name="escala" class="form-select" required>
                     <option value="" <?= empty($visao['escala']) ? 'selected' : '' ?>>Selecione uma opção</option>
                     <?php

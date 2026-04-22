@@ -422,7 +422,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <div class="emp-card">
                         <div class="emp-card-header">
-                            <i class="bi bi-floppy"></i> Ações
+                            <i class="bi bi-floppy"></i> Salvar
                         </div>
 
                         <div class="d-grid gap-2">
@@ -430,8 +430,8 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                                 <i class="bi bi-floppy me-1"></i> Salvar alterações
                             </button>
 
-                            <a href="/negocios/editar_etapa5.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
-                                <i class="bi bi-arrow-left me-1"></i> Etapa anterior
+                            <a href="/negocios/editar_etapa4.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
+                                <i class="bi bi-arrow-left me-1"></i> Etapa Anterior
                             </a>
 
                             <?php if (!empty($negocio['inscricao_completa'])): ?>

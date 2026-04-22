@@ -500,16 +500,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
                 </div>
 
-                <!-- Botão inferior -->
-                <div class="d-flex justify-content-end gap-2 mt-2 mb-5">
-                    <a href="/negocios/editar_etapa4.php?id=<?= $negocio_id ?>" class="btn-emp-outline">
-                        <i class="bi bi-arrow-left"></i> Etapa anterior
-                    </a>
-                    <button type="submit" class="btn-emp-primary">
-                        <i class="bi bi-floppy me-1"></i> Salvar alterações
-                    </button>
-                </div>
-
             </div><!-- /col-lg-8 -->
 
             <!-- ════════════════════════════════════════════
@@ -550,9 +540,14 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <button type="submit" class="btn-emp-primary w-100 justify-content-center mb-2">
                         <i class="bi bi-floppy me-2"></i> Salvar Alterações
                     </button>
-                    <a href="/negocios/confirmacao.php?id=<?= $negocio_id ?>"
+                    <?php if (!empty($negocio['inscricao_completa'])): ?>
+                        <a href="/negocios/confirmacao.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
+                            <i class="bi bi-card-checklist me-1"></i> Voltar à Revisão
+                        </a>
+                    <?php endif; ?>
+                    <a href="/negocios/editar_etapa7.php?id=<?= (int)$negocio_id ?>"
                        class="btn-emp-outline w-100 justify-content-center mb-2">
-                        <i class="bi bi-card-checklist me-2"></i> Voltar à Revisão
+                        <i class="bi bi-arrow-left me-2"></i> Etapa Anterior
                     </a>
                     <a href="/empreendedores/meus-negocios.php"
                        class="btn-emp-outline w-100 justify-content-center">

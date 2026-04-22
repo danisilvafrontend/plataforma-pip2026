@@ -52,6 +52,16 @@ if ($area_outro && !textoValido($area_outro)) {
 if ($tema_outro && !textoValido($tema_outro)) {
     $_SESSION['errors_etapa7'][] = "O campo 'Outro' em Temas de Aprendizado deve conter texto válido.";
 }
+// ── Validações obrigatórias ausentes ──────────────────────────
+if (empty($visao_estrategica)) {
+    $_SESSION['errors_etapa7'][] = "Informe a visão estratégica do negócio.";
+}
+if (empty($sustentabilidade)) {
+    $_SESSION['errors_etapa7'][] = "Informe a sustentabilidade financeira.";
+}
+if (empty($escala)) {
+    $_SESSION['errors_etapa7'][] = "Informe a escala pretendida.";
+}
 
 if (!empty($_SESSION['errors_etapa7'])) {
     header("Location: /negocios/etapa7_visao.php?id=" . $negocio_id);

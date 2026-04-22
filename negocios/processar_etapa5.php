@@ -75,6 +75,29 @@ if ($fonte_outro && !textoValido($fonte_outro)) {
 if ($modelo_monetizacao && !textoValido($modelo_monetizacao)) {
     $errors[] = "O campo 'Modelo de Monetização' deve conter texto válido.";
 }
+// ── Validações obrigatórias ausentes ──────────────────────────
+if (empty($estagio_faturamento)) {
+    $errors[] = "Informe o estágio de faturamento.";
+}
+if (empty($faixa_faturamento)) {
+    $errors[] = "Informe a faixa de faturamento.";
+}
+if (empty($fontes_receita)) {
+    $errors[] = "Selecione pelo menos uma fonte de receita.";
+}
+if (empty($margem_bruta)) {
+    $errors[] = "Informe a margem bruta.";
+}
+if (empty($dependencia_proprios)) {
+    $errors[] = "Informe a dependência de recursos próprios.";
+}
+if (empty($previsao_crescimento)) {
+    $errors[] = "Informe a previsão de crescimento.";
+}
+if (empty($investimento_externo)) {
+    $errors[] = "Informe se há investimento externo.";
+}
+
 
 // Se houver erros, salva na sessão e volta para a etapa
 if (!empty($errors)) {

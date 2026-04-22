@@ -6,6 +6,7 @@ session_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
+
 require_once __DIR__ . '/../app/helpers/auth.php';
 require_admin_login();
 
@@ -23,9 +24,11 @@ try {
 }
 
 // ── Filtros ───────────────────────────────────────────
-$f_nome   = trim($_GET['nome']   ?? '');
-$f_email  = trim($_GET['email']  ?? '');
-$f_status = trim($_GET['status'] ?? '');
+$f_nome      = trim($_GET['nome']      ?? '');
+$f_email     = trim($_GET['email']     ?? '');
+$f_status    = trim($_GET['status']    ?? '');
+$f_cons_email = trim($_GET['cons_email'] ?? '');
+$f_cons_whats = trim($_GET['cons_whats'] ?? '');
 
 $where  = [];
 $params = [];
@@ -36,8 +39,8 @@ if ($f_nome !== '') {
         OR sobrenome LIKE :sobrenome
         OR CONCAT_WS(' ', nome, sobrenome) LIKE :nome_completo
     )";
-    $params[':nome'] = "%{$f_nome}%";
-    $params[':sobrenome'] = "%{$f_nome}%";
+    $params[':nome']         = "%{$f_nome}%";
+    $params[':sobrenome']    = "%{$f_nome}%";
     $params[':nome_completo'] = "%{$f_nome}%";
 }
 
@@ -51,7 +54,59 @@ if ($f_status !== '') {
     $params[':status'] = $f_status;
 }
 
+if ($f_cons_email !== '') {
+    $where[] = "consentimento_email = :cons_email";
+    $params[':cons_email'] = $f_cons_email;
+}
+
+if ($f_cons_whats !== '') {
+    $where[] = "consentimento_whatsapp = :cons_whats";
+    $params[':cons_whats'] = $f_cons_whats;
+}
+
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+// ── Exportação CSV ────────────────────────────────────
+// Ativada por ?export=csv — ignora paginação, respeita filtros ativos
+if (($_GET['export'] ?? '') === 'csv') {
+    $sqlCsv = "SELECT nome, sobrenome, email, celular, status,
+                      consentimento_email, consentimento_whatsapp, ultimo_login
+               FROM empreendedores
+               $whereSql
+               ORDER BY nome ASC";
+    $stmtCsv = $pdo->prepare($sqlCsv);
+    foreach ($params as $key => $value) {
+        $stmtCsv->bindValue($key, $value, PDO::PARAM_STR);
+    }
+    $stmtCsv->execute();
+    $rows = $stmtCsv->fetchAll();
+
+    $filename = 'empreendedores_' . date('Ymd_His') . '.csv';
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+
+    $out = fopen('php://output', 'w');
+    // BOM UTF-8 para Excel abrir corretamente
+    fputs($out, "\xEF\xBB\xBF");
+    fputcsv($out, ['Nome', 'Sobrenome', 'E-mail', 'Celular', 'Status',
+                   'Consentimento E-mail', 'Consentimento WhatsApp', 'Último Login'], ';');
+
+    foreach ($rows as $r) {
+        fputcsv($out, [
+            $r['nome'],
+            $r['sobrenome'],
+            $r['email'],
+            $r['celular'] ?? '',
+            $r['status'],
+            $r['consentimento_email']    ? 'Sim' : 'Não',
+            $r['consentimento_whatsapp'] ? 'Sim' : 'Não',
+            !empty($r['ultimo_login']) ? date('d/m/Y H:i', strtotime($r['ultimo_login'])) : '',
+        ], ';');
+    }
+    fclose($out);
+    exit;
+}
 
 // ── Paginação ─────────────────────────────────────────
 $limit  = 100;
@@ -73,18 +128,31 @@ $statusOptions = $pdo->query(
 )->fetchAll(PDO::FETCH_COLUMN);
 
 // ── Consulta principal ────────────────────────────────
-$sql  = "SELECT id, nome, sobrenome, email, status, ultimo_login FROM empreendedores $whereSql ORDER BY {$orderBy} LIMIT :limit OFFSET :offset";
+$sql  = "SELECT id, nome, sobrenome, email, celular, status,
+                consentimento_email, consentimento_whatsapp, ultimo_login
+         FROM empreendedores
+         $whereSql
+         ORDER BY {$orderBy}
+         LIMIT :limit OFFSET :offset";
 $stmt = $pdo->prepare($sql);
 
 foreach ($params as $key => $value) {
     $stmt->bindValue($key, $value, PDO::PARAM_STR);
 }
-
-$stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+$stmt->bindValue(':limit',  (int)$limit,  PDO::PARAM_INT);
 $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-
 $stmt->execute();
 $empreendedores = $stmt->fetchAll();
+
+// ── Monta query string dos filtros ativos (para CSV e paginação) ──
+$filtrosAtivos = array_filter([
+    'nome'        => $f_nome,
+    'email'       => $f_email,
+    'status'      => $f_status,
+    'cons_email'  => $f_cons_email,
+    'cons_whats'  => $f_cons_whats,
+]);
+$filtrosQs = $filtrosAtivos ? '&' . http_build_query($filtrosAtivos) : '';
 
 include __DIR__ . '/../app/views/admin/header.php';
 
@@ -99,8 +167,13 @@ function empStatusBadge(string $s): string {
     [$bg, $color] = $map[strtolower($s)] ?? ['#f0f0f0', '#6c757d'];
     return "<span class=\"emp-badge\" style=\"background:{$bg};color:{$color}\">" . htmlspecialchars(ucfirst($s)) . "</span>";
 }
-?>
 
+function optinBadge(mixed $val): string {
+    return $val
+        ? '<span class="emp-badge" style="background:#e6f4ea;color:#276c3c;"><i class="bi bi-check-circle-fill me-1"></i>Sim</span>'
+        : '<span class="emp-badge" style="background:#f5f5f5;color:#888;"><i class="bi bi-x-circle me-1"></i>Não</span>';
+}
+?>
 
 <!-- ── Cabeçalho da página ───────────────────────────── -->
 <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
@@ -108,15 +181,20 @@ function empStatusBadge(string $s): string {
     <h4 class="fw-bold mb-0" style="color:#1E3425;">Empreendedores</h4>
     <small class="text-muted">
       <?= number_format($totalRecords, 0, ',', '.') ?> registro<?= $totalRecords !== 1 ? 's' : '' ?> encontrado<?= $totalRecords !== 1 ? 's' : '' ?>
-      <?php if ($f_nome || $f_email || $f_status): ?>
+      <?php if ($filtrosAtivos): ?>
         — <a href="/admin/empreendedores.php" style="color:#97A327;font-size:.8rem;">limpar filtros</a>
       <?php endif; ?>
     </small>
   </div>
   <div class="d-flex flex-wrap gap-2">
-    <a href="/admin/empreendedores.php?filter=recentes<?= $f_nome || $f_email || $f_status ? '&'.http_build_query(['nome'=>$f_nome,'email'=>$f_email,'status'=>$f_status]) : '' ?>"
+    <a href="/admin/empreendedores.php?filter=recentes<?= $filtrosQs ?>"
        class="hd-btn outline <?= isset($_GET['filter']) && $_GET['filter'] === 'recentes' ? 'active' : '' ?>">
       <i class="bi bi-clock-history"></i> Últimos logins
+    </a>
+    <!-- Botão exportar CSV — exporta apenas inativos/pendentes/suspensos pelos filtros ativos -->
+    <a href="/admin/empreendedores.php?export=csv<?= $filtrosQs ?>"
+       class="hd-btn outline" title="Exportar lista atual para CSV">
+      <i class="bi bi-download"></i> Exportar CSV
     </a>
     <a href="/admin/enviar_email_status.php" class="hd-btn outline">
       <i class="bi bi-envelope"></i> Enviar e-mail
@@ -135,18 +213,23 @@ function empStatusBadge(string $s): string {
         <input type="hidden" name="filter" value="<?= htmlspecialchars($_GET['filter']) ?>">
       <?php endif; ?>
 
-      <div class="col-12 col-md-4">
+      <!-- Nome -->
+      <div class="col-12 col-md-3">
         <label class="form-label">Nome</label>
         <input type="text" name="nome" class="form-control form-control-sm"
                placeholder="Ex: João da Silva"
                value="<?= htmlspecialchars($f_nome) ?>">
       </div>
-      <div class="col-12 col-md-4">
+
+      <!-- E-mail -->
+      <div class="col-12 col-md-3">
         <label class="form-label">E-mail</label>
         <input type="text" name="email" class="form-control form-control-sm"
                placeholder="Ex: joao@email.com"
                value="<?= htmlspecialchars($f_email) ?>">
       </div>
+
+      <!-- Status -->
       <div class="col-6 col-md-2">
         <label class="form-label">Status</label>
         <select name="status" class="form-select form-select-sm">
@@ -158,6 +241,28 @@ function empStatusBadge(string $s): string {
           <?php endforeach; ?>
         </select>
       </div>
+
+      <!-- Consentimento E-mail -->
+      <div class="col-6 col-md-2">
+        <label class="form-label">Consent. E-mail</label>
+        <select name="cons_email" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          <option value="1" <?= $f_cons_email === '1' ? 'selected' : '' ?>>Sim</option>
+          <option value="0" <?= $f_cons_email === '0' ? 'selected' : '' ?>>Não</option>
+        </select>
+      </div>
+
+      <!-- Consentimento WhatsApp -->
+      <div class="col-6 col-md-2">
+        <label class="form-label">Consent. WhatsApp</label>
+        <select name="cons_whats" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          <option value="1" <?= $f_cons_whats === '1' ? 'selected' : '' ?>>Sim</option>
+          <option value="0" <?= $f_cons_whats === '0' ? 'selected' : '' ?>>Não</option>
+        </select>
+      </div>
+
+      <!-- Botões -->
       <div class="col-6 col-md-2 d-flex gap-2">
         <button type="submit" class="hd-btn primary w-100">
           <i class="bi bi-search"></i> Filtrar
@@ -181,6 +286,8 @@ function empStatusBadge(string $s): string {
           <th>Empreendedor</th>
           <th>E-mail</th>
           <th>Status</th>
+          <th>Newsletter</th>
+          <th>WhatsApp</th>
           <th>Último login</th>
           <th style="width:130px; text-align:right;">Ações</th>
         </tr>
@@ -188,10 +295,10 @@ function empStatusBadge(string $s): string {
       <tbody>
         <?php if (empty($empreendedores)): ?>
           <tr>
-            <td colspan="6" class="text-center py-5" style="color:#9aab9d;">
+            <td colspan="8" class="text-center py-5" style="color:#9aab9d;">
               <i class="bi bi-person-x" style="font-size:2rem;opacity:.3;"></i>
               <p class="mt-2 mb-0">Nenhum empreendedor encontrado.</p>
-              <?php if ($f_nome || $f_email || $f_status): ?>
+              <?php if ($filtrosAtivos): ?>
                 <a href="/admin/empreendedores.php" style="color:#97A327;font-size:.82rem;">Limpar filtros</a>
               <?php endif; ?>
             </td>
@@ -204,12 +311,14 @@ function empStatusBadge(string $s): string {
                 <div class="emp-avatar"><?= strtoupper(mb_substr((string)$e['nome'], 0, 1)) ?></div>
                 <span class="fw-semibold">
                   <?= htmlspecialchars((string)$e['nome']) ?>
-                  <?= htmlspecialchars((string)$e['sobrenome']) ?>
+                  <?= htmlspecialchars((string)($e['sobrenome'] ?? '')) ?>
                 </span>
               </div>
             </td>
             <td style="color:#4a5e4f;"><?= htmlspecialchars((string)$e['email']) ?></td>
             <td><?= empStatusBadge((string)$e['status']) ?></td>
+            <td><?= optinBadge($e['consentimento_email']) ?></td>
+            <td><?= optinBadge($e['consentimento_whatsapp']) ?></td>
             <td style="color:#9aab9d; font-size:.82rem;">
               <?php if (!empty($e['ultimo_login'])): ?>
                 <i class="bi bi-clock me-1"></i><?= date('d/m/Y H:i', strtotime((string)$e['ultimo_login'])) ?>
