@@ -119,14 +119,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id > 0) {
             $pdo->prepare("
                 UPDATE premiacao_categorias
-                SET nome = ?, slug = ?, ordem = ?, ativo = ?, updatedat = NOW()
+                SET nome = ?, slug = ?, ordem = ?, ativo = ?, updated_at = NOW()
                 WHERE id = ?
             ")->execute([$nome, $slug, $ordem, $ativo, $id]);
             $msg = 'Categoria atualizada com sucesso.';
         } else {
             $pdo->prepare("
                 INSERT INTO premiacao_categorias
-                    (premiacao_id, nome, slug, ordem, ativo, createdat, updatedat)
+                    (premiacao_id, nome, slug, ordem, ativo, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, NOW(), NOW())
             ")->execute([$premiacaoid, $nome, $slug, $ordem, $ativo]);
             $msg = 'Categoria cadastrada com sucesso.';

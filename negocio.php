@@ -208,7 +208,7 @@ if ($dadosVot) {
 
                 <div class="negocio-publico-sidebar">
 
-                    <!-- <aside class="negocio-side-card">
+                    <aside class="negocio-side-card">
                         
                         <h3 class="negocio-side-title">Ações</h3>
                         <p class="negocio-side-text text-muted">Esses botões serão conectados aos módulos nas próximas etapas.</p>
@@ -259,7 +259,7 @@ if ($dadosVot) {
                                 <span>Investir</span>
                             </a>
                         </div>
-                    </aside> -->
+                    </aside>
 
                     <?php if (
                         !empty($negocio['email_comercial']) ||
