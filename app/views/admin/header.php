@@ -182,6 +182,9 @@ function isActive(string $current, string $page): string {
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_periodos.php') ?>" href="/admin/premiacao_periodos.php">
             <i class="bi bi-calendar3-range"></i> Periodo Premiação
           </a></li>
+          <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_categorias.php') ?>" href="/admin/premiacao_categorias.php">
+            <i class="bi bi-grid"></i> Categorias
+          </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_inscricoes.php') ?>" href="/admin/premiacao_inscricoes.php">
             <i class="bi bi-calendar-check"></i> Inscrições
           </a></li>

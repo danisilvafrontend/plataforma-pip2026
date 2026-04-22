@@ -2,9 +2,6 @@
 // /premiacao/votar.php — Endpoint POST para registrar voto popular
 session_start();
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 require_once __DIR__ . '/../app/helpers/premiacao_auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -75,7 +72,7 @@ if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
 
 // ── Valida inscrição: deve ser elegível e pertencer à mesma premiação ─────────
 $stmtInsc = $pdo->prepare("
-    SELECT pi.id, pi.negocio_id, pi.categoria_id
+    SELECT pi.id, pi.negocio_id, pi.categoria
     FROM premiacao_inscricoes pi
     WHERE pi.id = ?
       AND pi.premiacao_id = ?
@@ -88,6 +85,22 @@ $inscricao = $stmtInsc->fetch(PDO::FETCH_ASSOC);
 if (!$inscricao) {
     jsonErro('Inscrição não encontrada ou negócio não elegível.');
 }
+
+// ── Busca categoria_id a partir do nome da categoria na inscrição ─────────────
+$stmtCat = $pdo->prepare("
+    SELECT id FROM premiacao_categorias
+    WHERE premiacao_id = ?
+      AND nome = ?
+    LIMIT 1
+");
+$stmtCat->execute([$fase['premiacao_id'], $inscricao['categoria']]);
+$categoriaRow = $stmtCat->fetch(PDO::FETCH_ASSOC);
+
+if (!$categoriaRow) {
+    jsonErro('Categoria da inscrição não encontrada na premiação.');
+}
+
+$categoriaId = (int)$categoriaRow['id'];
 
 // ── Verifica voto duplicado ───────────────────────────────────────────────────
 $stmtDup = $pdo->prepare("
@@ -111,7 +124,7 @@ $stmtInsert = $pdo->prepare("
 $stmtInsert->execute([
     $fase['premiacao_id'],
     $faseId,
-    $inscricao['categoria_id'],
+    $categoriaId,
     $inscricaoId,
     $tipoEleitor,
     $eleitorId
