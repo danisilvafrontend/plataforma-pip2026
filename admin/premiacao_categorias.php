@@ -75,7 +75,7 @@ $catForm = [
 ];
 
 if ($catId > 0) {
-    $s = $pdo->prepare("SELECT * FROM premiacaocategorias WHERE id = ? LIMIT 1");
+    $s = $pdo->prepare("SELECT * FROM premiacao_categorias WHERE id = ? LIMIT 1");
     $s->execute([$catId]);
     $found = $s->fetch();
     if ($found) {
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'excluir') {
         $delId = (int)($_POST['del_id'] ?? 0);
         if ($delId > 0) {
-            $pdo->prepare("DELETE FROM premiacaocategorias WHERE id = ?")->execute([$delId]);
+            $pdo->prepare("DELETE FROM premiacao_categorias WHERE id = ?")->execute([$delId]);
             $premiacaoid = (int)($_POST['premiacao_id'] ?? $premiacaoid);
             header("Location: premiacao_categorias.php?premiacao_id={$premiacaoid}&ok=" . urlencode('Categoria excluída.'));
             exit;
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($nome === '')      throw new Exception('Informe o nome da categoria.');
         if ($slug === '')      throw new Exception('Informe o slug da categoria.');
 
-        $sSlug = $pdo->prepare("SELECT COUNT(*) FROM premiacaocategorias WHERE slug = ? AND premiacaoid = ? AND id <> ?");
+        $sSlug = $pdo->prepare("SELECT COUNT(*) FROM premiacao_categorias WHERE slug = ? AND premiacao_id = ? AND id <> ?");
         $sSlug->execute([$slug, $premiacaoid, $id]);
         if ((int)$sSlug->fetchColumn() > 0) {
             throw new Exception('Já existe uma categoria com este slug nesta edição.');
@@ -118,15 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($id > 0) {
             $pdo->prepare("
-                UPDATE premiacaocategorias
+                UPDATE premiacao_categorias
                 SET nome = ?, slug = ?, ordem = ?, ativo = ?, updatedat = NOW()
                 WHERE id = ?
             ")->execute([$nome, $slug, $ordem, $ativo, $id]);
             $msg = 'Categoria atualizada com sucesso.';
         } else {
             $pdo->prepare("
-                INSERT INTO premiacaocategorias
-                    (premiacaoid, nome, slug, ordem, ativo, createdat, updatedat)
+                INSERT INTO premiacao_categorias
+                    (premiacao_id, nome, slug, ordem, ativo, createdat, updatedat)
                 VALUES (?, ?, ?, ?, ?, NOW(), NOW())
             ")->execute([$premiacaoid, $nome, $slug, $ordem, $ativo]);
             $msg = 'Categoria cadastrada com sucesso.';
@@ -139,13 +139,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erro = $e->getMessage();
         $catForm = [
             'id'          => (int)($_POST['id'] ?? 0),
-            'premiacaoid' => (int)($_POST['premiacao_id'] ?? $premiacaoid),
+            'premiacao_id' => (int)($_POST['premiacao_id'] ?? $premiacaoid),
             'nome'        => $_POST['nome'] ?? '',
             'slug'        => $_POST['slug'] ?? '',
             'ordem'       => (int)($_POST['ordem'] ?? 0),
             'ativo'       => (int)($_POST['ativo'] ?? 1),
         ];
-        $premiacaoid = $catForm['premiacaoid'];
+        $premiacaoid = $catForm['premiacao_id'];
     }
 }
 
@@ -157,7 +157,7 @@ $categorias = [];
 if ($premiacaoid > 0) {
     $s = $pdo->prepare("
         SELECT * FROM premiacao_categorias
-        WHERE premiacaoid = ?
+        WHERE premiacao_id = ?
         ORDER BY ordem ASC, nome ASC
     ");
     $s->execute([$premiacaoid]);
