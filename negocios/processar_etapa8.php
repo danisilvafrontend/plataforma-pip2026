@@ -14,6 +14,16 @@ $pdo = new PDO(
 );
 
 $negocio_id = (int)($_POST['negocio_id'] ?? 0);
+
+// Proteção: POST vazio pode acontecer quando o upload ultrapassa post_max_size
+if (empty($_POST) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_SESSION['errors_etapa8'][] = "O arquivo enviado é muito grande. Verifique o tamanho dos arquivos e tente novamente.";
+    // Tenta extrair negocio_id da query string como fallback
+    $negocio_id_qs = (int)($_GET['id'] ?? 0);
+    header("Location: /negocios/etapa8_apresentacao.php?id=" . $negocio_id_qs);
+    exit;
+}
+
 if ($negocio_id === 0) {
     $_SESSION['errors_etapa8'][] = "Negócio inválido.";
     header("Location: /empreendedores/meus-negocios.php");
@@ -35,7 +45,7 @@ if (!empty($_POST['remover_logo'])) {
     $logoUrl = null;
 }
 
-if (!empty($_FILES['logo_negocio']['name'])) {
+if (!empty($_FILES['logo_negocio']['name']) && !empty($_FILES['logo_negocio']['tmp_name']) && is_uploaded_file($_FILES['logo_negocio']['tmp_name'])) {
     $fileTmp  = $_FILES['logo_negocio']['tmp_name'];
     $fileSize = $_FILES['logo_negocio']['size'];
     $fileType = mime_content_type($fileTmp);
@@ -62,7 +72,7 @@ if (!empty($_POST['remover_imagem_destaque'])) {
     $imagemDestaqueUrl = null;
 }
 
-if (!empty($_FILES['imagem_destaque']['name'])) {
+if (!empty($_FILES['imagem_destaque']['name']) && !empty($_FILES['imagem_destaque']['tmp_name']) && is_uploaded_file($_FILES['imagem_destaque']['tmp_name'])) {
     $fileTmp  = $_FILES['imagem_destaque']['tmp_name'];
     $fileSize = $_FILES['imagem_destaque']['size'];
     $fileType = mime_content_type($fileTmp);
@@ -89,7 +99,7 @@ if (!empty($_POST['remover_pdf'])) {
     $pdfUrl = null;
 }
 
-if (!empty($_FILES['apresentacao_pdf']['name'])) {
+if (!empty($_FILES['apresentacao_pdf']['name']) && !empty($_FILES['apresentacao_pdf']['tmp_name']) && is_uploaded_file($_FILES['apresentacao_pdf']['tmp_name'])) {
     $fileTmp  = $_FILES['apresentacao_pdf']['tmp_name'];
     $fileSize = $_FILES['apresentacao_pdf']['size'];
     $fileType = mime_content_type($fileTmp);
@@ -394,47 +404,59 @@ foreach ($valoresDesafios as $campo => $valor) {
     $params[$campo] = $valor;
 }
 
-$stmt->execute($params);
+try {
+    $stmt->execute($params);
+} catch (PDOException $e) {
+    error_log("processar_etapa8 - erro ao salvar negocio_id=$negocio_id: " . $e->getMessage());
+    $_SESSION['errors_etapa8'][] = "Ocorreu um erro ao salvar as informações. Tente novamente.";
+    header("Location: /negocios/etapa8_apresentacao.php?id=" . $negocio_id);
+    exit;
+}
 
 // ====== Cálculo do Score Impacto ======
-$stmt = $pdo->prepare("SELECT componente, peso FROM pesos_scores WHERE tipo_score='IMPACTO'");
-$stmt->execute();
-$pesos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $stmt = $pdo->prepare("SELECT componente, peso FROM pesos_scores WHERE tipo_score='IMPACTO'");
+    $stmt->execute();
+    $pesos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$scoreImpacto = 0;
-foreach ($pesos as $p) {
-    $componente = $p['componente'];
-    $peso = (float)$p['peso'];
+    $scoreImpacto = 0;
+    foreach ($pesos as $p) {
+        $componente = $p['componente'];
+        $peso = (float)$p['peso'];
 
-    switch ($componente) {
-        case 'intencionalidade':
-            $opcao = ($inovacao === 'sim') ? 'lucro_com_impacto_integrado' : 'impacto_secundario';
-            break;
-        case 'evidencias':
-            $opcao = (!empty($info_adicionais) || !empty($links)) ? 'documentado_com_links' : 'vazio';
-            break;
-        default:
-            $opcao = 'nao_informado';
+        switch ($componente) {
+            case 'intencionalidade':
+                $opcao = ($inovacao === 'sim') ? 'lucro_com_impacto_integrado' : 'impacto_secundario';
+                break;
+            case 'evidencias':
+                $opcao = (!empty($info_adicionais) || !empty($links)) ? 'documentado_com_links' : 'vazio';
+                break;
+            default:
+                $opcao = 'nao_informado';
+        }
+
+        $stmt2 = $pdo->prepare("SELECT valor FROM lookup_scores WHERE componente=? AND opcao=?");
+        $stmt2->execute([$componente, $opcao]);
+        $valor = (int)($stmt2->fetchColumn() ?: 0);
+        $scoreImpacto += $valor * $peso;
     }
 
-    $stmt2 = $pdo->prepare("SELECT valor FROM lookup_scores WHERE componente=? AND opcao=?");
-    $stmt2->execute([$componente, $opcao]);
-    $valor = (int)($stmt2->fetchColumn() ?: 0);
-    $scoreImpacto += $valor * $peso;
-}
+    $penalty = 0;
+    if ($inovacao === 'nao' && empty($info_adicionais)) {
+        $penalty += 5;
+    }
+    $scoreImpacto = max(0, min(100, round($scoreImpacto - $penalty)));
 
-$penalty = 0;
-if ($inovacao === 'nao' && empty($info_adicionais)) {
-    $penalty += 5;
+    $stmt = $pdo->prepare("
+        INSERT INTO scores_negocios (negocio_id, score_impacto, atualizado_em)
+        VALUES (?, ?, NOW())
+        ON DUPLICATE KEY UPDATE score_impacto = VALUES(score_impacto), atualizado_em = NOW()
+    ");
+    $stmt->execute([$negocio_id, $scoreImpacto]);
+} catch (PDOException $e) {
+    // Score não é crítico — apenas loga o erro e continua o fluxo
+    error_log("processar_etapa8 - erro ao calcular score negocio_id=$negocio_id: " . $e->getMessage());
 }
-$scoreImpacto = max(0, min(100, round($scoreImpacto - $penalty)));
-
-$stmt = $pdo->prepare("
-    INSERT INTO scores_negocios (negocio_id, score_impacto, atualizado_em)
-    VALUES (?, ?, NOW())
-    ON DUPLICATE KEY UPDATE score_impacto = VALUES(score_impacto), atualizado_em = NOW()
-");
-$stmt->execute([$negocio_id, $scoreImpacto]);
 
 // ====== Redirecionamento Inteligente ======
 $modo = $_POST['modo'] ?? 'cadastro';
