@@ -1,5 +1,6 @@
 <!-- app/views/forms/form-login_empreendedor.php -->
 <form action="/empreendedores/login_process.php" method="POST">
+    <input type="hidden" name="redirect" value="<?= htmlspecialchars($_GET['redirect'] ?? '') ?>">
     <div class="mb-3">
         <label for="login_empreendedor" class="form-label fw-bold">E-mail de Cadastro</label>
         <div class="input-group">

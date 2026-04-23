@@ -63,24 +63,21 @@ function montarEmailPrimeiroAcesso(): string
 
         <div style="padding: 32px 28px 10px 28px; text-align: center; border-bottom: 1px solid #e7ece8;">
             <h1 style="margin: 0; color: #1D3427; font-size: 28px; line-height: 1.2;">
-                Não perca sua vitrine na Impactos Positivos
+                A Impactos Positivos evoluiu
             </h1>
             <p style="margin: 14px 0 0 0; color: #5B6B63; font-size: 16px;">
-                Agora, falta só um passo para continuar com a gente em uma plataforma ainda mais completa.
+                Agora somos uma plataforma mais completa, criada para ampliar a visibilidade e abrir novas oportunidades para negócios como o seu.
             </p>
         </div>
 
         <div style="padding: 28px;">
+
             <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
-                Olá, <strong>{{nome}}</strong>,
+                Olá, <strong>{$nome_empreendedor}</strong>,
             </p>
 
             <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
-                Você já faz parte da vitrine de negócios da <strong>Impactos Positivos</strong>.
-            </p>
-
-            <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
-                Este ano, estamos evoluindo para uma plataforma mais completa, pensada para ampliar a visibilidade dos negócios, gerar conexões e criar novas oportunidades para quem está transformando a economia.
+                A Impactos Positivos evoluiu. Agora somos uma plataforma mais completa, criada para ampliar a visibilidade, gerar conexões e abrir novas oportunidades para negócios como o seu, que estão transformando a economia.
             </p>
 
             <p style="margin: 0 0 22px 0; font-size: 16px; color: #31443A;">
@@ -94,41 +91,28 @@ function montarEmailPrimeiroAcesso(): string
             </div>
 
             <p style="margin: 0 0 14px 0; font-size: 16px; color: #31443A;">
-                O processo é simples e gratuito:
+                O processo é simples e sua vitrine gratuita:
             </p>
 
             <ul style="padding-left: 20px; margin: 0 0 24px 0; color: #31443A; font-size: 15px;">
-                <li style="margin-bottom: 8px;">Acesse a plataforma.</li>
-                <li style="margin-bottom: 8px;">Defina sua nova senha <small>(Link <strong>"Esqueceu a Senha?"</strong>)</small></li>
-                <li style="margin-bottom: 8px;">Preencha seus dados na nova plataforma.</li>
-                <li style="margin-bottom: 8px;">Complete o perfil do seu negócio.</li>
+                <li style="margin-bottom: 8px;">Acesse a plataforma</li>
+                <li style="margin-bottom: 8px;">Defina sua senha</li>
+                <li style="margin-bottom: 8px;">Atualize suas informações</li>
+                <li style="margin-bottom: 8px;">Complete o perfil do seu negócio</li>
             </ul>
 
-            <div style="text-align: center; margin: 0 0 28px 0;">
-                <a href="{{link_painel}}" style="color: #0B6B74; font-size: 15px; font-weight: bold; text-decoration: none;">
-                    Atualizar cadastro
-                </a>
-            </div>
-
             <p style="margin: 0 0 18px 0; font-size: 16px; color: #31443A;">
-                Ao atualizar seu cadastro, seu negócio segue ativo e preparado para aproveitar tudo o que estamos construindo para 2026.
+                Ao atualizar seu cadastro, seu negócio segue ativo e preparado para aproveitar tudo que estamos construindo em 2026!
             </p>
 
-            <p style="margin: 0 0 18px 0; font-size: 15px; color: #31443A;">
-                Se precisar de apoio, nosso time está disponível para te ajudar.
-                Fale com o PIP pelo WhatsApp:
-                <a href="https://api.whatsapp.com/send?phone=551123673170&text=Ol%C3%A1%2C%20seja%20bem-vindo%21%20Em%20que%20podemos%20ajudar%3F" style="color: #0B6B74; font-weight: bold; text-decoration: none;" target="_blank">
-                    clique aqui para conversar
-                </a>.
-            </p>
-
-            <p style="margin: 0 0 12px 0; font-size: 15px; color: #31443A;">
-                Juntos, ampliamos o que o mundo tem de melhor.
+            <p style="margin: 0 0 24px 0; font-size: 15px; color: #31443A;">
+                Se precisar de apoio, nossa equipe está à disposição.
             </p>
 
             <p style="margin: 0; font-size: 15px; color: #31443A;">
                 <strong>Equipe Impactos Positivos</strong>
             </p>
+
         </div>
     </div>
     ';
@@ -201,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nomeCompleto = 'Empreendedor(a)';
             }
 
-            $subject = 'Atualize seu cadastro e continue na vitrine da Impactos Positivos 2026';
+            $subject = 'Não perca sua Vitrine da Impactos Positivos!';
             $bodyHtml = montarEmailPrimeiroAcesso();
 
             $rendered = render_email_from_db($subject, $bodyHtml, [

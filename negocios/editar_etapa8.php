@@ -30,13 +30,14 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$negocio_id, $_SESSION['user_id']]);
 $negocio = $stmt->fetch(PDO::FETCH_ASSOC);
-
 if (!$negocio) {
     die("Negócio não encontrado ou você não tem permissão. ID: " . $negocio_id);
 }
+
+// ✅ CORRIGIDO: garante array mesmo sem registro
 $stmt = $pdo->prepare("SELECT * FROM negocio_apresentacao WHERE negocio_id = ?");
 $stmt->execute([$negocio_id]);
-$apresentacao = $stmt->fetch(PDO::FETCH_ASSOC);
+$apresentacao = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
@@ -50,14 +51,12 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </h1>
             <p class="emp-page-subtitle mb-0">Etapa 8 — Apresentação do Negócio</p>
         </div>
-
         <div class="d-flex gap-2 flex-wrap">
             <?php if (!empty($negocio['inscricao_completa'])): ?>
                 <a href="/negocios/confirmacao.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline">
                     <i class="bi bi-card-checklist me-1"></i> Voltar à Revisão
                 </a>
             <?php endif; ?>
-
             <a href="/empreendedores/meus-negocios.php" class="btn-emp-outline">
                 <i class="bi bi-arrow-left me-1"></i> Meus Negócios
             </a>
@@ -76,7 +75,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         <?php unset($_SESSION['errors_etapa8']); ?>
     <?php endif; ?>
 
-    <form action="/negocios/processar_etapa8.php" method="post" enctype="multipart/form-data" id="formEtapa5Edit">
+    <form action="/negocios/processar_etapa8.php" method="post" enctype="multipart/form-data" id="formEtapa8Edit">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="editar">
 
@@ -93,14 +92,16 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <!-- Logotipo -->
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Logotipo atual</label>
+                        <label class="form-label">
+                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Logotipo do negócio *
+                        </label>
                         <?php if (!empty($apresentacao['logo_negocio'])): ?>
                             <div class="mb-2">
                                 <img src="<?= htmlspecialchars($apresentacao['logo_negocio']) ?>" alt="Logo" style="max-height:100px; border-radius:8px;">
                             </div>
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" name="remover_logo" value="1" id="removerLogo">
-                                <label class="form-check-label small" for="removerLogo">Remover logotipo atual</label>
+                                <label class="form-check-label small text-danger" for="removerLogo">Remover logotipo atual</label>
                             </div>
                         <?php else: ?>
                             <div class="text-muted small mb-2">Nenhum logotipo enviado</div>
@@ -110,11 +111,12 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="form-text">⚠️ Máx. 50MB. Formatos aceitos: PNG, JPG, JPEG ou WebP.</div>
                     </div>
 
-                    <!-- Imagem de destaque -->
+                    <!-- Imagem de Destaque -->
                     <div>
                         <label class="form-label d-flex align-items-center gap-2">
                             <i class="bi bi-eye-fill lbl-pub me-1"></i> Imagem de Destaque
                             <span class="badge" style="background:#CDDE00;color:#1E3425;font-size:.7rem;">Capa da Vitrine</span>
+                            <small class="text-muted">(opcional)</small>
                         </label>
 
                         <div class="d-flex align-items-start gap-3 p-3 rounded mb-3" style="background:#f0f4ed;border-left:4px solid #CDDE00;">
@@ -178,17 +180,24 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <div class="form-section-title"><i class="bi bi-chat-quote"></i> Apresentação do Negócio</div>
 
                     <div class="mb-3">
-                        <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Frase do negócio</label>
-                        <textarea name="frase_negocio" class="form-control" maxlength="120"><?= htmlspecialchars($apresentacao['frase_negocio'] ?? '') ?></textarea>
+                        <label class="form-label">
+                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Descreva seu negócio em uma frase (até 120 caracteres) *
+                        </label>
+                        <input type="text" name="frase_negocio" class="form-control" maxlength="120" required
+                               value="<?= htmlspecialchars($apresentacao['frase_negocio'] ?? '') ?>">
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Qual problema você resolve? (até 200 caracteres)</label>
+                            <label class="form-label">
+                                <i class="bi bi-eye-fill lbl-pub me-1"></i> Qual problema você resolve? (até 200 caracteres) *
+                            </label>
                             <textarea name="problema_resolvido" class="form-control" maxlength="200" rows="4" required><?= htmlspecialchars($apresentacao['problema_resolvido'] ?? '') ?></textarea>
                             <div class="form-text">Descreva a dor ou desafio do seu público-alvo.</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Qual solução você oferece? (até 200 caracteres)</label>
+                            <label class="form-label">
+                                <i class="bi bi-eye-fill lbl-pub me-1"></i> Qual solução você oferece? (até 200 caracteres) *
+                            </label>
                             <textarea name="solucao_oferecida" class="form-control" maxlength="200" rows="4" required><?= htmlspecialchars($apresentacao['solucao_oferecida'] ?? '') ?></textarea>
                             <div class="form-text">Descreva como seu produto/serviço resolve o problema acima.</div>
                         </div>
@@ -200,24 +209,42 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <div class="form-section-title"><i class="bi bi-play-circle"></i> Materiais e Mídia</div>
 
                     <div class="mb-3">
-                        <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Vídeo Pitch (YouTube)</label>
-                        <input type="url" name="video_pitch_url" class="form-control"
+                        <label class="form-label">
+                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Vídeo Pitch — até 3 minutos (YouTube) *
+                        </label>
+                        <input type="url" name="video_pitch_url" class="form-control" required
+                               pattern="^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[A-Za-z0-9_-]{11}$"
                                value="<?= htmlspecialchars($apresentacao['video_pitch_url'] ?? '') ?>">
+                        <div class="form-text">Exemplo válido: https://www.youtube.com/watch?v=XXXXXXXXXXX</div>
                     </div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Apresentação Institucional PDF</label>
+                            <label class="form-label">
+                                <i class="bi bi-eye-fill lbl-pub me-1"></i> Apresentação Institucional PDF <small class="text-muted">(opcional)</small>
+                            </label>
                             <?php if (!empty($apresentacao['apresentacao_pdf'])): ?>
-                                <div class="mb-1"><a href="<?= htmlspecialchars($apresentacao['apresentacao_pdf']) ?>" target="_blank" class="small">Ver PDF atual</a></div>
+                                <div class="mb-1">
+                                    <a href="<?= htmlspecialchars($apresentacao['apresentacao_pdf']) ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> Ver PDF atual
+                                    </a>
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="remover_pdf" value="1" id="removerPdf">
+                                        <label class="form-check-label small text-danger" for="removerPdf">Remover PDF atual</label>
+                                    </div>
+                                </div>
                             <?php else: ?>
                                 <div class="text-muted small mb-1">Nenhum PDF enviado</div>
                             <?php endif; ?>
                             <input type="file" name="apresentacao_pdf" class="form-control" accept=".pdf">
+                            <div class="form-text">⚠️ Máx. 5MB.</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Vídeo Institucional (YouTube)</label>
+                            <label class="form-label">
+                                <i class="bi bi-eye-fill lbl-pub me-1"></i> Vídeo institucional (YouTube) <small class="text-muted">(opcional)</small>
+                            </label>
                             <input type="url" name="apresentacao_video_url" class="form-control"
+                                   pattern="^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[A-Za-z0-9_-]{11}$"
                                    value="<?= htmlspecialchars($apresentacao['apresentacao_video_url'] ?? '') ?>">
                             <div class="form-text">Somente vídeos do YouTube são aceitos.</div>
                         </div>
@@ -225,7 +252,9 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <!-- Galeria -->
                     <div>
-                        <label class="form-label"><i class="bi bi-eye-fill lbl-pub me-1"></i> Galeria de imagens</label>
+                        <label class="form-label">
+                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Galeria de imagens <small class="text-muted">(opcional)</small>
+                        </label>
                         <?php
                         $galeria = json_decode($apresentacao['galeria_imagens'] ?? '[]', true);
                         if (!empty($galeria)): ?>
@@ -237,7 +266,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                                         <img src="<?= htmlspecialchars($img) ?>" alt="Imagem" style="max-height:100px;" class="img-fluid rounded mb-2">
                                         <div class="form-check text-start">
                                             <input class="form-check-input" type="checkbox" name="remover_imagem[]" value="<?= $index ?>" id="remover<?= $index ?>">
-                                            <label class="form-check-label small" for="remover<?= $index ?>">Remover</label>
+                                            <label class="form-check-label small text-danger" for="remover<?= $index ?>">Remover</label>
                                         </div>
                                         <input type="file" name="substituir_imagem[<?= $index ?>]" class="form-control form-control-sm mt-1" accept="image/*">
                                         <div class="form-text">Substituir esta imagem</div>
@@ -247,7 +276,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                             <?php endforeach; ?>
                         </div>
                         <?php else: ?>
-                            <div class="text-muted small mb-2">Nenhuma imagem enviada</div>
+                            <div class="text-muted small mb-2">Nenhuma imagem enviada ainda</div>
                         <?php endif; ?>
                         <div class="mt-2">
                             <label class="form-label small fw-semibold">Adicionar novas imagens (máx. 10 no total)</label>
@@ -263,23 +292,25 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">
-                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Seu negócio incorpora inovação? Marque onde houver inovação real.
+                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Seu negócio incorpora inovação? Marque onde houver inovação real. <small class="text-muted">(opcional)</small>
                         </label>
                         <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
                             <?php
                             $inovacoesEdit = [
-                                'inovacao_tecnologica'  => ['1. Inovação Tecnológica',       'Uso de IA, Big Data, IoT, blockchain, plataformas digitais, biotecnologia ou tecnologias verdes.'],
-                                'inovacao_produto'      => ['2. Inovação de Produto',         'Novo produto sustentável, materiais ecológicos, soluções regenerativas ou tecnologias de saúde/educação.'],
-                                'inovacao_servico'      => ['3. Inovação de Serviço',         'Telemedicina, educação online inclusiva, plataformas de acesso a crédito ou serviços financeiros acessíveis.'],
-                                'inovacao_modelo'       => ['4. Modelo de Negócio',           'Marketplace de impacto, economia compartilhada, assinaturas, pay-per-use, B2G.'],
-                                'inovacao_social'       => ['5. Inovação Social',             'Inclusão produtiva, empoderamento, geração de renda, educação transformadora, participação cidadã.'],
-                                'inovacao_ambiental'    => ['6. Inovação Ambiental',          'Economia circular, redução de emissões, agricultura regenerativa, energia renovável, gestão de resíduos.'],
-                                'inovacao_cadeia_valor' => ['7. Cadeia de Valor',             'Cadeias produtivas inclusivas, comércio justo, logística sustentável, produção descentralizada.'],
-                                'inovacao_governanca'   => ['8. Governança',                  'Governança participativa, cooperativismo, propriedade compartilhada, gestão horizontal.'],
-                                'inovacao_impacto'      => ['9. Inovação em Impacto',         'Novas métricas de impacto, modelos escaláveis, tecnologia para monitoramento socioambiental.'],
-                                'inovacao_financiamento'=> ['10. Financiamento',              'Blended finance, crowdfunding, finanças regenerativas, fundos comunitários, impact investing.'],
+                                'inovacao_tecnologica'   => ['1. Inovação Tecnológica',       'Uso de IA, Big Data, IoT, blockchain, plataformas digitais, biotecnologia ou tecnologias verdes.'],
+                                'inovacao_produto'       => ['2. Inovação de Produto',         'Novo produto sustentável, materiais ecológicos, soluções regenerativas ou tecnologias de saúde/educação.'],
+                                'inovacao_servico'       => ['3. Inovação de Serviço',         'Telemedicina, educação online inclusiva, plataformas de acesso a crédito ou serviços financeiros acessíveis.'],
+                                'inovacao_modelo'        => ['4. Modelo de Negócio',           'Marketplace de impacto, economia compartilhada, assinaturas, pay-per-use, B2G.'],
+                                'inovacao_social'        => ['5. Inovação Social',             'Inclusão produtiva, empoderamento, geração de renda, educação transformadora, participação cidadã.'],
+                                'inovacao_ambiental'     => ['6. Inovação Ambiental',          'Economia circular, redução de emissões, agricultura regenerativa, energia renovável, gestão de resíduos.'],
+                                'inovacao_cadeia_valor'  => ['7. Cadeia de Valor',             'Cadeias produtivas inclusivas, comércio justo, logística sustentável, produção descentralizada.'],
+                                'inovacao_governanca'    => ['8. Governança',                  'Governança participativa, cooperativismo, propriedade compartilhada, gestão horizontal.'],
+                                'inovacao_impacto'       => ['9. Inovação em Impacto',         'Novas métricas de impacto, modelos escaláveis, tecnologia para monitoramento socioambiental.'],
+                                'inovacao_financiamento' => ['10. Financiamento',              'Blended finance, crowdfunding, finanças regenerativas, fundos comunitários, impact investing.'],
                             ];
-                            foreach ($inovacoesEdit as $name => [$titulo, $desc]): ?>
+                            foreach ($inovacoesEdit as $name => [$titulo, $desc]):
+                                $valSalvo = (int)($apresentacao[$name] ?? 0);
+                            ?>
                             <div class="col">
                                 <div class="border rounded p-2 h-100 d-flex flex-column justify-content-between">
                                     <div class="d-flex justify-content-between align-items-start">
@@ -289,13 +320,15 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                                         </div>
                                         <div class="ms-3 flex-shrink-0">
                                             <div class="form-check form-check-inline me-1">
-                                                <input class="form-check-input inovacao-tipo" type="radio" name="<?= $name ?>" value="sim"
-                                                       <?= !empty($apresentacao[$name]) ? 'checked' : '' ?>>
+                                                <input class="form-check-input inovacao-tipo" type="radio"
+                                                    name="<?= $name ?>" value="sim"
+                                                    <?= $valSalvo == 1 ? 'checked' : '' ?>>
                                                 <label class="form-check-label small">Sim</label>
                                             </div>
                                             <div class="form-check form-check-inline me-0">
-                                                <input class="form-check-input inovacao-tipo" type="radio" name="<?= $name ?>" value="nao"
-                                                       <?= empty($apresentacao[$name]) ? 'checked' : '' ?>>
+                                                <input class="form-check-input inovacao-tipo" type="radio"
+                                                    name="<?= $name ?>" value="nao"
+                                                    <?= $valSalvo != 1 ? 'checked' : '' ?>>
                                                 <label class="form-check-label small">Não</label>
                                             </div>
                                         </div>
@@ -308,49 +341,46 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <div id="bloco-descricao-inovacao" class="mb-4 p-3 border rounded" style="background:rgba(205,222,0,.05);display:none;">
                         <label class="form-label">
-                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Descreva brevemente as inovações marcadas acima
+                            <i class="bi bi-eye-fill lbl-pub me-1"></i> Descreva brevemente as inovações marcadas acima *
                         </label>
                         <textarea name="descricao_inovacao" id="descricao_inovacao" class="form-control" rows="3" maxlength="300"
                                   placeholder="Detalhe como a inovação é aplicada no seu negócio..."><?= htmlspecialchars($apresentacao['descricao_inovacao'] ?? '') ?></textarea>
-                        <div class="form-text">Foque no que é realmente novo ou estrutural no seu negócio (máx. 300 caracteres).</div>
+                        <div class="form-text">Máx. 300 caracteres.</div>
                     </div>
 
                     <!-- Tipo solução / Modelo / Colaboradores -->
-                    <div class="row">
-                        <div class="col-md-12 mb-2">
+                    <div class="row g-3">
+                        <div class="col-md-4">
                             <div class="card h-100"><div class="card-body">
-                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Tipo de solução</h5>
-                                <?php $tipo = $apresentacao['tipo_solucao'] ?? ''; ?>
+                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Tipo de solução *</h5>
                                 <?php foreach (['Produto', 'Serviço', 'Produto e Serviço'] as $opt): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="tipo_solucao" value="<?= $opt ?>"
-                                           <?= ($tipo === $opt) ? 'checked' : '' ?> <?= $opt === 'Produto' ? 'required' : '' ?>>
+                                           <?= ($apresentacao['tipo_solucao'] ?? '') === $opt ? 'checked' : '' ?> required>
                                     <label class="form-check-label"><?= $opt ?></label>
                                 </div>
                                 <?php endforeach; ?>
                             </div></div>
                         </div>
-                        <div class="col-md-12 mb-2">
+                        <div class="col-md-4">
                             <div class="card h-100"><div class="card-body">
-                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Modelo de negócio</h5>
-                                <?php $modelo = $apresentacao['modelo_negocio'] ?? ''; ?>
+                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Modelo de negócio *</h5>
                                 <?php foreach (['B2B' => 'B2B – Empresa para Empresa', 'B2C' => 'B2C – Empresa para Consumidor', 'C2C' => 'C2C – Consumidor para Consumidor', 'B2B2C' => 'B2B2C – Emp. para Emp. para Consumidor', 'B2G' => 'B2G – Empresa para Governo', 'B2N' => 'B2N – Empresa para Ongs/Fundações'] as $val => $label): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="modelo_negocio" value="<?= $val ?>"
-                                           <?= ($modelo === $val) ? 'checked' : '' ?> <?= $val === 'B2B' ? 'required' : '' ?>>
+                                           <?= ($apresentacao['modelo_negocio'] ?? '') === $val ? 'checked' : '' ?> required>
                                     <label class="form-check-label"><?= $label ?></label>
                                 </div>
                                 <?php endforeach; ?>
                             </div></div>
                         </div>
-                        <div class="col-md-12 mb-2">
+                        <div class="col-md-4">
                             <div class="card h-100"><div class="card-body">
-                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Colaboradores</h5>
-                                <?php $colab = $apresentacao['colaboradores'] ?? ''; ?>
+                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Colaboradores *</h5>
                                 <?php foreach (['Até 5', '6–20', '21–50', '51 ou mais'] as $opt): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="colaboradores" value="<?= $opt ?>"
-                                           <?= ($colab === $opt) ? 'checked' : '' ?> <?= $opt === 'Até 5' ? 'required' : '' ?>>
+                                           <?= ($apresentacao['colaboradores'] ?? '') === $opt ? 'checked' : '' ?> required>
                                     <label class="form-check-label"><?= $opt ?></label>
                                 </div>
                                 <?php endforeach; ?>
@@ -364,24 +394,27 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <div class="form-section-title"><i class="bi bi-journal-text"></i> Histórico e Desafios do Negócio</div>
 
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Seu negócio já teve apoio de uma aceleradora ou programa de fomento?</label>
-                        <?php $apoio = $apresentacao['apoio'] ?? ''; ?>
+                        <label class="form-label">
+                            <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Seu negócio já teve apoio de uma aceleradora ou programa de fomento? *
+                        </label>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="apoio" value="nao" <?= ($apoio === 'nao') ? 'checked' : '' ?> required>
+                            <input class="form-check-input" type="radio" name="apoio" value="nao" required
+                                   <?= ($apresentacao['apoio'] ?? 'nao') === 'nao' ? 'checked' : '' ?>>
                             <label class="form-check-label">Não</label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="apoio" value="sim" <?= ($apoio === 'sim') ? 'checked' : '' ?>>
+                            <input class="form-check-input" type="radio" name="apoio" value="sim"
+                                   <?= ($apresentacao['apoio'] ?? '') === 'sim' ? 'checked' : '' ?>>
                             <label class="form-check-label">Sim. Quais?</label>
                         </div>
                         <input type="text" name="programas" class="form-control mt-2" maxlength="120"
                                value="<?= htmlspecialchars($apresentacao['programas'] ?? '') ?>">
-                        <div class="form-text">Até 120 caracteres</div>
+                        <div class="form-text">Até 120 caracteres <small class="text-muted">(opcional, preencher somente se "Sim")</small></div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">
-                            <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Quais são hoje os principais desafios para o desenvolvimento do seu negócio?
+                            <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Quais são hoje os principais desafios? * <small class="text-muted">(selecione pelo menos 1)</small>
                         </label>
                         <p class="text-muted" style="font-size:.85rem;">
                             <strong>Passo 1:</strong> Selecione os desafios que limitam o crescimento do seu negócio.<br>
@@ -476,16 +509,20 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="form-section">
                     <div class="form-section-title"><i class="bi bi-trophy"></i> Reconhecimentos e Visibilidade</div>
                     <p style="font-size:.85rem;color:#6c8070;margin-bottom:1rem;">
-                        Compartilhe prêmios, matérias jornalísticas, artigos, eventos, parcerias institucionais ou outros destaques que ajudam a evidenciar sua credibilidade e impacto.
+                        Compartilhe prêmios, matérias jornalísticas, artigos, eventos, parcerias institucionais ou outros destaques.
                     </p>
                     <div class="row g-3">
-                        <div class="col-md-12 mb-2">
-                            <label class="form-label"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Texto adicional</label>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Texto adicional <small class="text-muted">(opcional)</small>
+                            </label>
                             <textarea name="info_adicionais" class="form-control" rows="5" maxlength="3000"><?= htmlspecialchars($apresentacao['info_adicionais'] ?? '') ?></textarea>
                             <div class="form-text">Máx. 3000 caracteres.</div>
                         </div>
-                        <div class="col-md-12 mb-2">
-                            <label class="form-label"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Links externos</label>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Links externos <small class="text-muted">(opcional)</small>
+                            </label>
                             <?php
                             $links = json_decode($apresentacao['info_adicionais_links'] ?? '[]', true);
                             if (!empty($links)):
@@ -507,7 +544,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             ════════════════════════════════════════════ -->
             <div class="col-12 col-lg-4">
 
-                <!-- Card: Legenda -->
                 <div class="emp-card mb-3">
                     <div class="emp-card-header"><i class="bi bi-info-circle"></i> Legenda</div>
                     <div class="d-flex align-items-center gap-2 mb-2 small">
@@ -520,7 +556,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
                 </div>
 
-                <!-- Card: Orientações -->
                 <div class="emp-card mb-3">
                     <div class="emp-card-header"><i class="bi bi-lightbulb"></i> Orientações</div>
                     <ul class="mb-0 ps-3" style="font-size:.82rem;color:#6c8070;line-height:1.7;">
@@ -531,7 +566,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </ul>
                 </div>
 
-                <!-- Card: Salvar -->
                 <div class="emp-card">
                     <div class="emp-card-header"><i class="bi bi-floppy-fill"></i> Salvar</div>
                     <p class="small mb-3" style="color:#9aab9d;">
@@ -541,16 +575,14 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <i class="bi bi-floppy me-2"></i> Salvar Alterações
                     </button>
                     <?php if (!empty($negocio['inscricao_completa'])): ?>
-                        <a href="/negocios/confirmacao.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
+                        <a href="/negocios/confirmacao.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center mb-2">
                             <i class="bi bi-card-checklist me-1"></i> Voltar à Revisão
                         </a>
                     <?php endif; ?>
-                    <a href="/negocios/editar_etapa7.php?id=<?= (int)$negocio_id ?>"
-                       class="btn-emp-outline w-100 justify-content-center mb-2">
+                    <a href="/negocios/editar_etapa7.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center mb-2">
                         <i class="bi bi-arrow-left me-2"></i> Etapa Anterior
                     </a>
-                    <a href="/empreendedores/meus-negocios.php"
-                       class="btn-emp-outline w-100 justify-content-center">
+                    <a href="/empreendedores/meus-negocios.php" class="btn-emp-outline w-100 justify-content-center">
                         <i class="bi bi-arrow-left me-2"></i> Meus Negócios
                     </a>
                 </div>
@@ -573,168 +605,96 @@ function addLinkField() {
 </script>
 
 <script>
-// ══════════════════════════════════════════════════
-// Validação de uploads — frontend (editar etapa 8)
-// ══════════════════════════════════════════════════
-
 const MB = 1024 * 1024;
-
 const uploadConfig = {
-    logo_negocio_edit: { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
-    imagemDestaqueEdit:{ maxMB: 5,  tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
-    apresentacao_pdf:  { maxMB: 5,  tipos: ['application/pdf'],                                 maxFiles: 1 },
-    galeria_imagens:   { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/bmp'], maxFiles: 10 },
-    substituir_imagem: { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/bmp'], maxFiles: 1 },
+    logo_negocio_edit:  { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
+    imagemDestaqueEdit: { maxMB: 5,  tipos: ['image/png','image/jpeg','image/jpg','image/webp'], maxFiles: 1 },
+    apresentacao_pdf:   { maxMB: 5,  tipos: ['application/pdf'],                                 maxFiles: 1 },
+    galeria_imagens:    { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/bmp'], maxFiles: 10 },
+    substituir_imagem:  { maxMB: 50, tipos: ['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/bmp'], maxFiles: 1 },
 };
 
 function getFeedbackEl(input) {
     let el = input.parentElement.querySelector('.upload-feedback');
-    if (!el) {
-        el = document.createElement('div');
-        el.className = 'upload-feedback mt-1';
-        input.parentElement.appendChild(el);
-    }
+    if (!el) { el = document.createElement('div'); el.className = 'upload-feedback mt-1'; input.parentElement.appendChild(el); }
     return el;
 }
-
 function setErro(input, msg) {
-    const el = getFeedbackEl(input);
-    el.innerHTML = `<div class="alert alert-danger py-2 px-3 mb-0 small">
-        <i class="bi bi-exclamation-triangle-fill me-1"></i>${msg}
-    </div>`;
+    getFeedbackEl(input).innerHTML = `<div class="alert alert-danger py-2 px-3 mb-0 small"><i class="bi bi-exclamation-triangle-fill me-1"></i>${msg}</div>`;
     input.dataset.valid = 'false';
 }
-
 function setOk(input, msg) {
-    const el = getFeedbackEl(input);
-    el.innerHTML = `<div class="text-success small mt-1">
-        <i class="bi bi-check-circle-fill me-1"></i>${msg}
-    </div>`;
+    getFeedbackEl(input).innerHTML = `<div class="text-success small mt-1"><i class="bi bi-check-circle-fill me-1"></i>${msg}</div>`;
     input.dataset.valid = 'true';
 }
-
-function clearFeedback(input) {
-    const el = getFeedbackEl(input);
-    if (el) el.innerHTML = '';
-    delete input.dataset.valid;
-}
-
-function formatBytes(bytes) {
-    return (bytes / MB).toFixed(2) + ' MB';
-}
+function clearFeedback(input) { getFeedbackEl(input).innerHTML = ''; delete input.dataset.valid; }
+function formatBytes(bytes) { return (bytes / MB).toFixed(2) + ' MB'; }
 
 function validarInput(input, cfg) {
     const files = Array.from(input.files);
     if (files.length === 0) { clearFeedback(input); return true; }
-
-    if (files.length > cfg.maxFiles) {
-        setErro(input, `Máximo de ${cfg.maxFiles} arquivo(s) permitido. Você selecionou ${files.length}.`);
-        input.value = '';
-        return false;
-    }
-
+    if (files.length > cfg.maxFiles) { setErro(input, `Máximo de ${cfg.maxFiles} arquivo(s). Você selecionou ${files.length}.`); input.value = ''; return false; }
     const erros = [], validos = [];
     files.forEach(file => {
-        if (!cfg.tipos.includes(file.type)) {
-            erros.push(`<strong>${file.name}</strong>: tipo não permitido (${file.type || 'desconhecido'}).`);
-        } else if (file.size > cfg.maxMB * MB) {
-            erros.push(`<strong>${file.name}</strong>: ${formatBytes(file.size)} — limite é ${cfg.maxMB}MB.`);
-        } else {
-            validos.push(file.name);
-        }
+        if (!cfg.tipos.includes(file.type)) erros.push(`<strong>${file.name}</strong>: tipo não permitido.`);
+        else if (file.size > cfg.maxMB * MB) erros.push(`<strong>${file.name}</strong>: ${formatBytes(file.size)} — limite é ${cfg.maxMB}MB.`);
+        else validos.push(file.name);
     });
-
-    if (erros.length > 0) {
-        setErro(input, erros.join('<br>'));
-        input.value = '';
-        return false;
-    }
-
-    const label = validos.length === 1
-        ? `${validos[0]} (${formatBytes(files[0].size)})`
-        : `${validos.length} arquivo(s) selecionado(s)`;
-    setOk(input, label);
+    if (erros.length > 0) { setErro(input, erros.join('<br>')); input.value = ''; return false; }
+    setOk(input, validos.length === 1 ? `${validos[0]} (${formatBytes(files[0].size)})` : `${validos.length} arquivo(s) selecionado(s)`);
     return true;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-
-    // Logo
-    const logo = document.getElementById('logo_negocio_edit');
-    if (logo) logo.addEventListener('change', () => validarInput(logo, uploadConfig.logo_negocio_edit));
-
-    // Imagem de destaque — com preview e "Trocar imagem"
+    const logo    = document.getElementById('logo_negocio_edit');
     const destaque = document.getElementById('imagemDestaqueEdit');
+    const pdf     = document.querySelector('input[name="apresentacao_pdf"]');
+    const galeria = document.querySelector('input[name="galeria_imagens[]"]');
+
+    if (logo)    logo.addEventListener('change', () => validarInput(logo, uploadConfig.logo_negocio_edit));
     if (destaque) {
         destaque.addEventListener('change', function () {
-            const ok = validarInput(destaque, uploadConfig.imagemDestaqueEdit);
-            if (!ok) return;
-
+            if (!validarInput(destaque, uploadConfig.imagemDestaqueEdit)) return;
             const file = this.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = e => {
                 document.getElementById('novoDestaqueImgEdit').src = e.target.result;
                 document.getElementById('novoDestaquePreviewEdit').classList.remove('d-none');
-
-                // Mantém label visível como "Trocar imagem"
                 const labelEl = document.getElementById('uploadLabelDestaqueEdit');
-                labelEl.style.display = '';
-                labelEl.innerHTML = `
-                    <i class="bi bi-arrow-repeat fs-2 mb-2" style="color:#1E3425;"></i>
-                    <span class="fw-600 d-block" style="color:#1E3425;font-size:.92rem;font-weight:600;">Clique para trocar a imagem</span>
-                    <span class="small mt-1" style="color:#9aab9d;">JPG, PNG ou WebP · Máx. 5MB · Proporção 16:9 recomendada</span>
-                `;
+                labelEl.innerHTML = `<i class="bi bi-arrow-repeat fs-2 mb-2" style="color:#1E3425;"></i><span class="fw-600 d-block" style="color:#1E3425;font-size:.92rem;font-weight:600;">Clique para trocar a imagem</span><span class="small mt-1" style="color:#9aab9d;">JPG, PNG ou WebP · Máx. 5MB · Proporção 16:9 recomendada</span>`;
             };
             reader.readAsDataURL(file);
         });
     }
-
-    // PDF
-    const pdf = document.querySelector('input[name="apresentacao_pdf"]');
-    if (pdf) pdf.addEventListener('change', () => validarInput(pdf, uploadConfig.apresentacao_pdf));
-
-    // Galeria — novas imagens
-    const galeria = document.querySelector('input[name="galeria_imagens[]"]');
+    if (pdf)    pdf.addEventListener('change', () => validarInput(pdf, uploadConfig.apresentacao_pdf));
     if (galeria) galeria.addEventListener('change', () => validarInput(galeria, uploadConfig.galeria_imagens));
-
-    // Substituição individual de imagens da galeria existente
     document.querySelectorAll('input[name^="substituir_imagem"]').forEach(input => {
         input.addEventListener('change', () => validarInput(input, uploadConfig.substituir_imagem));
     });
 
-    // Bloqueia submit se houver erro
     document.querySelector('form').addEventListener('submit', function (e) {
         const inputsFixos = [logo, destaque, pdf, galeria].filter(Boolean);
         const inputsSubs  = Array.from(document.querySelectorAll('input[name^="substituir_imagem"]'));
         const todos = [...inputsFixos, ...inputsSubs];
-
-        let bloqueado = false;
-        let primeiroErro = null;
-
+        let bloqueado = false, primeiroErro = null;
         todos.forEach(input => {
             if (input.files && input.files.length > 0 && !input.dataset.valid) {
-                const cfg = input.id === 'logo_negocio_edit'   ? uploadConfig.logo_negocio_edit  :
-                            input.id === 'imagemDestaqueEdit'   ? uploadConfig.imagemDestaqueEdit  :
-                            input.name === 'apresentacao_pdf'   ? uploadConfig.apresentacao_pdf    :
-                            input.name.startsWith('substituir') ? uploadConfig.substituir_imagem   :
-                            uploadConfig.galeria_imagens;
+                const cfg = input.id === 'logo_negocio_edit'    ? uploadConfig.logo_negocio_edit
+                          : input.id === 'imagemDestaqueEdit'    ? uploadConfig.imagemDestaqueEdit
+                          : input.name === 'apresentacao_pdf'    ? uploadConfig.apresentacao_pdf
+                          : input.name.startsWith('substituir')  ? uploadConfig.substituir_imagem
+                          : uploadConfig.galeria_imagens;
                 validarInput(input, cfg);
             }
-            if (input.dataset.valid === 'false') {
-                bloqueado = true;
-                if (!primeiroErro) primeiroErro = input;
-            }
+            if (input.dataset.valid === 'false') { bloqueado = true; if (!primeiroErro) primeiroErro = input; }
         });
-
         if (bloqueado) {
             e.preventDefault();
             if (primeiroErro) primeiroErro.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
             let aviso = document.getElementById('upload-aviso-geral');
             if (!aviso) {
-                aviso = document.createElement('div');
-                aviso.id = 'upload-aviso-geral';
+                aviso = document.createElement('div'); aviso.id = 'upload-aviso-geral';
                 aviso.className = 'alert alert-danger mb-3';
                 aviso.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Corrija os erros nos arquivos antes de salvar.</strong>';
                 document.querySelector('form').prepend(aviso);
@@ -751,8 +711,8 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const radiosInovacao = document.querySelectorAll('.inovacao-tipo');
-    const blocoDescricao  = document.getElementById('bloco-descricao-inovacao');
-    const campoDescricao  = document.getElementById('descricao_inovacao');
+    const blocoDescricao = document.getElementById('bloco-descricao-inovacao');
+    const campoDescricao = document.getElementById('descricao_inovacao');
 
     function checarInovacoes() {
         let temSim = false;
@@ -774,7 +734,6 @@ document.addEventListener("DOMContentLoaded", function() {
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const camposTexto = document.querySelectorAll("input[type='text'], textarea");
-
     function validarTexto(campo) {
         const letras = (campo.value.match(/[a-zA-ZÀ-ÿ]/g) || []).length;
         if (campo.hasAttribute("required") || campo.value.trim() !== "") {
@@ -783,18 +742,13 @@ document.addEventListener("DOMContentLoaded", function() {
             campo.setCustomValidity("");
         }
     }
-
     camposTexto.forEach(campo => {
-        campo.addEventListener("input",  () => validarTexto(campo));
-        campo.addEventListener("blur",   () => { validarTexto(campo); campo.reportValidity(); });
+        campo.addEventListener("input", () => validarTexto(campo));
+        campo.addEventListener("blur",  () => { validarTexto(campo); campo.reportValidity(); });
     });
-
     document.querySelector("form").addEventListener("submit", function(e) {
         let valido = true;
-        camposTexto.forEach(campo => {
-            validarTexto(campo);
-            if (!campo.checkValidity()) { campo.reportValidity(); valido = false; }
-        });
+        camposTexto.forEach(campo => { validarTexto(campo); if (!campo.checkValidity()) { campo.reportValidity(); valido = false; } });
         if (!valido) e.preventDefault();
     });
 });
@@ -802,23 +756,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    const checkboxes       = document.querySelectorAll('.check-desafio');
+    const checkboxes         = document.querySelectorAll('.check-desafio');
     const blocoClassificacao = document.getElementById('bloco-classificacao');
-    const listaRanking     = document.getElementById('lista-ranking');
+    const listaRanking       = document.getElementById('lista-ranking');
 
     function atualizarRanking() {
         let selecionados = [];
         checkboxes.forEach(chk => {
-            if (chk.checked) {
-                selecionados.push({ name: chk.getAttribute('data-name'), label: chk.getAttribute('data-label'), icon: chk.getAttribute('data-icon') });
-            } else {
-                document.getElementById('input_real_' + chk.getAttribute('data-name')).value = "0";
-            }
+            if (chk.checked) selecionados.push({ name: chk.dataset.name, label: chk.dataset.label, icon: chk.dataset.icon });
+            else document.getElementById('input_real_' + chk.dataset.name).value = "0";
         });
-
         blocoClassificacao.style.display = selecionados.length > 0 ? 'block' : 'none';
         listaRanking.innerHTML = '';
-
         selecionados.forEach(item => {
             let hiddenInput = document.getElementById('input_real_' + item.name);
             let valorSalvo  = hiddenInput.value > 0 ? hiddenInput.value : '';
@@ -843,14 +792,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>`;
             listaRanking.appendChild(card);
         });
-
         document.querySelectorAll('.select-nota').forEach(select => {
             select.addEventListener('change', function() {
-                document.getElementById('input_real_' + this.getAttribute('data-target')).value = this.value;
+                document.getElementById('input_real_' + this.dataset.target).value = this.value;
             });
-            if (select.value !== "") {
-                document.getElementById('input_real_' + select.getAttribute('data-target')).value = select.value;
-            }
+            if (select.value !== "") document.getElementById('input_real_' + select.dataset.target).value = select.value;
         });
     }
 

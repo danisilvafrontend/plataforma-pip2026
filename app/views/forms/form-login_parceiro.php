@@ -1,5 +1,6 @@
 <!-- O formulário de login para o Parceiro -->
 <form action="/parceiros/processar_login_parceiro.php" method="POST">
+    <input type="hidden" name="redirect" value="<?= htmlspecialchars($_GET['redirect'] ?? '') ?>">
     <div class="mb-3">
         <label for="login_parceiro" class="form-label fw-bold">E-mail Institucional ou CNPJ</label>
         <div class="input-group">

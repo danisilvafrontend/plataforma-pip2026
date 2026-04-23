@@ -168,7 +168,12 @@ if (empty($reporte)) {
 if (empty($proximos_passos)) {
     $_SESSION['errors_etapa6'][] = "O campo 'Próximos Passos' é obrigatório.";
 }
-
+if (empty($metricas)) {
+    $_SESSION['errors_etapa6'][] = "Selecione pelo menos um indicador de impacto.";
+}
+if (empty($formas_medicao)) {
+    $_SESSION['errors_etapa6'][] = "Selecione pelo menos uma forma de medição do impacto.";
+}
 // Se houver erros, volta para etapa
 if (!empty($_SESSION['errors_etapa6'])) {
     header("Location: /negocios/etapa6_impacto.php?id=" . $negocio_id);

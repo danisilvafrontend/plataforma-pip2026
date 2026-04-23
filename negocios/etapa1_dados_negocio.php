@@ -60,7 +60,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
     <!-- ── Categoria ───────────────────────────────────── -->
     <div class="form-section">
-      <div class="form-section-title"><i class="bi bi-grid-1x2"></i> Categoria *</div>
+      <div class="form-section-title"><i class="bi bi-eye-fill lbl-pub me-1"></i> Categoria *</div>
 
       <div class="row g-3" id="categoriaRadios">
         <?php

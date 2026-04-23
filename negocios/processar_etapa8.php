@@ -42,18 +42,20 @@ if (!empty($_FILES['logo_negocio']['name'])) {
 
     if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp'])
     && $fileSize <= 50 * 1024 * 1024) {
-        $logoName = uniqid('logo_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['logo_negocio']['name']);
+        $logoName   = uniqid('logo_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['logo_negocio']['name']);
         $targetLogo = __DIR__ . '/../uploads/negocios/logos/' . $logoName;
+        if (!is_dir(__DIR__ . '/../uploads/negocios/logos/')) {
+            mkdir(__DIR__ . '/../uploads/negocios/logos/', 0755, true);
+        }
         if (move_uploaded_file($fileTmp, $targetLogo)) {
             $logoUrl = '/uploads/negocios/logos/' . $logoName;
         }
     } else {
-        // BUG 1 CORRIGIDO: era errors_etapa5, agora é errors_etapa8
         $_SESSION['errors_etapa8'][] = "O logotipo deve ser PNG, JPG, JPEG ou WebP e ter no máximo 50MB.";
     }
 }
 
-// ====== Upload Imagem de Destaque (Capa Vitrine) ======
+// ====== Upload Imagem de Destaque ======
 $imagemDestaqueUrl = $apresentacao['imagem_destaque'] ?? null;
 
 if (!empty($_POST['remover_imagem_destaque'])) {
@@ -76,7 +78,6 @@ if (!empty($_FILES['imagem_destaque']['name'])) {
             $imagemDestaqueUrl = '/uploads/negocios/capas/' . $destName;
         }
     } else {
-        // BUG 1 CORRIGIDO: era errors_etapa5, agora é errors_etapa8
         $_SESSION['errors_etapa8'][] = "A imagem de destaque deve ser JPG, PNG ou WebP e ter no máximo 5MB.";
     }
 }
@@ -94,14 +95,15 @@ if (!empty($_FILES['apresentacao_pdf']['name'])) {
     $fileType = mime_content_type($fileTmp);
 
     if (strpos($fileType, 'pdf') === false) {
-        // BUG 1 CORRIGIDO: era errors_etapa5, agora é errors_etapa8
         $_SESSION['errors_etapa8'][] = "O arquivo enviado não é um PDF válido.";
     } elseif ($fileSize > 5 * 1024 * 1024) {
-        // BUG 1 CORRIGIDO: era errors_etapa5, agora é errors_etapa8
         $_SESSION['errors_etapa8'][] = "O PDF excede 5MB.";
     } else {
-        $pdfName = uniqid('pdf_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['apresentacao_pdf']['name']);
+        $pdfName   = uniqid('pdf_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['apresentacao_pdf']['name']);
         $targetPdf = __DIR__ . '/../uploads/negocios/documentos/' . $pdfName;
+        if (!is_dir(__DIR__ . '/../uploads/negocios/documentos/')) {
+            mkdir(__DIR__ . '/../uploads/negocios/documentos/', 0755, true);
+        }
         if (move_uploaded_file($fileTmp, $targetPdf)) {
             $pdfUrl = '/uploads/negocios/documentos/' . $pdfName;
         }
@@ -109,14 +111,11 @@ if (!empty($_FILES['apresentacao_pdf']['name'])) {
 }
 
 // ====== Galeria de imagens ======
-
-// Carrega galeria atual do banco (se existir)
 $galeriaAtual = json_decode($apresentacao['galeria_imagens'] ?? '[]', true);
 if (!is_array($galeriaAtual)) {
     $galeriaAtual = [];
 }
 
-// Remover imagens selecionadas
 if (!empty($_POST['remover_imagem'])) {
     foreach ($_POST['remover_imagem'] as $index) {
         unset($galeriaAtual[$index]);
@@ -124,7 +123,6 @@ if (!empty($_POST['remover_imagem'])) {
     $galeriaAtual = array_values($galeriaAtual);
 }
 
-// Substituir imagens específicas
 if (!empty($_FILES['substituir_imagem']['name'])) {
     foreach ($_FILES['substituir_imagem']['name'] as $index => $name) {
         if (!empty($name)) {
@@ -132,10 +130,12 @@ if (!empty($_FILES['substituir_imagem']['name'])) {
             $fileSize = $_FILES['substituir_imagem']['size'][$index];
             $fileType = mime_content_type($fileTmp);
 
-            // BUG 2 CORRIGIDO: adicionado webp na galeria de substituição
             if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp']) && $fileSize <= 50*1024*1024) {
-                $imgName = uniqid('img_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $name);
+                $imgName   = uniqid('img_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $name);
                 $targetImg = __DIR__ . '/../uploads/negocios/galeria/' . $imgName;
+                if (!is_dir(__DIR__ . '/../uploads/negocios/galeria/')) {
+                    mkdir(__DIR__ . '/../uploads/negocios/galeria/', 0755, true);
+                }
                 if (move_uploaded_file($fileTmp, $targetImg)) {
                     $galeriaAtual[$index] = '/uploads/negocios/galeria/' . $imgName;
                 }
@@ -144,7 +144,6 @@ if (!empty($_FILES['substituir_imagem']['name'])) {
     }
 }
 
-// Adicionar novas imagens (sem ultrapassar 10 no total)
 if (!empty($_FILES['galeria_imagens']['name'][0])) {
     foreach ($_FILES['galeria_imagens']['name'] as $index => $name) {
         if (count($galeriaAtual) >= 10) break;
@@ -152,10 +151,12 @@ if (!empty($_FILES['galeria_imagens']['name'][0])) {
         $fileSize = $_FILES['galeria_imagens']['size'][$index];
         $fileType = mime_content_type($fileTmp);
 
-        // BUG 2 CORRIGIDO: adicionado webp na galeria de novas imagens
         if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp']) && $fileSize <= 50*1024*1024) {
-            $imgName = uniqid('img_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $name);
+            $imgName   = uniqid('img_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $name);
             $targetImg = __DIR__ . '/../uploads/negocios/galeria/' . $imgName;
+            if (!is_dir(__DIR__ . '/../uploads/negocios/galeria/')) {
+                mkdir(__DIR__ . '/../uploads/negocios/galeria/', 0755, true);
+            }
             if (move_uploaded_file($fileTmp, $targetImg)) {
                 $galeriaAtual[] = '/uploads/negocios/galeria/' . $imgName;
             }
@@ -164,20 +165,20 @@ if (!empty($_FILES['galeria_imagens']['name'][0])) {
 }
 
 // ====== Captura dos campos ======
-$frase_negocio       = $_POST['frase_negocio'] ?? null;
-$problema_resolvido  = $_POST['problema_resolvido'] ?? null;
-$solucao_oferecida   = $_POST['solucao_oferecida'] ?? null;
-$video_pitch_url     = $_POST['video_pitch_url'] ?? null;
-$apresentacao_video  = $_POST['apresentacao_video_url'] ?? null;
-$descricao_inovacao  = $_POST['descricao_inovacao'] ?? null;
-$tipo_solucao        = $_POST['tipo_solucao'] ?? null;
-$modelo_negocio      = $_POST['modelo_negocio'] ?? null;
-$colaboradores       = $_POST['colaboradores'] ?? null;
-$apoio               = $_POST['apoio'] ?? null;
-$programas           = $_POST['programas'] ?? null;
-$info_adicionais     = $_POST['info_adicionais'] ?? null;
-$links               = $_POST['info_adicionais_link'] ?? [];
-$linksJson           = json_encode(array_filter($links));
+$frase_negocio      = trim($_POST['frase_negocio']      ?? '');
+$problema_resolvido = trim($_POST['problema_resolvido'] ?? '');
+$solucao_oferecida  = trim($_POST['solucao_oferecida']  ?? '');
+$video_pitch_url    = trim($_POST['video_pitch_url']    ?? '');
+$apresentacao_video = trim($_POST['apresentacao_video_url'] ?? '');
+$descricao_inovacao = trim($_POST['descricao_inovacao'] ?? '');
+$tipo_solucao       = $_POST['tipo_solucao']   ?? null;
+$modelo_negocio     = $_POST['modelo_negocio'] ?? null;
+$colaboradores      = $_POST['colaboradores']  ?? null;
+$apoio              = $_POST['apoio']          ?? null;
+$programas          = trim($_POST['programas'] ?? '');
+$info_adicionais    = trim($_POST['info_adicionais'] ?? '');
+$links              = $_POST['info_adicionais_link'] ?? [];
+$linksJson          = json_encode(array_values(array_filter($links)));
 
 $inovacao_tecnologica   = ($_POST['inovacao_tecnologica']   ?? 'nao') === 'sim' ? 1 : 0;
 $inovacao_produto       = ($_POST['inovacao_produto']       ?? 'nao') === 'sim' ? 1 : 0;
@@ -190,42 +191,43 @@ $inovacao_governanca    = ($_POST['inovacao_governanca']    ?? 'nao') === 'sim' 
 $inovacao_impacto       = ($_POST['inovacao_impacto']       ?? 'nao') === 'sim' ? 1 : 0;
 $inovacao_financiamento = ($_POST['inovacao_financiamento'] ?? 'nao') === 'sim' ? 1 : 0;
 
-// flag geral
 $inovacao = (
-    $inovacao_tecnologica   ||
-    $inovacao_produto       ||
-    $inovacao_servico       ||
-    $inovacao_modelo        ||
-    $inovacao_social        ||
-    $inovacao_ambiental     ||
-    $inovacao_cadeia_valor  ||
-    $inovacao_governanca    ||
-    $inovacao_impacto       ||
+    $inovacao_tecnologica || $inovacao_produto    || $inovacao_servico  ||
+    $inovacao_modelo      || $inovacao_social     || $inovacao_ambiental ||
+    $inovacao_cadeia_valor|| $inovacao_governanca || $inovacao_impacto  ||
     $inovacao_financiamento
 ) ? 'sim' : 'nao';
 
 // ====== Desafios ======
 $desafios = [
-    "acessar_capital","fluxo_caixa","melhorar_gestao","estruturar_equipe",
-    "falta_conselho_mentoria","escassez_tecnico","marketing_posicionamento",
-    "baixa_demanda_vendas","falta_entendimento_publico","parcerias_networking",
-    "acesso_mentoria_especializada","falta_entendimento_bancos","relacionamento_governo",
-    "acesso_mercado_distribuicao","logistica_cara_ineficiente","baixa_capacidade_entrega",
-    "infraestrutura_limitada_cara","internacionalizacao","instabilidade_economica",
-    "carga_tributaria_burocracia","regulacao_desfavoravel"
+    "desafio_acessar_capital", "desafio_fluxo_caixa", "desafio_melhorar_gestao",
+    "desafio_estruturar_equipe", "desafio_falta_conselho_mentoria", "desafio_escassez_tecnico",
+    "desafio_marketing_posicionamento", "desafio_baixa_demanda_vendas",
+    "desafio_falta_entendimento_publico", "desafio_parcerias_networking",
+    "desafio_acesso_mentoria_especializada", "desafio_falta_entendimento_bancos",
+    "desafio_relacionamento_governo", "desafio_acesso_mercado_distribuicao",
+    "desafio_logistica_cara_ineficiente", "desafio_baixa_capacidade_entrega",
+    "desafio_infraestrutura_limitada_cara", "desafio_internacionalizacao",
+    "desafio_instabilidade_economica", "desafio_carga_tributaria_burocracia",
+    "desafio_regulacao_desfavoravel"
 ];
+
 $valoresDesafios = [];
 foreach ($desafios as $d) {
-    $campo = "desafio_" . $d;
-    $valoresDesafios[$campo] = isset($_POST[$campo]) ? (int)$_POST[$campo] : 0;
+    $valoresDesafios[$d] = isset($_POST[$d]) ? (int)$_POST[$d] : 0;
 }
 
-// ====== BUG 3 CORRIGIDO: Validações ANTES do execute ======
-
+// ====== Função de validação de texto ======
 function textoValido($texto) {
-    $texto = trim($texto);
-    $letrasEncontradas = preg_match_all('/[a-zA-ZÀ-ÿ]/', $texto);
-    return $letrasEncontradas >= 5;
+    return preg_match_all('/[a-zA-ZÀ-ÿ]/', trim($texto)) >= 5;
+}
+
+// ====== Validações ======
+
+// Logo obrigatório apenas no primeiro envio
+$logoJaSalvo = !empty($apresentacao['logo_negocio'] ?? null);
+if (!$logoJaSalvo && empty($logoUrl)) {
+    $_SESSION['errors_etapa8'][] = "O logo do negócio é obrigatório.";
 }
 
 if (empty($frase_negocio) || !textoValido($frase_negocio)) {
@@ -240,12 +242,40 @@ if (empty($solucao_oferecida) || !textoValido($solucao_oferecida)) {
     $_SESSION['errors_etapa8'][] = "O campo 'Qual solução você oferece?' deve conter texto válido.";
 }
 
-$temInovacao = ($inovacao === 'sim');
+if (empty($video_pitch_url)) {
+    $_SESSION['errors_etapa8'][] = "Informe a URL do vídeo pitch.";
+}
 
-if ($temInovacao && empty($descricao_inovacao)) {
-    $_SESSION['errors_etapa8'][] = 'Descreva brevemente as principais inovações do seu negócio.';
+if (empty($tipo_solucao)) {
+    $_SESSION['errors_etapa8'][] = "Informe o tipo de solução.";
+}
+
+// ── Novos obrigatórios ──────────────────────────────────────
+if (empty($modelo_negocio)) {
+    $_SESSION['errors_etapa8'][] = "Informe o modelo de negócio (B2B, B2C etc.).";
+}
+
+if (empty($colaboradores)) {
+    $_SESSION['errors_etapa8'][] = "Informe o número de colaboradores.";
+}
+
+if (empty($apoio)) {
+    $_SESSION['errors_etapa8'][] = "Informe se o negócio teve apoio de aceleradora ou programa de fomento.";
+}
+
+$temDesafio = false;
+foreach ($valoresDesafios as $valor) {
+    if ($valor > 0) { $temDesafio = true; break; }
+}
+if (!$temDesafio) {
+    $_SESSION['errors_etapa8'][] = "Selecione e classifique pelo menos um desafio do negócio.";
+}
+// ────────────────────────────────────────────────────────────
+
+if ($inovacao === 'sim' && empty($descricao_inovacao)) {
+    $_SESSION['errors_etapa8'][] = "Descreva brevemente as principais inovações do seu negócio.";
 } elseif (!empty($descricao_inovacao) && !textoValido($descricao_inovacao)) {
-    $_SESSION['errors_etapa8'][] = 'A descrição da inovação deve conter texto válido.';
+    $_SESSION['errors_etapa8'][] = "A descrição da inovação deve conter texto válido.";
 }
 
 if (!empty($programas) && !textoValido($programas)) {
@@ -255,21 +285,6 @@ if (!empty($programas) && !textoValido($programas)) {
 if (!empty($info_adicionais) && !textoValido($info_adicionais)) {
     $_SESSION['errors_etapa8'][] = "O campo 'Informações Adicionais' deve conter texto válido.";
 }
-// ── Validações obrigatórias ausentes ──────────────────────────
-// Logo: obrigatório apenas no primeiro envio (quando ainda não há logo salvo)
-$logoJaSalvo = !empty($apresentacao['logo_negocio'] ?? null);
-if (!$logoJaSalvo && empty($logoUrl)) {
-    $_SESSION['errors_etapa8'][] = "O logo do negócio é obrigatório.";
-}
-if (empty($video_pitch_url)) {
-    $_SESSION['errors_etapa8'][] = "Informe a URL do vídeo pitch.";
-}
-if (empty($inovacao)) {
-    $_SESSION['errors_etapa8'][] = "Informe o tipo de inovação.";
-}
-if (empty($tipo_solucao)) {
-    $_SESSION['errors_etapa8'][] = "Informe o tipo de solução.";
-}
 
 // Se houver erros, volta ANTES de salvar qualquer coisa
 if (!empty($_SESSION['errors_etapa8'])) {
@@ -277,70 +292,76 @@ if (!empty($_SESSION['errors_etapa8'])) {
     exit;
 }
 
-// ====== Insert/Update (só executa se passou em todas as validações) ======
-$stmt = $pdo->prepare("
+// ====== ✅ CORRIGIDO: montagem segura do SQL dinâmico ======
+$desafiosCols   = implode(",\n        ", array_keys($valoresDesafios));
+$desafiosVals   = implode(",\n        ", array_map(fn($d) => ":$d", array_keys($valoresDesafios)));
+$desafiosUpdate = implode(",\n        ", array_map(fn($d) => "$d = VALUES($d)", array_keys($valoresDesafios)));
+
+$sql = "
     INSERT INTO negocio_apresentacao (
         negocio_id, logo_negocio, imagem_destaque, frase_negocio, problema_resolvido, solucao_oferecida,
         video_pitch_url, apresentacao_pdf, apresentacao_video_url,
-        galeria_imagens, inovacao, descricao_inovacao, inovacao_tecnologica,
-        inovacao_produto, inovacao_servico, inovacao_modelo,
+        galeria_imagens, inovacao, descricao_inovacao,
+        inovacao_tecnologica, inovacao_produto, inovacao_servico, inovacao_modelo,
         inovacao_social, inovacao_ambiental, inovacao_cadeia_valor,
         inovacao_governanca, inovacao_impacto, inovacao_financiamento,
         tipo_solucao, modelo_negocio, colaboradores,
         apoio, programas,
-        " . implode(",", array_keys($valoresDesafios)) . ",
+        $desafiosCols,
         info_adicionais, info_adicionais_links,
         criado_em, atualizado_em
     ) VALUES (
         :negocio_id, :logo, :imagem_destaque, :frase, :problema_resolvido, :solucao_oferecida,
         :video_pitch, :pdf, :video_inst,
-        :galeria, :inovacao, :desc_inovacao, :inovacao_tecnologica, :inovacao_produto,
-        :inovacao_servico, :inovacao_modelo,
+        :galeria, :inovacao, :desc_inovacao,
+        :inovacao_tecnologica, :inovacao_produto, :inovacao_servico, :inovacao_modelo,
         :inovacao_social, :inovacao_ambiental, :inovacao_cadeia_valor,
         :inovacao_governanca, :inovacao_impacto, :inovacao_financiamento,
         :tipo_solucao, :modelo_negocio, :colaboradores,
         :apoio, :programas,
-        " . implode(",", array_map(fn($d)=>":".$d, array_keys($valoresDesafios))) . ",
+        $desafiosVals,
         :info_adicionais, :links,
         NOW(), NOW()
     )
     ON DUPLICATE KEY UPDATE
-        logo_negocio = VALUES(logo_negocio),
-        imagem_destaque = VALUES(imagem_destaque),
-        frase_negocio = VALUES(frase_negocio),
-        problema_resolvido = VALUES(problema_resolvido),
-        solucao_oferecida = VALUES(solucao_oferecida),
-        video_pitch_url = VALUES(video_pitch_url),
-        apresentacao_pdf = VALUES(apresentacao_pdf),
-        apresentacao_video_url = VALUES(apresentacao_video_url),
-        galeria_imagens = VALUES(galeria_imagens),
-        inovacao = VALUES(inovacao),
-        descricao_inovacao = VALUES(descricao_inovacao),
-        inovacao_tecnologica = VALUES(inovacao_tecnologica),
-        inovacao_produto = VALUES(inovacao_produto),
-        inovacao_servico = VALUES(inovacao_servico),
-        inovacao_modelo = VALUES(inovacao_modelo),
-        inovacao_social = VALUES(inovacao_social),
-        inovacao_ambiental = VALUES(inovacao_ambiental),
-        inovacao_cadeia_valor = VALUES(inovacao_cadeia_valor),
-        inovacao_governanca = VALUES(inovacao_governanca),
-        inovacao_impacto = VALUES(inovacao_impacto),
-        inovacao_financiamento = VALUES(inovacao_financiamento),
-        tipo_solucao = VALUES(tipo_solucao),
-        modelo_negocio = VALUES(modelo_negocio),
-        colaboradores = VALUES(colaboradores),
-        apoio = VALUES(apoio),
-        programas = VALUES(programas),
-        info_adicionais = VALUES(info_adicionais),
-        info_adicionais_links = VALUES(info_adicionais_links),
-        " . implode(",", array_map(fn($d)=>"$d = VALUES($d)", array_keys($valoresDesafios))) . ",
-        atualizado_em = NOW()
-");
+        logo_negocio            = VALUES(logo_negocio),
+        imagem_destaque         = VALUES(imagem_destaque),
+        frase_negocio           = VALUES(frase_negocio),
+        problema_resolvido      = VALUES(problema_resolvido),
+        solucao_oferecida       = VALUES(solucao_oferecida),
+        video_pitch_url         = VALUES(video_pitch_url),
+        apresentacao_pdf        = VALUES(apresentacao_pdf),
+        apresentacao_video_url  = VALUES(apresentacao_video_url),
+        galeria_imagens         = VALUES(galeria_imagens),
+        inovacao                = VALUES(inovacao),
+        descricao_inovacao      = VALUES(descricao_inovacao),
+        inovacao_tecnologica    = VALUES(inovacao_tecnologica),
+        inovacao_produto        = VALUES(inovacao_produto),
+        inovacao_servico        = VALUES(inovacao_servico),
+        inovacao_modelo         = VALUES(inovacao_modelo),
+        inovacao_social         = VALUES(inovacao_social),
+        inovacao_ambiental      = VALUES(inovacao_ambiental),
+        inovacao_cadeia_valor   = VALUES(inovacao_cadeia_valor),
+        inovacao_governanca     = VALUES(inovacao_governanca),
+        inovacao_impacto        = VALUES(inovacao_impacto),
+        inovacao_financiamento  = VALUES(inovacao_financiamento),
+        tipo_solucao            = VALUES(tipo_solucao),
+        modelo_negocio          = VALUES(modelo_negocio),
+        colaboradores           = VALUES(colaboradores),
+        apoio                   = VALUES(apoio),
+        programas               = VALUES(programas),
+        info_adicionais         = VALUES(info_adicionais),
+        info_adicionais_links   = VALUES(info_adicionais_links),
+        $desafiosUpdate,
+        atualizado_em           = NOW()
+";
+
+$stmt = $pdo->prepare($sql);
 
 $params = [
     'negocio_id'             => $negocio_id,
-    'imagem_destaque'        => $imagemDestaqueUrl,
     'logo'                   => $logoUrl,
+    'imagem_destaque'        => $imagemDestaqueUrl,
     'frase'                  => $frase_negocio,
     'problema_resolvido'     => $problema_resolvido,
     'solucao_oferecida'      => $solucao_oferecida,
@@ -349,7 +370,7 @@ $params = [
     'video_inst'             => $apresentacao_video,
     'galeria'                => json_encode($galeriaAtual),
     'inovacao'               => $inovacao,
-    'desc_inovacao'          => $descricao_inovacao,
+    'desc_inovacao'          => $descricao_inovacao ?: null,
     'inovacao_tecnologica'   => $inovacao_tecnologica,
     'inovacao_produto'       => $inovacao_produto,
     'inovacao_servico'       => $inovacao_servico,
@@ -364,22 +385,18 @@ $params = [
     'modelo_negocio'         => $modelo_negocio,
     'colaboradores'          => $colaboradores,
     'apoio'                  => $apoio,
-    'programas'              => $programas,
-    'info_adicionais'        => $info_adicionais,
+    'programas'              => $programas ?: null,
+    'info_adicionais'        => $info_adicionais ?: null,
     'links'                  => $linksJson,
 ];
 
-// Adiciona os desafios ao array de parâmetros
 foreach ($valoresDesafios as $campo => $valor) {
     $params[$campo] = $valor;
 }
 
-// Executa o insert/update
 $stmt->execute($params);
 
-// ==========================
-// Cálculo do Score Impacto (parcial)
-// ==========================
+// ====== Cálculo do Score Impacto ======
 $stmt = $pdo->prepare("SELECT componente, peso FROM pesos_scores WHERE tipo_score='IMPACTO'");
 $stmt->execute();
 $pesos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -403,27 +420,23 @@ foreach ($pesos as $p) {
     $stmt2 = $pdo->prepare("SELECT valor FROM lookup_scores WHERE componente=? AND opcao=?");
     $stmt2->execute([$componente, $opcao]);
     $valor = (int)($stmt2->fetchColumn() ?: 0);
-
     $scoreImpacto += $valor * $peso;
 }
 
-// Penalidades
 $penalty = 0;
 if ($inovacao === 'nao' && empty($info_adicionais)) {
     $penalty += 5;
 }
-
 $scoreImpacto = max(0, min(100, round($scoreImpacto - $penalty)));
 
-// Salva score no banco
 $stmt = $pdo->prepare("
     INSERT INTO scores_negocios (negocio_id, score_impacto, atualizado_em)
     VALUES (?, ?, NOW())
-    ON DUPLICATE KEY UPDATE score_impacto=VALUES(score_impacto), atualizado_em=NOW()
+    ON DUPLICATE KEY UPDATE score_impacto = VALUES(score_impacto), atualizado_em = NOW()
 ");
 $stmt->execute([$negocio_id, $scoreImpacto]);
 
-// --------- Redirecionamento Inteligente ---------
+// ====== Redirecionamento Inteligente ======
 $modo = $_POST['modo'] ?? 'cadastro';
 
 $stmtProgresso = $pdo->prepare("SELECT etapa_atual, inscricao_completa FROM negocios WHERE id = ?");
@@ -432,7 +445,6 @@ $progresso = $stmtProgresso->fetch(PDO::FETCH_ASSOC);
 
 if ($modo === 'cadastro') {
     $etapaAtualNoBanco = (int)($progresso['etapa_atual'] ?? 1);
-
     if ($etapaAtualNoBanco < 9) {
         $stmtUpdate = $pdo->prepare("
             UPDATE negocios 
@@ -441,7 +453,6 @@ if ($modo === 'cadastro') {
         ");
         $stmtUpdate->execute([$negocio_id, $_SESSION['user_id']]);
     }
-
     header("Location: /negocios/etapa9_documentacao.php?id=" . $negocio_id);
     exit;
 
@@ -462,14 +473,8 @@ if ($modo === 'cadastro') {
             9  => '/negocios/etapa9_documentacao.php',
             10 => '/negocios/confirmacao.php',
         ];
-
         $etapaParada = (int)($progresso['etapa_atual'] ?? 1);
-
-        if (isset($rotas_etapas[$etapaParada])) {
-            header("Location: " . $rotas_etapas[$etapaParada] . "?id=" . $negocio_id);
-        } else {
-            header("Location: /empreendedores/meus-negocios.php");
-        }
+        header("Location: " . ($rotas_etapas[$etapaParada] ?? '/empreendedores/meus-negocios.php') . "?id=" . $negocio_id);
         exit;
     }
 }

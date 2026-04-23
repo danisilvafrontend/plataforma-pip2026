@@ -48,6 +48,16 @@ $fundadoresExistentes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Caso não exista ainda carregamento prévio do financeiro
 $financeiro = $financeiro ?? [];
 
+// Busca dados financeiros já salvos (para repopular após erro ou edição)
+$stmtFin = $pdo->prepare("SELECT * FROM negocio_financeiro WHERE negocio_id = ?");
+$stmtFin->execute([$negocio_id]);
+$financeiro = $stmtFin->fetch(PDO::FETCH_ASSOC) ?: [];
+
+// Decodifica fontes_receita de JSON para array
+if (!empty($financeiro['fontes_receita'])) {
+    $financeiro['fontes_receita'] = json_decode($financeiro['fontes_receita'], true) ?: [];
+}
+
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
@@ -62,6 +72,19 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_financeiro.php';
     ?>
+
+    <?php if (!empty($_SESSION['errors_etapa5'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
+            <ul class="mb-0 ps-3 small">
+            <?php foreach ($_SESSION['errors_etapa5'] as $erro): ?>
+                <li><?= htmlspecialchars($erro) ?></li>
+            <?php endforeach; ?>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['errors_etapa5']); ?>
+    <?php endif; ?>
 
     <form action="/negocios/processar_etapa5.php" method="post" enctype="multipart/form-data">
         <input type="hidden" name="negocio_id" value="<?= (int)$negocio_id ?>">
@@ -80,7 +103,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-md-6">
                     <label for="estagio_faturamento" class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Qual das opções melhor representa o momento atual do seu negócio?
+                        Qual das opções melhor representa o momento atual do seu negócio? *
                     </label>
                     <select name="estagio_faturamento" id="estagio_faturamento" class="form-select etapa6-select" required>
                         <option value="">Selecione...</option>
@@ -96,7 +119,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-md-6">
                     <label for="faixa_faturamento" class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Faixa de faturamento bruto nos últimos 12 meses
+                        Faixa de faturamento bruto nos últimos 12 meses *
                     </label>
                     <select name="faixa_faturamento" id="faixa_faturamento" class="form-select etapa6-select" required>
                         <option value="">Selecione...</option>
@@ -124,7 +147,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <div class="mb-4">
                 <label class="form-label etapa6-label">
                     <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                    Fontes de receita ativas (até 3)
+                    Fontes de receita ativas *
                 </label>
 
                 <?php
@@ -205,7 +228,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <div class="mb-4">
                 <label for="margem_bruta" class="form-label etapa6-label">
                     <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                    Atualmente, mais de 50% da sua receita vem de produtos ou serviços próprios?
+                    Atualmente, mais de 50% da sua receita vem de produtos ou serviços próprios? *
                 </label>
                 <select name="margem_bruta" id="margem_bruta" class="form-select etapa6-select" required>
                     <option value="">Selecione...</option>
@@ -221,7 +244,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-md-6">
                     <label for="dependencia_proprios" class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Mais de 50% da receita vem de produtos/serviços próprios?
+                        Mais de 50% da receita vem de produtos/serviços próprios? *
                     </label>
                     <select name="dependencia_proprios" id="dependencia_proprios" class="form-select etapa6-select" required>
                         <option value="">Selecione...</option>
@@ -233,7 +256,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-md-6 <?= ($financeiro['dependencia_proprios'] ?? '') === 'Não' ? '' : 'd-none' ?>" id="div_previsao_proprios">
                     <label for="previsao_proprios" class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Se não, há previsão de ultrapassar 50% nos próximos 2 anos?
+                        Se não, há previsão de ultrapassar 50% nos próximos 2 anos? *
                     </label>
                     <select name="previsao_proprios" id="previsao_proprios" class="form-select etapa6-select">
                         <option value="">Selecione...</option>
@@ -257,7 +280,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-md-6">
                     <label for="previsao_crescimento" class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Previsão de crescimento de receita (próximos 12 meses)
+                        Previsão de crescimento de receita (próximos 12 meses) *
                     </label>
                     <select name="previsao_crescimento" id="previsao_crescimento" class="form-select etapa6-select" required>
                         <option value="">Selecione...</option>
@@ -271,7 +294,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-md-6">
                     <label for="investimento_externo" class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Investimento externo já captado
+                        Investimento externo já captado *
                     </label>
                     <select name="investimento_externo" id="investimento_externo" class="form-select etapa6-select" required>
                         <option value="">Selecione...</option>
@@ -300,7 +323,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-lg-4">
                     <label class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Qual é sua prioridade estratégica nos próximos 6 meses?
+                        Qual é sua prioridade estratégica nos próximos 6 meses? *
                     </label>
 
                     <?php
@@ -333,7 +356,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-lg-4">
                     <label class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Você está pronto para receber investimento ou parceria agora?
+                        Você está pronto para receber investimento ou parceria agora? *
                     </label>
 
                     <?php
@@ -362,7 +385,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <div class="col-12 col-lg-4">
                     <label class="form-label etapa6-label">
                         <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                        Qual faixa de investimento ou apoio você busca?
+                        Qual faixa de investimento ou apoio você busca? *
                     </label>
 
                     <?php

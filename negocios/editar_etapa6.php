@@ -67,7 +67,19 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </a>
         </div>
     </div>
-
+    <?php if (!empty($_SESSION['errors_etapa6'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
+            <ul class="mb-0 ps-3 small">
+            <?php foreach ($_SESSION['errors_etapa6'] as $erro): ?>
+                <li><?= htmlspecialchars($erro) ?></li>
+            <?php endforeach; ?>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['errors_etapa6']); ?>
+    <?php endif; ?>
+    
     <form action="/negocios/processar_etapa6.php" method="post" enctype="multipart/form-data">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="editar">
@@ -82,7 +94,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <div class="mb-4">
                         <label class="form-label">
-                            <i class="bi bi-eye text-secondary me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio?
+                            <i class="bi bi-eye text-secondary me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio? *
                         </label>
 
                         <?php
@@ -111,7 +123,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje?</label>
+                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje? *</label>
                         <select name="tipo_impacto" class="form-select" required>
                             <?php
                             $opcoesTipoImpacto = [
@@ -136,7 +148,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <div class="mb-4">
                         <label class="form-label">
-                            <i class="bi bi-eye text-secondary me-1"></i> Quem são os principais grupos beneficiados pelo seu negócio? (até 3)
+                            <i class="bi bi-eye text-secondary me-1"></i> Quem são os principais grupos beneficiados pelo seu negócio? *
                         </label>
 
                         <?php
@@ -163,7 +175,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos</label>
+                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos *</label>
                         <select name="alcance" class="form-select" required>
                             <?php
                             $opcoesAlcance = ["1 a 50","51 a 100","101 a 200","201 a 500","Acima de 500"];
@@ -182,7 +194,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Métricas e indicadores utilizados para mensurar o impacto</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Métricas e indicadores utilizados para mensurar o impacto *</label>
                         <?php
                         $metricasLista = [
                             "Número de pessoas atendidas","Geração de renda ou empregos","Redução de emissões de CO₂",
@@ -206,7 +218,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental?</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental? *</label>
                         <select name="medicao" class="form-select" required>
                             <?php
                             $opcoesMedicao = [
@@ -224,7 +236,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como o impacto é medido hoje?</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como o impacto é medido hoje? *</label>
                         <?php
                         $formasLista = [
                             "Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)",
@@ -250,7 +262,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto?</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto? *</label>
                         <select name="reporte" class="form-select" required>
                             <?php
                             $opcoesReporte = [
@@ -274,14 +286,14 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold"><i class="bi bi-graph-up-arrow text-secondary me-1"></i> Quais são os resultados de impacto mais relevantes alcançados até hoje?</label>
+                        <label class="form-label fw-bold"><i class="bi bi-graph-up-arrow text-secondary me-1"></i> Quais são os resultados de impacto mais relevantes alcançados até hoje? <small>(Opcional)</small></label>
                         <small class="text-muted d-block mb-2">Descreva brevemente os principais resultados (até 1000 caracteres).</small>
                         <textarea name="resultados" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['resultados'] ?? '') ?></textarea>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold"><i class="bi bi-link-45deg text-secondary me-1"></i> Links externos (máx. 4)</label>
+                            <label class="form-label fw-bold"><i class="bi bi-link-45deg text-secondary me-1"></i> Links externos (máx. 4) <small>(Opcional)</small></label>
 
                             <div class="alert alert-info py-2 px-3 small mb-3">
                                 <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de links:</strong> vídeos institucionais, apresentações (Pitch Deck no Canva/Google Slides), matérias na mídia, ou painéis interativos de resultados.
@@ -301,7 +313,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> PDFs (máx. 4, até 5MB cada)</label>
+                            <label class="form-label fw-bold"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> PDFs (máx. 4, até 5MB cada) <small>(Opcional)</small></label>
 
                             <div class="alert alert-info py-2 px-3 small mb-3">
                                 <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de PDFs:</strong> relatórios de impacto anuais, certificados, dossiês de resultados ou documentos de validação do negócio.
@@ -333,7 +345,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto?</label>
+                        <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto? *</label>
                         <small class="text-muted">Conte-nos como pretende escalar, medir ou qualificar ainda mais seu impacto nos próximos 12 a 24 meses (até 1000 caracteres).</small>
                         <textarea name="proximos_passos" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['proximos_passos'] ?? '') ?></textarea>
                     </div>

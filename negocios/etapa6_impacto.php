@@ -40,7 +40,19 @@ if (!$negocio) {
 $stmt = $pdo->prepare("SELECT * FROM negocio_fundadores WHERE negocio_id = ? ORDER BY tipo, id");
 $stmt->execute([$negocio_id]);
 $fundadoresExistentes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Busca dados de impacto já salvos
+$stmtImp = $pdo->prepare("SELECT * FROM negocio_impacto WHERE negocio_id = ?");
+$stmtImp->execute([$negocio_id]);
+$impacto = $stmtImp->fetch(PDO::FETCH_ASSOC) ?: [];
 
+// Decodifica arrays JSON
+foreach (['beneficiarios', 'metricas', 'formas_medicao'] as $col) {
+    if (!empty($impacto[$col])) {
+        $impacto[$col] = json_decode($impacto[$col], true) ?: [];
+    } else {
+        $impacto[$col] = [];
+    }
+}
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
@@ -55,6 +67,18 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_impacto.php';
     ?>
+    <?php if (!empty($_SESSION['errors_etapa6'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
+            <ul class="mb-0 ps-3 small">
+            <?php foreach ($_SESSION['errors_etapa6'] as $erro): ?>
+                <li><?= htmlspecialchars($erro) ?></li>
+            <?php endforeach; ?>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['errors_etapa6']); ?>
+    <?php endif; ?>
 
     <form action="/negocios/processar_etapa6.php" method="post" enctype="multipart/form-data">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
@@ -67,7 +91,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
             <div class="mb-3">
                 <label class="form-label">
-                    <i class="bi bi-eye text-secondary me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio?
+                    <i class="bi bi-eye text-secondary me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio? *
                 </label>
 
                 <?php
@@ -98,7 +122,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje?</label>
+                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje? *</label>
                 <select name="tipo_impacto" class="form-select" required>
                     <option value="" <?= empty($impacto['tipo_impacto']) ? 'selected' : '' ?>>Selecione uma opção</option>
                     <?php
@@ -118,18 +142,18 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
             <div class="mb-4">
                 <label class="form-label">
-                    <i class="bi bi-eye text-secondary me-1"></i> Quem são os principais grupos beneficiados pelo seu negócio? (até 3)
+                    <i class="bi bi-eye text-secondary me-1"></i> Quem são os principais grupos beneficiados pelo seu negócio? *
                 </label>
 
                 <?php
-                $beneficiarios = [
+                $listaBeneficiarios = [
                     "Agricultores familiares","Crianças e adolescentes","Ex-infratores","Extrativistas","Idosos","Indígenas","Juventude",
                     "LGBTQIAP+","Migrantes","Minorias étnicas","Mulheres","Pessoas com deficiência","Pessoas com problemas de saúde",
                     "Pessoas de baixa renda","Pessoas em risco de tráfico de pessoas","Pessoas em situação de rua","Pessoas em situação de violência",
                     "Quilombolas","Trabalhadores migrantes, apátridas ou comunidades vulneráveis","Comunidade local","Futuras gerações","População em geral","Outro"
                 ];
-                $selecionados = json_decode($impacto['beneficiarios'] ?? '[]', true);
-                foreach ($beneficiarios as $b): ?>
+                $selecionados = $impacto['beneficiarios']; // já é array, não precisa de json_decode
+                foreach ($listaBeneficiarios as $b): ?>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="beneficiarios[]" value="<?= $b ?>"
                             id="<?= md5($b) ?>" <?= in_array($b, $selecionados) ? 'checked' : '' ?>>
@@ -146,7 +170,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos</label>
+                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos *</label>
                 <select name="alcance" class="form-select" required>
                     <option value="" <?= empty($impacto['alcance']) ? 'selected' : '' ?>>Selecione uma opção</option>
                     <?php
@@ -166,15 +190,15 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais indicadores você já utiliza (formal ou informalmente)?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais indicadores você já utiliza (formal ou informalmente)? *</label>
                 <?php
-                $metricas = [
+                $listaMetricas = [
                     "Número de pessoas atendidas","Geração de renda ou empregos","Redução de emissões de CO₂",
                     "Área preservada ou protegida","Resíduos reciclados ou reaproveitados","Melhoria em indicadores de saúde ou educação",
                     "Área reflorestada, regenerada ou recuperada","Outro"
                 ];
-                $selecionadas = json_decode($impacto['metricas'] ?? '[]', true);
-                foreach ($metricas as $m): ?>
+                $selecionadas = $impacto['metricas']; // já é array
+                foreach ($listaMetricas as $m): ?>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="metricas[]" value="<?= $m ?>"
                             id="<?= md5($m) ?>" <?= in_array($m, $selecionadas) ? 'checked' : '' ?>>
@@ -191,7 +215,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental? *</label>
                 <select name="medicao" class="form-select" required>
                     <option value="" <?= empty($impacto['medicao']) ? 'selected' : '' ?>>Selecione uma opção</option>
                     <?php
@@ -210,17 +234,17 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como o impacto é medido hoje?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como o impacto é medido hoje?*</label>
                 <?php
-                $formasMedicao = [
+                $listaFormasMedicao = [
                     "Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)",
                     "Relatórios internos manuais ou dashboards próprios",
                     "Parcerias com especialistas, consultorias ou ONGs",
                     "Não fazemos medição formal ainda",
                     "Outro"
                 ];
-                $formasSelecionadas = json_decode($impacto['formas_medicao'] ?? '[]', true);
-                foreach ($formasMedicao as $fm): ?>
+                $formasSelecionadas = $impacto['formas_medicao']; // já é array
+                foreach ($listaFormasMedicao as $fm): ?>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="formas_medicao[]" value="<?= $fm ?>"
                             id="<?= md5($fm) ?>" <?= in_array($fm, $formasSelecionadas) ? 'checked' : '' ?>>
@@ -237,7 +261,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto? *</label>
                 <select name="reporte" class="form-select" required>
                     <option value="" <?= empty($impacto['reporte']) ? 'selected' : '' ?>>Selecione uma opção</option>
                     <?php
@@ -262,14 +286,14 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> Quais são os resultados de impacto mais relevantes alcançados até hoje?</label>
+                <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> Quais são os resultados de impacto mais relevantes alcançados até hoje? <small>(opcional)</small></label>
                 <small class="text-muted d-block mb-2">Descreva brevemente os principais resultados (até 1000 caracteres).</small>
                 <textarea name="resultados" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['resultados'] ?? '') ?></textarea>
             </div>
 
             <div class="row g-4">
                 <div class="col-12 col-md-6">
-                    <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> Links externos (máx. 4)</label>
+                    <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> Links externos (máx. 4) <small>(opcional)</small></label>
 
                     <div class="alert alert-info py-2 px-3 small mb-3">
                         <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de links:</strong> vídeos institucionais, apresentações (Pitch Deck no Canva/Google Slides), matérias na mídia, ou painéis interativos de resultados.
@@ -293,7 +317,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 </div>
 
                 <div class="col-12 col-md-6">
-                    <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> PDFs (máx. 4, até 5MB cada)</label>
+                    <label class="form-label fw-bold"><i class="bi bi-eye text-secondary me-1"></i> PDFs (máx. 4, até 5MB cada) <small>(opcional)</small></label>
 
                     <div class="alert alert-info py-2 px-3 small mb-3">
                         <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de PDFs:</strong> relatórios de impacto anuais, certificados, dossiês de resultados ou documentos de validação do negócio.
@@ -329,7 +353,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto?</label>
+                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto? *</label>
                 <small class="text-muted">Conte-nos como pretende escalar, medir ou qualificar ainda mais seu impacto nos próximos 12 a 24 meses (até 1000 caracteres).</small>
                 <textarea name="proximos_passos" class="form-control" rows="4" maxlength="1000" required><?= htmlspecialchars($impacto['proximos_passos'] ?? '') ?></textarea>
             </div>

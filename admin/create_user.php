@@ -155,6 +155,8 @@ if (is_file($header)) include $header; else echo "<h2>Novo Usuário</h2>";
         <select name="role" class="form-select">
           <option value="user"  <?= (($_POST['role'] ?? '') === 'user')  ? 'selected' : '' ?>>User</option>
           <option value="admin" <?= (($_POST['role'] ?? '') === 'admin') ? 'selected' : '' ?>>Admin</option>
+          <option value="juri" <?= (($_POST['role'] ?? '') === 'juri') ? 'selected' : '' ?>>Júri</option>
+          <option value="tecnica" <?= (($_POST['role'] ?? '') === 'tecnica') ? 'selected' : '' ?>>Bancada Técnica</option>
           <?php if (is_superadmin()): ?>
             <option value="superadmin" <?= (($_POST['role'] ?? '') === 'superadmin') ? 'selected' : '' ?>>Superadmin</option>
           <?php endif; ?>

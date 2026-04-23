@@ -211,15 +211,20 @@ if ($dadosVot) {
                     <aside class="negocio-side-card">
                         
                         <h3 class="negocio-side-title">Ações</h3>
-                        <p class="negocio-side-text text-muted">Esses botões serão conectados aos módulos nas próximas etapas.</p>
 
                         <div class="negocio-action-grid">
                             <?php if ($votacaoNegocio): ?>
                                 <div class="negocio-acao-votar mb-3">
-                                    <?php if (!isset($_SESSION['user_id'])): ?>
+                                    <?php
+                                    $usuarioLogado = !empty($_SESSION['user_id'])
+                                                || !empty($_SESSION['parceiro_id'])
+                                                || (!empty($_SESSION['logado']) && ($_SESSION['usuario_tipo'] ?? '') === 'sociedade_civil');
+                                    ?>
+
+                                    <?php if (!$usuarioLogado): ?>
                                         <a href="/login.php?redirect=<?= urlencode('/negocio.php?id=' . $negocio['id']) ?>"
-                                        class="btn btn-primary w-100">
-                                            <i class="bi bi-trophy me-2"></i> Votar neste negócio
+                                        class="negocio-action-btn negocio-action-btn-primary w-100">
+                                            <i class="bi bi-trophy me-2"></i> Faça o login para votar
                                         </a>
 
                                     <?php elseif ($jaVotouNegocio): ?>
@@ -232,18 +237,14 @@ if ($dadosVot) {
                                             <input type="hidden" name="inscricao_id" value="<?= (int)$inscricaoNegocio['id'] ?>">
                                             <input type="hidden" name="fase_id"      value="<?= (int)$faseVotNegocio['fase_id'] ?>">
                                             <input type="hidden" name="redirect"     value="/negocio.php?id=<?= $negocio['id'] ?>">
-                                            <button type="submit" class="btn btn-primary w-100">
+                                            <button type="submit" class="negocio-action-btn negocio-action-btn-primary w-100">
                                                 <i class="bi bi-trophy me-2"></i> Votar neste negócio
                                             </button>
                                         </form>
                                     <?php endif; ?>
-
-                                    <p class="text-muted small text-center mt-1 mb-0">
-                                        Este negócio está inscrito na premiação.
-                                        <a href="/premiacao.php">Ver todos os inscritos</a>
-                                    </p>
                                 </div>
                             <?php endif; ?>
+
                             <a href="#" class="negocio-action-btn" title="Trocar ideias ou formar parcerias">
                                 <i class="bi bi-people"></i>
                                 <span>Conectar</span>

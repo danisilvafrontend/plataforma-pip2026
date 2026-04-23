@@ -62,6 +62,15 @@ if (empty($sustentabilidade)) {
 if (empty($escala)) {
     $_SESSION['errors_etapa7'][] = "Informe a escala pretendida.";
 }
+if (empty($apoios)) {
+    $_SESSION['errors_etapa7'][] = "Selecione pelo menos um tipo de apoio financeiro ou estratégico.";
+}
+if (empty($areas)) {
+    $_SESSION['errors_etapa7'][] = "Selecione pelo menos uma área que gostaria de fortalecer.";
+}
+if (empty($temas)) {
+    $_SESSION['errors_etapa7'][] = "Selecione pelo menos um tema de aprendizado.";
+}
 
 if (!empty($_SESSION['errors_etapa7'])) {
     header("Location: /negocios/etapa7_visao.php?id=" . $negocio_id);

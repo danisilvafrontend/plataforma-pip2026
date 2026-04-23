@@ -3,10 +3,8 @@
 declare(strict_types=1);
 session_start();
 
-// Helpers
 require_once __DIR__ . '/../app/helpers/functions.php';
 
-// Configuração do banco
 $config = require __DIR__ . '/../app/config/db.php';
 
 try {
@@ -21,13 +19,12 @@ try {
     die("Erro na conexão com o banco: " . $e->getMessage());
 }
 
-// Captura dados do formulário
-$email = sanitize_email($_POST['email'] ?? '');
-$senha = $_POST['senha'] ?? '';
+$email    = sanitize_email($_POST['email'] ?? '');
+$senha    = $_POST['senha'] ?? '';
+$redirect = trim($_POST['redirect'] ?? '');
 
 $errors = [];
 
-// Validações básicas
 if (!$email) {
     $errors[] = "Informe um e-mail válido.";
 }
@@ -43,7 +40,6 @@ if (!empty($errors)) {
     exit;
 }
 
-// Busca empreendedor pelo e-mail
 $stmt = $pdo->prepare("SELECT id, nome, email, senha_hash 
                        FROM empreendedores 
                        WHERE email = ? LIMIT 1");
@@ -52,12 +48,14 @@ $empreendedor = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($empreendedor && password_verify($senha, $empreendedor['senha_hash'])) {
     session_regenerate_id(true);
-    $_SESSION['empreendedor_id'] = (int)$empreendedor['id'];
-    $_SESSION['empreendedor_nome'] = $empreendedor['nome']; // só nome
-    $_SESSION['empreendedor_email'] = $empreendedor['email'];
-    $_SESSION['logged_at'] = time();
 
-    // Atualiza o último login
+    $_SESSION['user_id']           = (int)$empreendedor['id'];
+    $_SESSION['user_role']         = 'empreendedor';
+    $_SESSION['empreendedor_id']   = (int)$empreendedor['id'];
+    $_SESSION['empreendedor_nome'] = $empreendedor['nome'];
+    $_SESSION['empreendedor_email'] = $empreendedor['email'];
+    $_SESSION['logged_at']         = time();
+
     $update = $pdo->prepare("
         UPDATE empreendedores
         SET status = CASE
@@ -70,21 +68,12 @@ if ($empreendedor && password_verify($senha, $empreendedor['senha_hash'])) {
     ");
     $update->execute([$empreendedor['id']]);
 
-    session_regenerate_id(true);
-        $_SESSION['user_id'] = (int)$empreendedor['id'];   // ID genérico usado pelo auth.php
-        $_SESSION['user_role'] = 'empreendedor';           // role reconhecida pelo helper
-
-        // Mantém também os campos específicos que você já usa
-        $_SESSION['empreendedor_id'] = (int)$empreendedor['id'];
-        $_SESSION['empreendedor_nome'] = $empreendedor['nome'];
-        $_SESSION['empreendedor_email'] = $empreendedor['email'];
-        $_SESSION['logged_at'] = time();
-
-    header("Location: /empreendedores/dashboard.php");
+    // Redireciona para a URL de origem ou para o dashboard
+    $destino = ($redirect && str_starts_with($redirect, '/')) ? $redirect : '/empreendedores/dashboard.php';
+    header("Location: " . $destino);
     exit;
 } else {
-    // Salva mensagem de erro na sessão
     $_SESSION['login_error'] = "E-mail ou senha inválidos.";
-    header("Location: /login.php");
+    header("Location: /login.php" . ($redirect ? '?redirect=' . urlencode($redirect) : ''));
     exit;
 }

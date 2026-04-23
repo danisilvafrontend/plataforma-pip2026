@@ -2,6 +2,7 @@
 
 <!-- app/views/forms/form-login_sociedade.php -->
 <form action="/auth/processar_login_sociedade.php" method="POST">
+    <input type="hidden" name="redirect" value="<?= htmlspecialchars($_GET['redirect'] ?? '') ?>">
     <div class="mb-3">
         <label for="login_sociedade" class="form-label fw-bold">E-mail ou CPF</label>
         <div class="input-group">

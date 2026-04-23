@@ -68,12 +68,14 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
     </div>
 
     <?php if (!empty($_SESSION['errors_etapa5'])): ?>
-        <div class="alert alert-danger mb-4">
-            <ul class="mb-0 ps-3">
-                <?php foreach ($_SESSION['errors_etapa5'] as $e): ?>
-                    <li><?= htmlspecialchars($e) ?></li>
-                <?php endforeach; ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
+            <ul class="mb-0 ps-3 small">
+            <?php foreach ($_SESSION['errors_etapa5'] as $erro): ?>
+                <li><?= htmlspecialchars($erro) ?></li>
+            <?php endforeach; ?>
             </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php unset($_SESSION['errors_etapa5']); ?>
     <?php endif; ?>
@@ -94,7 +96,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 col-md-6">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Estágio atual de faturamento
+                                Estágio atual de faturamento *
                             </label>
                             <select name="estagio_faturamento" class="form-select" required>
                                 <?php
@@ -117,7 +119,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 col-md-6">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Faixa de faturamento bruto nos últimos 12 meses
+                                Faixa de faturamento bruto nos últimos 12 meses *
                             </label>
                             <select name="faixa_faturamento" class="form-select" required>
                                 <?php
@@ -148,7 +150,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <div class="mb-3">
                         <label class="form-label">
                             <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                            Fontes de receita ativas (até 3)
+                            Fontes de receita ativas *
                         </label>
 
                         <?php
@@ -210,7 +212,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <div class="mb-3">
                         <label class="form-label">
                             <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                            Margem bruta estimada
+                            Margem bruta estimada *
                         </label>
                         <select name="margem_bruta" class="form-select" required>
                             <?php
@@ -233,7 +235,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 col-md-6">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Mais de 50% da receita vem de produtos/serviços próprios?
+                                Mais de 50% da receita vem de produtos/serviços próprios? *
                             </label>
                             <select name="dependencia_proprios" id="dependencia_proprios" class="form-select" required>
                                 <option value="">Selecione...</option>
@@ -250,7 +252,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 col-md-6 <?= ($financeiro['dependencia_proprios'] ?? '') === 'Não' ? '' : 'd-none' ?>" id="div_previsao_proprios">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Se não, há previsão de ultrapassar 50% nos próximos 2 anos?
+                                Se não, há previsão de ultrapassar 50% nos próximos 2 anos? *
                             </label>
                             <select name="previsao_proprios" id="previsao_proprios" class="form-select" <?= ($financeiro['dependencia_proprios'] ?? '') === 'Não' ? 'required' : '' ?>>
                                 <option value="">Selecione...</option>
@@ -275,7 +277,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 col-md-6">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Previsão de crescimento de receita (próximos 12 meses)
+                                Previsão de crescimento de receita (próximos 12 meses) *
                             </label>
                             <select name="previsao_crescimento" class="form-select" required>
                                 <?php
@@ -296,7 +298,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 col-md-6">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Investimento externo já captado
+                                Investimento externo já captado *
                             </label>
                             <select name="investimento_externo" class="form-select" required>
                                 <?php
@@ -328,7 +330,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 mb-2">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Qual é sua prioridade estratégica nos próximos 6 meses?
+                                Qual é sua prioridade estratégica nos próximos 6 meses? *
                             </label>
                             <?php
                             $opcoesPrioridade = [
@@ -355,7 +357,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 mb-2">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Você está pronto para receber investimento ou parceria agora?
+                                Você está pronto para receber investimento ou parceria agora? *
                             </label>
                             <?php
                             $opcoesPronto = [
@@ -378,7 +380,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="col-12 mb-2">
                             <label class="form-label">
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
-                                Qual faixa de investimento ou apoio você busca?
+                                Qual faixa de investimento ou apoio você busca? *
                             </label>
                             <?php
                             $opcoesFaixaInvestimento = [

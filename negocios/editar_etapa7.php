@@ -66,8 +66,20 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 <i class="bi bi-arrow-left me-1"></i> Meus Negócios
             </a>
         </div>
-    </div>
+    </div> 
 
+    <?php if (!empty($_SESSION['errors_etapa7'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
+            <ul class="mb-0 ps-3 small">
+                <?php foreach ($_SESSION['errors_etapa7'] as $erro): ?>
+                    <li><?= htmlspecialchars($erro) ?></li>
+                <?php endforeach; ?>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['errors_etapa7']); ?>
+    <?php endif; ?>
 
     <form action="/negocios/processar_etapa7.php" method="post">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
@@ -82,7 +94,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a visão estratégica do fundador(a) para os próximos 5 anos?</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a visão estratégica do fundador(a) para os próximos 5 anos? *</label>
                         <select name="visao_estrategica" class="form-select" required>
                             <option value="" <?= empty($visao['visao_estrategica']) ? 'selected' : '' ?>>Selecione uma opção</option>
                             <?php
@@ -106,7 +118,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como você avalia a sustentabilidade financeira de longo prazo do seu negócio?</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como você avalia a sustentabilidade financeira de longo prazo do seu negócio? *</label>
                         <select name="sustentabilidade" class="form-select" required>
                             <option value="" <?= empty($visao['sustentabilidade']) ? 'selected' : '' ?>>Selecione uma opção</option>
                             <?php
@@ -132,7 +144,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a sua ambição de escala nos próximos anos?</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual é a sua ambição de escala nos próximos anos? *</label>
                         <select name="escala" class="form-select" required>
                             <option value="" <?= empty($visao['escala']) ? 'selected' : '' ?>>Selecione uma opção</option>
                             <?php
@@ -152,7 +164,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual o tipo de apoio financeiro ou estratégico que você busca atualmente?</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual o tipo de apoio financeiro ou estratégico que você busca atualmente? *</label>
                         <?php
                         $apoiosLista = [
                             "Investimento Anjo","Venture Capital (VC)","Parcerias corporativas ou estratégicas",
@@ -178,7 +190,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais áreas do seu negócio você gostaria de fortalecer com apoio externo? (até 3)</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais áreas do seu negócio você gostaria de fortalecer com apoio externo? *</label>
                         <?php
                         $areasLista = [
                             "Capital de giro ou fluxo de caixa","Expansão comercial e abertura de mercado",
@@ -205,7 +217,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Em quais temas você gostaria de aprender ou trocar com outros empreendedores/mentores? (até 3)</label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Em quais temas você gostaria de aprender ou trocar com outros empreendedores/mentores? *</label>
                         <?php
                         $temasLista = [
                             "Finanças para impacto (valuation, métricas, captação)",

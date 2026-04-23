@@ -53,7 +53,18 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_visao.php';
     ?>
-
+    <?php if (!empty($_SESSION['errors_etapa7'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
+            <ul class="mb-0 ps-3 small">
+                <?php foreach ($_SESSION['errors_etapa7'] as $erro): ?>
+                    <li><?= htmlspecialchars($erro) ?></li>
+                <?php endforeach; ?>
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['errors_etapa7']); ?>
+    <?php endif; ?>
     <form action="/negocios/processar_etapa7.php" method="post">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="cadastro">
@@ -134,7 +145,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual o tipo de apoio financeiro ou estratégico que você busca atualmente?</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual o tipo de apoio financeiro ou estratégico que você busca atualmente? *</label>
                 <?php
                 $apoiosLista = [
                     "Investimento Anjo","Venture Capital (VC)","Parcerias corporativas ou estratégicas",
@@ -160,7 +171,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais áreas do seu negócio você gostaria de fortalecer com apoio externo? (até 3)</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais áreas do seu negócio você gostaria de fortalecer com apoio externo? *</label>
                 <?php
                 $areasLista = [
                     "Capital de giro ou fluxo de caixa","Expansão comercial e abertura de mercado",
@@ -187,7 +198,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Em quais temas você gostaria de aprender ou trocar com outros empreendedores/mentores? (até 3)</label>
+                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Em quais temas você gostaria de aprender ou trocar com outros empreendedores/mentores? *</label>
                 <?php
                 $temasLista = [
                     "Finanças para impacto (valuation, métricas, captação)",

@@ -97,7 +97,15 @@ if (empty($previsao_crescimento)) {
 if (empty($investimento_externo)) {
     $errors[] = "Informe se há investimento externo.";
 }
-
+if (empty($prioridade_estrategica)) {
+    $errors[] = "Informe a prioridade estratégica nos próximos 6 meses.";
+}
+if (empty($pronto_investimento)) {
+    $errors[] = "Informe se está pronto para receber investimento ou parceria.";
+}
+if (empty($faixa_investimento)) {
+    $errors[] = "Informe a faixa de investimento ou apoio buscada.";
+}
 
 // Se houver erros, salva na sessão e volta para a etapa
 if (!empty($errors)) {

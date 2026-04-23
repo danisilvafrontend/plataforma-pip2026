@@ -147,6 +147,8 @@ $fStatus = $_POST['status'] ?? $user['status'];
         <select name="role" class="form-select">
           <option value="user"  <?= $fRole === 'user'  ? 'selected' : '' ?>>User</option>
           <option value="admin" <?= $fRole === 'admin' ? 'selected' : '' ?>>Admin</option>
+          <option value="juri" <?= $fRole === 'juri' ? 'selected' : '' ?>>Júri</option>
+          <option value="tecnica" <?= $fRole === 'tecnica' ? 'selected' : '' ?>>Bancada Técnica</option>
           <?php if (is_superadmin()): ?>
             <option value="superadmin" <?= $fRole === 'superadmin' ? 'selected' : '' ?>>Superadmin</option>
           <?php endif; ?>

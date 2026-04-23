@@ -113,7 +113,7 @@ try {
         : $dados['email_comercial'];
 
     if (!empty($emailDestino)) {
-        $subject = 'Seu cadastro precisa de correções – Plataforma Impactos Positivos';
+        $subject = 'Seu negócio está pendente!';
 
         $bodyHtml = "
             <div style='font-family:Arial,sans-serif;color:#333;line-height:1.6;max-width:600px;margin:0 auto;border:1px solid #eaeaea;border-radius:8px;padding:30px;background-color:#ffffff;'>
@@ -122,12 +122,12 @@ try {
                     <h2 style='color:#dc3545;margin:10px 0 0 0;'>Cadastro com pendências</h2>
                 </div>
 
-                <p style='font-size:16px;'>Olá, <strong>{$nome_empreendedor}</strong>!</p>
+                <p style='font-size:16px;'>Olá, <strong>{$nome_empreendedor}</strong>,</p>
 
-                <p>Analisamos o cadastro do negócio <strong>{$nome_negocio}</strong> e identificamos alguns pontos que precisam ser revisados antes da publicação na vitrine.</p>
+                <p>Analisamos o cadastro do <strong>{$nome_negocio}</strong> e identificamos alguns pontos que precisam de ajuste antes de publicarmos na vitrine.</p>
 
                 <div style='background-color:#fff3f3;border-left:4px solid #dc3545;padding:15px;margin:25px 0;border-radius:4px;'>
-                    <p style='margin:0 0 10px 0;'><strong>Itens que precisam de atenção:</strong></p>
+                    <p style='margin:0 0 10px 0;'><strong>Correções:</strong></p>
                     <ul style='margin:0;padding-left:18px;color:#555;'>
                         {$itens_pendencias_html}
                     </ul>
@@ -135,17 +135,24 @@ try {
 
                 {$bloco_obs}
 
-                <p>Acesse seu painel, faça as correções necessárias e reenvie o cadastro para análise. Nossa equipe fará uma nova revisão assim que você reenviar.</p>
+                <p>Após atualizar as informações, reenvie seu cadastro para uma nova avaliação.</p>
 
                 <p style='text-align:center;margin:35px 0;'>
-                    <a href='{$link_painel}' style='background-color:#0d6efd;color:#ffffff;padding:14px 30px;text-decoration:none;border-radius:5px;font-weight:bold;font-size:16px;display:inline-block;'>
-                        Acessar meu painel e corrigir
+                    <a href='{$link_painel}' style='background-color:#1D4F3A;color:#ffffff;padding:14px 30px;text-decoration:none;border-radius:5px;font-weight:bold;font-size:16px;display:inline-block;'>
+                        Acessar painel
                     </a>
                 </p>
 
+                <div style='background-color:#f0f4ed;border-left:4px solid #CDDE00;padding:15px;margin:20px 0;border-radius:4px;'>
+                    <p style='margin:0;font-size:15px;color:#3a5a40;'>
+                        Certo? Vamos garantir que seu negócio esteja pronto para gerar conexões e oportunidades na plataforma.
+                    </p>
+                </div>
+
                 <hr style='border:none;border-top:1px solid #eee;margin:30px 0;'>
-                <p style='color:#666;font-size:14px;margin-bottom:5px;'>Qualquer dúvida, entre em contato com nossa equipe.</p>
+                <p style='color:#666;font-size:14px;margin-bottom:5px;'>Se precisar de apoio, conte com a gente.</p>
                 <p style='color:#666;font-size:14px;margin-top:0;'>Um abraço,<br><strong>Equipe Impactos Positivos</strong></p>
+
             </div>
         ";
 
