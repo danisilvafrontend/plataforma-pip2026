@@ -238,95 +238,6 @@ foreach ($rows as $row) {
 require_once $appBase . '/views/admin/header.php';
 ?>
 
-<style>
-/* ── KPI ── */
-.kpi-card {
-    border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;
-    gap:6px;box-shadow:0 1px 4px rgba(30,52,37,.08);
-    background:#fff;border:1px solid #e8ede9;height:100%;
-}
-.kpi-icon { width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:4px; }
-.kpi-valor { font-size:28px;font-weight:800;color:#1E3425;line-height:1; }
-.kpi-label { font-size:12px;color:#6c7a6e;font-weight:500; }
-.kpi-sub   { font-size:11px;color:#9aab9d; }
-
-/* ── Categoria header ── */
-.cat-header {
-    background:linear-gradient(135deg,#1E3425 0%,#2d5038 100%);
-    color:#fff;border-radius:12px 12px 0 0;padding:14px 20px;
-    display:flex;align-items:center;gap:12px;
-}
-.cat-header .cat-nome { font-size:17px;font-weight:700; }
-.cat-header .cat-badge {
-    background:rgba(255,255,255,.15);border-radius:99px;
-    padding:3px 10px;font-size:11px;
-}
-
-/* ── Card do negócio ── */
-.negocio-card {
-    border:1px solid #e8ede9;border-radius:0;
-    transition:box-shadow .15s;
-    background:#fff;
-}
-.negocio-card:last-child { border-radius:0 0 12px 12px; }
-.negocio-card:hover { box-shadow:0 4px 16px rgba(30,52,37,.10); z-index:1; position:relative; }
-.negocio-card.is-vencedor {
-    border-left:4px solid #CDDE00 !important;
-    background:linear-gradient(90deg,#fafff0 0%,#fff 60%);
-}
-.negocio-card.is-publicado {
-    border-left:4px solid #198754 !important;
-}
-
-.logo-thumb {
-    width:52px;height:52px;border-radius:10px;object-fit:cover;
-    border:1px solid #e8ede9;background:#f7faf7;
-}
-.logo-placeholder {
-    width:52px;height:52px;border-radius:10px;
-    background:#f0f4f1;display:flex;align-items:center;justify-content:center;
-    font-size:20px;color:#9aab9d;border:1px solid #e8ede9;
-}
-
-.pontos-pill {
-    display:inline-flex;align-items:center;gap:5px;
-    padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700;
-}
-.score-mini {
-    display:inline-flex;align-items:center;gap:3px;
-    padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;
-}
-
-.status-badge-pub {
-    display:inline-flex;align-items:center;gap:5px;
-    padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;
-    white-space:nowrap;
-}
-
-.trofeu { font-size:22px; }
-.vencedor-crown { color:#CDDE00;font-size:20px; }
-
-/* ── Toggle switch ── */
-.toggle-pub {
-    display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;
-    cursor:pointer;
-}
-.toggle-pub input[type=checkbox] { width:38px;height:20px;cursor:pointer; }
-
-/* ── Empty state ── */
-.empty-cat {
-    background:#fff;border:1px solid #e8ede9;border-radius:0 0 12px 12px;
-    padding:32px;text-align:center;color:#9aab9d;font-size:13px;
-}
-
-.filtros-card { background:#fff;border:1px solid #e8ede9;border-radius:12px;padding:18px 20px;margin-bottom:24px; }
-
-.rank-pos {
-    width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
-    justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;
-}
-</style>
-
 <div class="container-fluid py-4">
 
     <!-- Cabeçalho -->
@@ -351,43 +262,43 @@ require_once $appBase . '/views/admin/header.php';
     <!-- KPIs -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#eaf7ef;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#eaf7ef;">
                     <i class="bi bi-trophy-fill" style="color:#1E3425;"></i>
                 </div>
-                <div class="kpi-valor"><?= (int)($kpi['total_vencedores'] ?? 0) ?></div>
-                <div class="kpi-label">Vencedores Definidos</div>
-                <div class="kpi-sub">de <?= (int)($kpi['total_registros'] ?? 0) ?> finalistas</div>
+                <div class="prem-kpi-valor"><?= (int)($kpi['total_vencedores'] ?? 0) ?></div>
+                <div class="prem-kpi-label">Vencedores Definidos</div>
+                <div class="prem-kpi-sub">de <?= (int)($kpi['total_registros'] ?? 0) ?> finalistas</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#e8f5e9;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#e8f5e9;">
                     <i class="bi bi-megaphone-fill" style="color:#198754;"></i>
                 </div>
-                <div class="kpi-valor"><?= (int)($kpi['total_publicados'] ?? 0) ?></div>
-                <div class="kpi-label">Resultados Publicados</div>
-                <div class="kpi-sub">visíveis para o público</div>
+                <div class="prem-kpi-valor"><?= (int)($kpi['total_publicados'] ?? 0) ?></div>
+                <div class="prem-kpi-label">Resultados Publicados</div>
+                <div class="prem-kpi-sub">visíveis para o público</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#fff3cd;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#fff3cd;">
                     <i class="bi bi-hourglass-split" style="color:#856404;"></i>
                 </div>
-                <div class="kpi-valor"><?= (int)($kpi['total_pendentes'] ?? 0) ?></div>
-                <div class="kpi-label">Aguardando Publicação</div>
-                <div class="kpi-sub">resultados não divulgados</div>
+                <div class="prem-kpi-valor"><?= (int)($kpi['total_pendentes'] ?? 0) ?></div>
+                <div class="prem-kpi-label">Aguardando Publicação</div>
+                <div class="prem-kpi-sub">resultados não divulgados</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#f3f0ff;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#f3f0ff;">
                     <i class="bi bi-grid-fill" style="color:#5a3e9a;"></i>
                 </div>
-                <div class="kpi-valor"><?= count($porCategoria) ?></div>
-                <div class="kpi-label">Categorias com Resultado</div>
-                <div class="kpi-sub">neste filtro</div>
+                <div class="prem-kpi-valor"><?= count($porCategoria) ?></div>
+                <div class="prem-kpi-label">Categorias com Resultado</div>
+                <div class="prem-kpi-sub">neste filtro</div>
             </div>
         </div>
     </div>

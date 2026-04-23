@@ -263,45 +263,6 @@ $votos = $stmtVotos->fetchAll();
 require_once $appBase . '/views/admin/header.php';
 ?>
 
-<style>
-/* ── KPI ── */
-.kpi-card {
-    border-radius:12px; padding:20px 22px; display:flex; flex-direction:column;
-    gap:6px; box-shadow:0 1px 4px rgba(30,52,37,.08);
-    background:#fff; border:1px solid #e8ede9; height:100%;
-}
-.kpi-icon { width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:4px; }
-.kpi-valor { font-size:28px;font-weight:800;color:#1E3425;line-height:1; }
-.kpi-label { font-size:12px;color:#6c7a6e;font-weight:500; }
-.kpi-sub   { font-size:11px;color:#9aab9d; }
-.progress-thin { height:5px;border-radius:99px;background:#e8ede9;overflow:hidden;margin-top:6px; }
-.progress-thin .bar { height:100%;border-radius:99px;background:#CDDE00; }
-
-/* ── Filtros ── */
-.filtros-card { background:#fff;border:1px solid #e8ede9;border-radius:12px;padding:18px 20px;margin-bottom:24px; }
-
-/* ── Painel de participação ── */
-.painel-table th {
-    font-size:11px;text-transform:uppercase;letter-spacing:.5px;
-    color:#6c7a6e;font-weight:600;border-bottom:2px solid #e8ede9;white-space:nowrap;
-}
-.painel-table td { vertical-align:middle;font-size:13px;border-color:#f0f4f1; }
-.painel-table tbody tr:hover { background:#f7faf7; }
-
-.cell-voto-ok   { background:#d1e7dd;color:#0f5132;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:700;display:inline-block;white-space:nowrap; }
-.cell-voto-zero { background:#fde8ea;color:#842029;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:700;display:inline-block;white-space:nowrap; }
-
-/* ── Ranking ── */
-.rank-bar-wrap { background:#e8ede9;border-radius:99px;height:6px; }
-.rank-bar-fill { height:6px;border-radius:99px;background:#CDDE00; }
-.rank-medal    { font-size:15px;min-width:24px;text-align:center; }
-
-/* ── Log ── */
-.log-table th { font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#6c7a6e;font-weight:600;border-bottom:2px solid #e8ede9; }
-.log-table td { vertical-align:middle;font-size:13px;border-color:#f0f4f1; }
-.log-table tbody tr:hover { background:#f7faf7; }
-</style>
-
 <div class="container-fluid py-4">
 
     <!-- Cabeçalho -->
@@ -331,47 +292,47 @@ require_once $appBase . '/views/admin/header.php';
     <div class="row g-3 mb-4">
 
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#eaf7ef;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#eaf7ef;">
                     <i class="bi bi-hand-index-thumb-fill" style="color:#1E3425;"></i>
                 </div>
-                <div class="kpi-valor"><?= number_format($totalVotos) ?></div>
-                <div class="kpi-label">Total de Votos do Júri</div>
-                <div class="kpi-sub">votos registrados</div>
+                <div class="prem-kpi-valor"><?= number_format($totalVotos) ?></div>
+                <div class="prem-kpi-label">Total de Votos do Júri</div>
+                <div class="prem-kpi-sub">votos registrados</div>
             </div>
         </div>
 
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#e7f5ff;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#e7f5ff;">
                     <i class="bi bi-person-check-fill" style="color:#084298;"></i>
                 </div>
-                <div class="kpi-valor"><?= $juradosVotaram ?> <span style="font-size:14px;color:#9aab9d;">/ <?= $totalJurados ?></span></div>
-                <div class="kpi-label">Jurados que Votaram</div>
+                <div class="prem-kpi-valor"><?= $juradosVotaram ?> <span style="font-size:14px;color:#9aab9d;">/ <?= $totalJurados ?></span></div>
+                <div class="prem-kpi-label">Jurados que Votaram</div>
                 <div class="progress-thin"><div class="bar" style="width:<?= $pctParticipacao ?>%;"></div></div>
-                <div class="kpi-sub"><?= $pctParticipacao ?>% de participação</div>
+                <div class="prem-kpi-sub"><?= $pctParticipacao ?>% de participação</div>
             </div>
         </div>
 
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#fffbe6;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#fffbe6;">
                     <i class="bi bi-trophy-fill" style="color:#856404;"></i>
                 </div>
-                <div class="kpi-valor"><?= $negociosVotados ?></div>
-                <div class="kpi-label">Negócios Votados</div>
-                <div class="kpi-sub">negócios distintos</div>
+                <div class="prem-kpi-valor"><?= $negociosVotados ?></div>
+                <div class="prem-kpi-label">Negócios Votados</div>
+                <div class="prem-kpi-sub">negócios distintos</div>
             </div>
         </div>
 
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#f3f0ff;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#f3f0ff;">
                     <i class="bi bi-grid-fill" style="color:#5a3e9a;"></i>
                 </div>
-                <div class="kpi-valor"><?= $categoriasComVoto ?></div>
-                <div class="kpi-label">Categorias com Voto</div>
-                <div class="kpi-sub">de <?= count($todasCategorias) ?> categoria<?= count($todasCategorias) !== 1 ? 's' : '' ?> disponíve<?= count($todasCategorias) !== 1 ? 'is' : 'l' ?></div>
+                <div class="prem-kpi-valor"><?= $categoriasComVoto ?></div>
+                <div class="prem-kpi-label">Categorias com Voto</div>
+                <div class="prem-kpi-sub">de <?= count($todasCategorias) ?> categoria<?= count($todasCategorias) !== 1 ? 's' : '' ?> disponíve<?= count($todasCategorias) !== 1 ? 'is' : 'l' ?></div>
             </div>
         </div>
 

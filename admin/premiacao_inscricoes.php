@@ -219,46 +219,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 require_once $appBase . '/views/admin/header.php';
 ?>
 
-<style>
-.kpi-card {
-    border-radius: 12px;
-    padding: 20px 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    box-shadow: 0 1px 4px rgba(30,52,37,.08);
-    background: #fff;
-    border: 1px solid #e8ede9;
-    height: 100%;
-}
-.kpi-icon {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; margin-bottom: 4px;
-}
-.kpi-valor { font-size: 28px; font-weight: 800; color: #1E3425; line-height: 1; }
-.kpi-label { font-size: 12px; color: #6c7a6e; font-weight: 500; }
-.kpi-pct   { font-size: 11px; color: #9aab9d; }
-.progress-thin { height: 5px; border-radius: 99px; background: #e8ede9; overflow: hidden; }
-.progress-thin .bar { height: 100%; border-radius: 99px; background: #CDDE00; transition: width .4s; }
-
-.filtros-card {
-    background: #fff;
-    border: 1px solid #e8ede9;
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin-bottom: 24px;
-}
-
-.inscricoes-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #6c7a6e; font-weight: 600; border-bottom: 2px solid #e8ede9; }
-.inscricoes-table td { vertical-align: middle; font-size: 13px; border-color: #f0f4f1; }
-.inscricoes-table tbody tr:hover { background: #f7faf7; }
-
-.modal-header { background: #1E3425; color: #fff; }
-.modal-header .btn-close { filter: invert(1); }
-</style>
-
 <div class="container-fluid py-4">
 
     <!-- Cabeçalho -->
@@ -289,47 +249,47 @@ require_once $appBase . '/views/admin/header.php';
     <!-- KPI Cards -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#eaf7ef;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#eaf7ef;">
                     <i class="bi bi-trophy-fill" style="color:#1E3425;"></i>
                 </div>
-                <div class="kpi-valor"><?= $totalInscritos ?></div>
-                <div class="kpi-label">Total de Inscrições</div>
+                <div class="prem-kpi-valor"><?= $totalInscritos ?></div>
+                <div class="prem-kpi-label">Total de Inscrições</div>
                 <div class="progress-thin mt-1"><div class="bar" style="width:<?= min($pctInscritos,100) ?>%;"></div></div>
-                <div class="kpi-pct"><?= $pctInscritos ?>% dos negócios publicados</div>
+                <div class="prem-kpi-pct"><?= $pctInscritos ?>% dos negócios publicados</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#e7f5ff;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#e7f5ff;">
                     <i class="bi bi-check2-circle" style="color:#084298;"></i>
                 </div>
-                <div class="kpi-valor"><?= $totalElegiveis ?></div>
-                <div class="kpi-label">Elegíveis</div>
+                <div class="prem-kpi-valor"><?= $totalElegiveis ?></div>
+                <div class="prem-kpi-label">Elegíveis</div>
                 <div class="progress-thin mt-1"><div class="bar" style="width:<?= min($pctElegiveis,100) ?>%;background:#084298;"></div></div>
-                <div class="kpi-pct"><?= $pctElegiveis ?>% das inscrições</div>
+                <div class="prem-kpi-pct"><?= $pctElegiveis ?>% das inscrições</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#fffbe6;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#fffbe6;">
                     <i class="bi bi-star-fill" style="color:#856404;"></i>
                 </div>
-                <div class="kpi-valor"><?= $totalClassificados ?></div>
-                <div class="kpi-label">Classificados</div>
+                <div class="prem-kpi-valor"><?= $totalClassificados ?></div>
+                <div class="prem-kpi-label">Classificados</div>
                 <div class="progress-thin mt-1"><div class="bar" style="width:<?= $totalInscritos > 0 ? min(round($totalClassificados/$totalInscritos*100),100) : 0 ?>%;background:#856404;"></div></div>
-                <div class="kpi-pct"><?= $totalInscritos > 0 ? round($totalClassificados/$totalInscritos*100,1) : 0 ?>% das inscrições</div>
+                <div class="prem-kpi-pct"><?= $totalInscritos > 0 ? round($totalClassificados/$totalInscritos*100,1) : 0 ?>% das inscrições</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#fff8e1;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#fff8e1;">
                     <i class="bi bi-award-fill" style="color:#5a3e00;"></i>
                 </div>
-                <div class="kpi-valor"><?= $totalVencedores ?></div>
-                <div class="kpi-label">Vencedores</div>
+                <div class="prem-kpi-valor"><?= $totalVencedores ?></div>
+                <div class="prem-kpi-label">Vencedores</div>
                 <div class="progress-thin mt-1"><div class="bar" style="width:<?= $totalInscritos > 0 ? min(round($totalVencedores/$totalInscritos*100),100) : 0 ?>%;background:#CDDE00;"></div></div>
-                <div class="kpi-pct"><?= $totalNegocios ?> negócios publicados na plataforma</div>
+                <div class="prem-kpi-pct"><?= $totalNegocios ?> negócios publicados na plataforma</div>
             </div>
         </div>
     </div>

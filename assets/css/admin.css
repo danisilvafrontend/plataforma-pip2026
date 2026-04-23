@@ -1298,3 +1298,399 @@ body { background: var(--c-surface); font-family: var(--font-sans); color: var(-
     flex-direction: column; gap: .4rem;
 }
 .no-data svg { opacity: .35; }
+
+/* ============================================================
+   PREMIAÇÃO — Bancada Técnica & Resultados
+   Usado em: premiacao_voto_tecnico.php | premiacao_resultados.php
+   ============================================================ */
+
+/* ── KPI Cards (premiação) ──────────────────────────────────── */
+.prem-kpi-card {
+    border-radius: 12px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 1px 4px rgba(30, 52, 37, .08);
+    background: #fff;
+    border: 1px solid #e8ede9;
+    height: 100%;
+}
+.prem-kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+.prem-kpi-valor {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1E3425;
+    line-height: 1;
+}
+.prem-kpi-label {
+    font-size: 12px;
+    color: #6c7a6e;
+    font-weight: 500;
+}
+.prem-kpi-sub {
+    font-size: 11px;
+    color: #9aab9d;
+}
+
+/* ── Progress bar fina (participação) ───────────────────────── */
+.progress-thin {
+    height: 5px;
+    border-radius: 99px;
+    background: #e8ede9;
+    overflow: hidden;
+    margin-top: 6px;
+}
+.progress-thin .bar {
+    height: 100%;
+    border-radius: 99px;
+    background: #CDDE00;
+}
+
+/* ── Filtros card ───────────────────────────────────────────── */
+.filtros-card {
+    background: #fff;
+    border: 1px solid #e8ede9;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+}
+
+/* ── Score pills ────────────────────────────────────────────── */
+.score-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 700;
+}
+.score-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* ── Pontos pill ────────────────────────────────────────────── */
+.pontos-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ── Status badge publicação ────────────────────────────────── */
+.status-badge-pub {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ── Alerta de regra de fase ────────────────────────────────── */
+.regra-alert {
+    background: #fffbe6;
+    border: 1px solid #ffe58f;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #5a4a00;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ── Painel de participação — tabela ────────────────────────── */
+.painel-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #6c7a6e;
+    font-weight: 600;
+    border-bottom: 2px solid #e8ede9;
+    white-space: nowrap;
+}
+.painel-table td {
+    vertical-align: middle;
+    font-size: 13px;
+    border-color: #f0f4f1;
+}
+.painel-table tbody tr:hover {
+    background: #f7faf7;
+}
+
+/* ── Células ok / zero ──────────────────────────────────────── */
+.cell-ok {
+    background: #d1e7dd;
+    color: #0f5132;
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+    white-space: nowrap;
+}
+.cell-zero {
+    background: #fde8ea;
+    color: #842029;
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* ── Ranking de negócios ────────────────────────────────────── */
+.rank-bar-wrap {
+    background: #e8ede9;
+    border-radius: 99px;
+    height: 6px;
+}
+.rank-bar-fill {
+    height: 6px;
+    border-radius: 99px;
+    background: #CDDE00;
+}
+.rank-medal {
+    font-size: 15px;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* ── Log de seleções — tabela ───────────────────────────────── */
+.log-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #6c7a6e;
+    font-weight: 600;
+    border-bottom: 2px solid #e8ede9;
+}
+.log-table td {
+    vertical-align: middle;
+    font-size: 13px;
+    border-color: #f0f4f1;
+}
+.log-table tbody tr:hover {
+    background: #f7faf7;
+}
+
+/* ── Categoria header (resultados) ──────────────────────────── */
+.cat-header {
+    background: linear-gradient(135deg, #1E3425 0%, #2d5038 100%);
+    color: #fff;
+    border-radius: 12px 12px 0 0;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.cat-header .cat-nome {
+    font-size: 17px;
+    font-weight: 700;
+}
+.cat-header .cat-badge {
+    background: rgba(255, 255, 255, .15);
+    border-radius: 99px;
+    padding: 3px 10px;
+    font-size: 11px;
+}
+
+/* ── Card do negócio (resultados) ───────────────────────────── */
+.negocio-card {
+    border: 1px solid #e8ede9;
+    border-radius: 0;
+    transition: box-shadow .15s;
+    background: #fff;
+}
+.negocio-card:last-child {
+    border-radius: 0 0 12px 12px;
+}
+.negocio-card:hover {
+    box-shadow: 0 4px 16px rgba(30, 52, 37, .10);
+    z-index: 1;
+    position: relative;
+}
+.negocio-card.is-vencedor {
+    border-left: 4px solid #CDDE00 !important;
+    background: linear-gradient(90deg, #fafff0 0%, #fff 60%);
+}
+.negocio-card.is-publicado {
+    border-left: 4px solid #198754 !important;
+}
+
+/* ── Logo thumbnail ─────────────────────────────────────────── */
+.logo-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid #e8ede9;
+    background: #f7faf7;
+}
+.logo-placeholder {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    background: #f0f4f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #9aab9d;
+    border: 1px solid #e8ede9;
+}
+
+/* ── Posição ranking ────────────────────────────────────────── */
+.rank-pos {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* ── Crown vencedor ─────────────────────────────────────────── */
+.vencedor-crown {
+    color: #CDDE00;
+    font-size: 20px;
+}
+
+/* ── Empty state categoria ──────────────────────────────────── */
+.empty-cat {
+    background: #fff;
+    border: 1px solid #e8ede9;
+    border-radius: 0 0 12px 12px;
+    padding: 32px;
+    text-align: center;
+    color: #9aab9d;
+    font-size: 13px;
+}
+
+/* ============================================================
+   PREMIAÇÃO — Votos Populares
+   premiacao_voto_popular.php
+   ============================================================ */
+
+/* ── Distribuição por tipo de eleitor ───────────────────────── */
+.dist-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+.dist-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.dist-bar-wrap {
+    flex: 1;
+    height: 4px;
+    background: #e8ede9;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.dist-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+}
+
+/* ── Tabela de votos ────────────────────────────────────────── */
+.votos-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #6c7a6e;
+    font-weight: 600;
+    border-bottom: 2px solid #e8ede9;
+    white-space: nowrap;
+}
+.votos-table td {
+    vertical-align: middle;
+    font-size: 13px;
+    border-color: #f0f4f1;
+}
+.votos-table tbody tr:hover {
+    background: #f7faf7;
+}
+
+/* ── Paginação ──────────────────────────────────────────────── */
+.paginacao-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid #f0f4f1;
+    font-size: 12px;
+    color: #6c7a6e;
+}
+.paginacao-nums {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.paginacao-nums a,
+.paginacao-nums span {
+    min-width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.paginacao-nums a           { background: #f0f4f1; color: #1E3425; }
+.paginacao-nums a:hover     { background: #CDDE00; color: #1E3425; }
+.paginacao-nums span        { background: #1E3425; color: #fff; }
+.paginacao-nums .reticencias { background: transparent; color: #9aab9d; }
+
+/* Override layout para cards de voto popular */
+.kpi-card.prem-vp {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 20px 22px;
+}
+.kpi-card.prem-vp .kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 18px;
+    margin-bottom: 4px;
+    align-items: center;
+    justify-content: center;
+}
+.kpi-card.prem-vp .kpi-valor { font-size: 28px; font-weight: 800; line-height: 1; }
+.kpi-card.prem-vp .kpi-label { font-size: 12px; color: #6c7a6e; font-weight: 500; }
+.kpi-card.prem-vp .kpi-sub   { font-size: 11px; color: #9aab9d; }

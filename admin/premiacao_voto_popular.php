@@ -237,72 +237,6 @@ $qsBase = http_build_query(array_filter([
 require_once $appBase . '/views/admin/header.php';
 ?>
 
-<style>
-/* ── KPI Cards ── */
-.kpi-card {
-    border-radius: 12px;
-    padding: 20px 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    box-shadow: 0 1px 4px rgba(30,52,37,.08);
-    background: #fff;
-    border: 1px solid #e8ede9;
-    height: 100%;
-}
-.kpi-icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; margin-bottom: 4px;
-}
-.kpi-valor { font-size: 28px; font-weight: 800; color: #1E3425; line-height: 1; }
-.kpi-label { font-size: 12px; color: #6c7a6e; font-weight: 500; }
-.kpi-sub   { font-size: 11px; color: #9aab9d; }
-
-/* ── Distribuição por tipo ── */
-.dist-item { display:flex; align-items:center; gap:8px; font-size:11px; }
-.dist-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.dist-bar-wrap { flex:1; height:4px; background:#e8ede9; border-radius:99px; overflow:hidden; }
-.dist-bar-fill { height:100%; border-radius:99px; }
-
-/* ── Filtros ── */
-.filtros-card {
-    background:#fff; border:1px solid #e8ede9;
-    border-radius:12px; padding:18px 20px; margin-bottom:24px;
-}
-
-/* ── Ranking ── */
-.rank-bar-wrap { background:#e8ede9; border-radius:99px; height:6px; }
-.rank-bar-fill { height:6px; border-radius:99px; background:#CDDE00; }
-.rank-medal    { font-size:15px; min-width:24px; text-align:center; }
-
-/* ── Tabela ── */
-.votos-table th {
-    font-size:11px; text-transform:uppercase; letter-spacing:.5px;
-    color:#6c7a6e; font-weight:600; border-bottom:2px solid #e8ede9;
-    white-space:nowrap;
-}
-.votos-table td  { vertical-align:middle; font-size:13px; border-color:#f0f4f1; }
-.votos-table tbody tr:hover { background:#f7faf7; }
-
-/* ── Paginação ── */
-.paginacao-wrap {
-    display:flex; justify-content:space-between; align-items:center;
-    padding:12px 16px; border-top:1px solid #f0f4f1;
-    font-size:12px; color:#6c7a6e;
-}
-.paginacao-nums { display:flex; gap:4px; flex-wrap:wrap; }
-.paginacao-nums a, .paginacao-nums span {
-    min-width:32px; height:32px; display:inline-flex; align-items:center;
-    justify-content:center; border-radius:8px; font-size:12px; font-weight:600;
-    text-decoration:none;
-}
-.paginacao-nums a         { background:#f0f4f1; color:#1E3425; }
-.paginacao-nums a:hover   { background:#CDDE00; color:#1E3425; }
-.paginacao-nums span      { background:#1E3425; color:#fff; }
-.paginacao-nums .reticencias { background:transparent; color:#9aab9d; }
-</style>
-
 <div class="container-fluid py-4">
 
     <!-- Cabeçalho -->
@@ -327,48 +261,48 @@ require_once $appBase . '/views/admin/header.php';
 
         <!-- Total de votos -->
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#eaf7ef;">
+            <div class="prem-kpi-card prem-vp">
+                <div class="prem-kpi-icon" style="background:#eaf7ef;">
                     <i class="bi bi-hand-thumbs-up-fill" style="color:#1E3425;"></i>
                 </div>
-                <div class="kpi-valor"><?= number_format($totalVotos) ?></div>
-                <div class="kpi-label">Total de Votos</div>
-                <div class="kpi-sub">resultado dos filtros aplicados</div>
+                <div class="prem-kpi-valor"><?= number_format($totalVotos) ?></div>
+                <div class="prem-kpi-label">Total de Votos</div>
+                <div class="prem-kpi-sub">resultado dos filtros aplicados</div>
             </div>
         </div>
 
         <!-- Eleitores únicos -->
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#e7f5ff;">
+            <div class="prem-kpi-card prem-vp">
+                <div class="prem-kpi-icon" style="background:#e7f5ff;">
                     <i class="bi bi-people-fill" style="color:#084298;"></i>
                 </div>
-                <div class="kpi-valor"><?= number_format($eleitoresUnicos) ?></div>
-                <div class="kpi-label">Eleitores Únicos</div>
-                <div class="kpi-sub">usuários distintos que votaram</div>
+                <div class="prem-kpi-valor"><?= number_format($eleitoresUnicos) ?></div>
+                <div class="prem-kpi-label">Eleitores Únicos</div>
+                <div class="prem-kpi-sub">usuários distintos que votaram</div>
             </div>
         </div>
 
         <!-- Negócios votados -->
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
-                <div class="kpi-icon" style="background:#fffbe6;">
+            <div class="prem-kpi-card prem-vp">
+                <div class="prem-kpi-icon" style="background:#fffbe6;">
                     <i class="bi bi-trophy-fill" style="color:#856404;"></i>
                 </div>
-                <div class="kpi-valor"><?= number_format($negociosVotados) ?></div>
-                <div class="kpi-label">Negócios Votados</div>
-                <div class="kpi-sub">média de <?= number_format($mediaPorNegocio, 1) ?> votos/negócio</div>
+                <div class="prem-kpi-valor"><?= number_format($negociosVotados) ?></div>
+                <div class="prem-kpi-label">Negócios Votados</div>
+                <div class="prem-kpi-sub">média de <?= number_format($mediaPorNegocio, 1) ?> votos/negócio</div>
             </div>
         </div>
 
         <!-- Distribuição por tipo -->
         <div class="col-6 col-md-3">
-            <div class="kpi-card">
+            <div class="kpi-card prem-vp">
                 <div class="kpi-icon" style="background:#f3f0ff;">
                     <i class="bi bi-pie-chart-fill" style="color:#5a3e9a;"></i>
                 </div>
-                <div class="kpi-valor" style="font-size:18px;margin-bottom:4px;">Distribuição</div>
-                <div class="kpi-label mb-2">por tipo de eleitor</div>
+                <div class="prem-kpi-valor" style="font-size:18px;margin-bottom:4px;">Distribuição</div>
+                <div class="prem-kpi-label mb-2">por tipo de eleitor</div>
                 <?php
                 $tiposKpi = [
                     ['label' => 'Empreendedor', 'valor' => $votosEmp, 'cor' => '#1E3425'],
