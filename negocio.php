@@ -93,20 +93,33 @@ if ($dadosVot) {
             $faseVotNegocio = $dadosVot;
 
             // Já votou?
-            if (isset($_SESSION['user_id'])) {
-                $tipoEl = $_SESSION['tipo_usuario'] ?? 'empreendedor';
+            $eleitorIdCheck = null;
+            $tipoEl = null;
+
+            if (!empty($_SESSION['user_id'])) {
+                $tipoEl         = 'empreendedor';
+                $eleitorIdCheck = (int)$_SESSION['user_id'];
+            } elseif (!empty($_SESSION['parceiro_id'])) {
+                $tipoEl         = 'parceiro';
+                $eleitorIdCheck = (int)$_SESSION['parceiro_id'];
+            } elseif (!empty($_SESSION['logado']) && ($_SESSION['usuario_tipo'] ?? '') === 'sociedade_civil' && !empty($_SESSION['usuario_id'])) {
+                $tipoEl         = 'sociedade_civil';
+                $eleitorIdCheck = (int)$_SESSION['usuario_id'];
+            }
+
+            if ($tipoEl && $eleitorIdCheck) {
                 $stmtJaV = $pdo->prepare("
                     SELECT COUNT(*) FROM premiacao_votos_populares
                     WHERE fase_id      = ?
-                      AND inscricao_id = ?
-                      AND tipo_eleitor = ?
-                      AND eleitor_id   = ?
+                    AND inscricao_id = ?
+                    AND tipo_eleitor = ?
+                    AND eleitor_id   = ?
                 ");
                 $stmtJaV->execute([
                     $dadosVot['fase_id'],
                     $inscricaoNegocio['id'],
                     $tipoEl,
-                    $_SESSION['user_id']
+                    $eleitorIdCheck
                 ]);
                 $jaVotouNegocio = (int)$stmtJaV->fetchColumn() > 0;
             }

@@ -15,6 +15,7 @@ $PremiacaoPages = [
     '/admin/premiacao_categorias.php',
     '/admin/premiacao_inscricoes.php',
     '/admin/premiacao_voto_popular.php',
+    '/admin/premiacao_voto_tecnico.php',
     '/admin/premiacao_juri.php',
     '/admin/premiacao_resultados.php'
 ];
@@ -191,8 +192,11 @@ function isActive(string $current, string $page): string {
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_voto_popular.php') ?>" href="/admin/premiacao_voto_popular.php">
             <i class="bi bi-bar-chart-steps"></i> Votos Popular
           </a></li>
+          <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_voto_tecnico.php') ?>" href="/admin/premiacao_voto_tecnico.php">
+            <i class="bi bi-person-gear"></i> Votos Bancada Técnica
+          </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_juri.php') ?>" href="/admin/premiacao_juri.php">
-            <i class="bi bi-person-check"></i> Juri
+            <i class="bi bi-person-check"></i> Votos Juri
           </a></li>
           <li><a class="nav-link <?= isActive($currentPage, '/admin/premiacao_resultados.php') ?>" href="/admin/premiacao_resultados.php">
             <i class="bi bi-award"></i> Resultados

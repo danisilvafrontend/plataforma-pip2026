@@ -1,5 +1,6 @@
 <?php
 // /premiacao/votar.php — Endpoint POST para registrar voto popular
+ob_start();
 session_start();
 
 require_once __DIR__ . '/../app/helpers/premiacao_auth.php';

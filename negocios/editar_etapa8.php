@@ -349,10 +349,10 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
 
                     <!-- Tipo solução / Modelo / Colaboradores -->
-                    <div class="row g-3">
+                    <div class="row g-2">
                         <div class="col-md-4">
                             <div class="card h-100"><div class="card-body">
-                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Tipo de solução *</h5>
+                                <h6 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Tipo de solução *</h6>
                                 <?php foreach (['Produto', 'Serviço', 'Produto e Serviço'] as $opt): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="tipo_solucao" value="<?= $opt ?>"
@@ -364,7 +364,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         </div>
                         <div class="col-md-4">
                             <div class="card h-100"><div class="card-body">
-                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Modelo de negócio *</h5>
+                                <h6 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Modelo de negócio *</h6>
                                 <?php foreach (['B2B' => 'B2B – Empresa para Empresa', 'B2C' => 'B2C – Empresa para Consumidor', 'C2C' => 'C2C – Consumidor para Consumidor', 'B2B2C' => 'B2B2C – Emp. para Emp. para Consumidor', 'B2G' => 'B2G – Empresa para Governo', 'B2N' => 'B2N – Empresa para Ongs/Fundações'] as $val => $label): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="modelo_negocio" value="<?= $val ?>"
@@ -376,7 +376,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         </div>
                         <div class="col-md-4">
                             <div class="card h-100"><div class="card-body">
-                                <h5 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Colaboradores *</h5>
+                                <h6 class="card-title"><i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Colaboradores *</h6>
                                 <?php foreach (['Até 5', '6–20', '21–50', '51 ou mais'] as $opt): ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="colaboradores" value="<?= $opt ?>"
