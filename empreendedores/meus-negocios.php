@@ -134,8 +134,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_
             throw new Exception('Este negócio ainda não está apto para participar da premiação.');
         }
 
-        if ($desejaParticipar === 1 && ($aceiteRegulamento !== 1 || $aceiteVeracidade !== 1)) {
-            throw new Exception('Para participar da premiação, aceite o regulamento e a veracidade das informações.');
+        if ($desejaParticipar === 1) {
+            if ($aceiteRegulamento !== 1) {
+                throw new Exception('Você precisa aceitar o regulamento da Premiação para participar.');
+            }
+            if ($aceiteVeracidade !== 1) {
+                throw new Exception('Você precisa confirmar a veracidade das informações para participar.');
+            }
         }
 
         $stmtExiste = $pdo->prepare("
@@ -676,23 +681,100 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 </div>
 
 <script>
-  function abrirModalPremiacao(negocioId, desejaParticipar, aceiteRegulamento, aceiteVeracidade) {
-  document.getElementById('modal_premiacao_negocio_id').value = negocioId;
-  document.getElementById('modal_deseja_participar').checked   = desejaParticipar === 1;
-  document.getElementById('modal_aceite_regulamento').checked  = aceiteRegulamento === 1;
-  document.getElementById('modal_aceite_veracidade').checked   = aceiteVeracidade === 1;
-  new bootstrap.Modal(document.getElementById('modalPremiacao')).show();
+function abrirModalPremiacao(negocioId, desejaParticipar, aceiteRegulamento, aceiteVeracidade) {
+    document.getElementById('modal_premiacao_negocio_id').value = negocioId;
+    document.getElementById('modal_deseja_participar').checked   = desejaParticipar === 1;
+    document.getElementById('modal_aceite_regulamento').checked  = aceiteRegulamento === 1;
+    document.getElementById('modal_aceite_veracidade').checked   = aceiteVeracidade === 1;
+
+    // Limpa alertas e bordas anteriores ao abrir
+    const alertaAnterior = document.getElementById('alerta-modal-premiacao');
+    if (alertaAnterior) alertaAnterior.remove();
+    ['modal_deseja_participar','modal_aceite_regulamento','modal_aceite_veracidade'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.closest('.form-check').style.border    = '1px solid #e8ede5';
+            el.closest('.form-check').style.background = '#f5f7f2';
+        }
+    });
+
+    new bootstrap.Modal(document.getElementById('modalPremiacao')).show();
 }
+
+// Validação ao submeter o modal de premiação
+document.getElementById('formModalPremiacao').addEventListener('submit', function(e) {
+    const deseja      = document.getElementById('modal_deseja_participar');
+    const regulamento = document.getElementById('modal_aceite_regulamento');
+    const veracidade  = document.getElementById('modal_aceite_veracidade');
+
+    // Remove alerta anterior
+    const anterior = document.getElementById('alerta-modal-premiacao');
+    if (anterior) anterior.remove();
+
+    // Limpa bordas
+    [deseja, regulamento, veracidade].forEach(function(el) {
+        el.closest('.form-check').style.border    = '1px solid #e8ede5';
+        el.closest('.form-check').style.background = '#f5f7f2';
+    });
+
+    let erros = [];
+
+    if (!deseja.checked) {
+        erros.push(deseja);
+    }
+
+    if (deseja.checked && !regulamento.checked) {
+        erros.push(regulamento);
+    }
+
+    if (deseja.checked && !veracidade.checked) {
+        erros.push(veracidade);
+    }
+
+    if (erros.length > 0) {
+        e.preventDefault();
+
+        erros.forEach(function(el) {
+            el.closest('.form-check').style.border    = '1.5px solid #dc3545';
+            el.closest('.form-check').style.background = '#fff5f5';
+        });
+
+        let msg = !deseja.checked
+            ? 'Confirme que deseja participar da Premiação.'
+            : 'Para participar, você precisa aceitar o regulamento e confirmar a veracidade das informações.';
+
+        const alerta = document.createElement('div');
+        alerta.id        = 'alerta-modal-premiacao';
+        alerta.className = 'alert alert-warning py-2 mt-3 mb-0 small';
+        alerta.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i> ' + msg;
+
+        veracidade.closest('.modal-body').appendChild(alerta);
+        return false;
+    }
+});
+
+// Limpa visual de erro ao interagir com os checkboxes
+['modal_deseja_participar','modal_aceite_regulamento','modal_aceite_veracidade'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', function() {
+        this.closest('.form-check').style.border    = '1px solid #e8ede5';
+        this.closest('.form-check').style.background = '#f5f7f2';
+        const alerta = document.getElementById('alerta-modal-premiacao');
+        if (alerta) alerta.remove();
+    });
+});
+
 function abrirModalOcultar(id) {
-  document.getElementById('modal_ocultar_negocio_id').value = id;
-  new bootstrap.Modal(document.getElementById('modalOcultar')).show();
+    document.getElementById('modal_ocultar_negocio_id').value = id;
+    new bootstrap.Modal(document.getElementById('modalOcultar')).show();
 }
+
 function abrirModalExcluir(id, nome) {
     document.getElementById('modal_excluir_negocio_id').value = id;
     document.getElementById('modal_excluir_nome').textContent = nome;
     new bootstrap.Modal(document.getElementById('modalExcluir')).show();
 }
-
 </script>
 
 <?php include __DIR__ . '/../app/views/empreendedor/footer.php'; ?>
