@@ -244,40 +244,45 @@ if ($modo === 'cadastro') {
     header("Location: /negocios/etapa2_fundadores.php?id=" . $id);
     exit;
 } else {
-    // Modo Edição: Para onde enviamos o usuário agora?
-    
+    // Modo Edição: redireciona para a próxima etapa ou para onde parou
+
     if (!empty($progresso['inscricao_completa'])) {
-        // Se já completou tudo, volta para a tela de revisão
+        // Já completou tudo → volta para revisão
         header("Location: /negocios/confirmacao.php?id=" . $id);
         exit;
-    } else {
-        // Se ainda está em andamento, volta para a etapa onde ele tinha parado
-        
-        // Mapeamento de rotas com base no número da etapa
-        $rotas_etapas = [
-            1 => '/negocios/etapa1_dados_negocio.php',
-            2 => '/negocios/etapa2_fundadores.php',
-            3 => '/negocios/etapa3_eixo_tematico.php',
-            4 => '/negocios/etapa4_ods.php',    
-            5 => '/negocios/etapa5_apresentacao.php',
-            6 => '/negocios/etapa6_financeiro.php',
-            7 => '/negocios/etapa7_impacto.php',
-            8 => '/negocios/etapa8_visao.php',
-            9 => '/negocios/etapa9_documentacao.php',
-            10 => '/negocios/confirmacao.php'
-        ];
-
-        $etapaParada = (int)($progresso['etapa_atual'] ?? 1);
-        
-        // Se a etapa estiver mapeada, redireciona pra ela, se não volta pra meus-negocios
-        if (isset($rotas_etapas[$etapaParada])) {
-            header("Location: " . $rotas_etapas[$etapaParada] . "?id=" . $id);
-        } else {
-            header("Location: /empreendedores/meus-negocios.php");
-        }
-        exit;
     }
+
+    $etapaParada = (int)($progresso['etapa_atual'] ?? 1);
+
+    // Se a etapa_atual ainda é 1, significa que o negócio nunca avançou
+    // (ex: importado). Avança para 2 antes de redirecionar.
+    if ($etapaParada <= 1) {
+        $pdo->prepare("UPDATE negocios SET etapa_atual = 2 WHERE id = ?")
+            ->execute([$id]);
+        $etapaParada = 2;
+    }
+
+    $rotas_etapas = [
+        1  => '/negocios/etapa1_dados_negocio.php',
+        2  => '/negocios/etapa2_fundadores.php',
+        3  => '/negocios/etapa3_eixo_tematico.php',
+        4  => '/negocios/etapa4_ods.php',
+        5  => '/negocios/etapa5_apresentacao.php',
+        6  => '/negocios/etapa6_financeiro.php',
+        7  => '/negocios/etapa7_impacto.php',
+        8  => '/negocios/etapa8_visao.php',
+        9  => '/negocios/etapa9_documentacao.php',
+        10 => '/negocios/confirmacao.php',
+    ];
+
+    if (isset($rotas_etapas[$etapaParada])) {
+        header("Location: " . $rotas_etapas[$etapaParada] . "?id=" . $id);
+    } else {
+        header("Location: /empreendedores/meus-negocios.php");
+    }
+    exit;
 }
+
 
 
 } catch (PDOException $e) {

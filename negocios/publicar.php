@@ -54,9 +54,10 @@ if (!$docsOk) {
     exit;
 }
 $acao = $_POST['acao'] ?? '';
-$premiacaoDesejaParticipar = isset($_POST['premiacao_deseja_participar']) ? 1 : 0;
-$premiacaoAceiteRegulamento = isset($_POST['premiacao_aceite_regulamento']) ? 1 : 0;
-$premiacaoAceiteVeracidade = isset($_POST['premiacao_aceite_veracidade']) ? 1 : 0;
+
+$premiacaoDesejaParticipar  = ($acao === 'publicar_com_premiacao') ? 1 : 0;
+$premiacaoAceiteRegulamento = isset($_POST['aceite_regulamento']) ? 1 : 0;
+$premiacaoAceiteVeracidade  = isset($_POST['aceite_veracidade'])  ? 1 : 0;
 
 if ($acao === 'remover') {
     $stmt = $pdo->prepare("UPDATE negocios SET publicado_vitrine = 0, status_operacional = 'encerrado' WHERE id = ?");

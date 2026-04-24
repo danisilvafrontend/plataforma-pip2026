@@ -205,7 +205,7 @@ function isActive(string $current, string $page): string {
       </div>
     </li>
   </ul>
-  <?php if (($_SESSION['admin_role'] ?? '') === 'superadmin'): ?>
+  <?php if (($_SESSION['user_role'] ?? '') === 'superadmin'): ?>
     <span class="nav-group-label">Sistema</span>
     <ul class="nav flex-column mb-1">
       <!-- Configurações (dropdown) -->

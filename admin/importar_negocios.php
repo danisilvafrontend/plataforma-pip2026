@@ -30,7 +30,7 @@ try {
 
 $errors = [];
 $messages = [];
-$empreendedorLegadoId = 2576; // ID do Empreendedor Genérico (Mude se necessário)
+$empreendedorLegadoId = 1; // ID do Empreendedor Genérico (Mude se necessário)
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['arquivo_csv'])) {
     $file = $_FILES['arquivo_csv'];

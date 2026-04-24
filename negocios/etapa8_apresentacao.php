@@ -322,7 +322,10 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <i class="bi bi-eye-fill lbl-pub me-1"></i> Descreva brevemente as principais inovações do seu negócio (máx. 300 caracteres) *
                 </label>
                 <textarea name="descricao_inovacao" id="descricao_inovacao" class="form-control" rows="3" maxlength="300"><?= htmlspecialchars($apresentacao['descricao_inovacao'] ?? '') ?></textarea>
-                <div class="form-text">Foque no que é realmente novo: tecnologia, forma de operar, modelo de negócio, impacto ou financiamento.</div>
+                <div class="d-flex justify-content-between">
+                    <div class="form-text">Foque no que é realmente novo: tecnologia, forma de operar, modelo de negócio, impacto ou financiamento.</div>
+                    <small id="contador_descricao_inovacao" class="text-muted mt-1 ms-2 flex-shrink-0">0/300</small>
+                </div>
             </div>
 
             <!-- Tipo solução / Modelo / Colaboradores -->
@@ -775,6 +778,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
     checkboxes.forEach(chk => chk.addEventListener('change', atualizarRanking));
     atualizarRanking();
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var textarea = document.getElementById("descricao_inovacao");
+    var contador = document.getElementById("contador_descricao_inovacao");
+    if (textarea && contador) {
+        function atualizar() {
+            var len = textarea.value.length;
+            contador.textContent = len + "/300";
+            contador.style.color = len >= 280 ? "#dc3545" : len >= 240 ? "#fd7e14" : "#6c757d";
+        }
+        atualizar();
+        textarea.addEventListener("input", atualizar);
+    }
 });
 </script>
 

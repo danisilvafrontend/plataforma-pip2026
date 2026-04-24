@@ -326,7 +326,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php'; ?>
             <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
             <input type="hidden" name="acao" value="publicar">
             <button type="submit" class="btn-emp-outline">
-            <i class="bi bi-send me-1"></i> Enviar para Revisão
+            <i class="bi bi-send me-1"></i> Enviar para Avaliação
             </button>
         </form>
 
@@ -335,7 +335,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php'; ?>
             <button type="button"
                     class="btn-emp-primary"
                     onclick="abrirModalRevisaoPremiacao(<?= $negocio_id ?>, <?= (int)($inscricaoPremiacao['aceite_regulamento'] ?? 0) ?>, <?= (int)($inscricaoPremiacao['aceite_veracidade'] ?? 0) ?>)">
-            <i class="bi bi-trophy me-1"></i> Enviar para Revisão e Inscrever na Premiação
+            <i class="bi bi-trophy me-1"></i> Enviar para Avaliação e Inscrever na Premiação
             </button>
         <?php endif; ?>
 
@@ -411,11 +411,56 @@ include __DIR__ . '/../app/views/empreendedor/header.php'; ?>
     </div>
 
     <script>
-    function abrirModalRevisaoPremiacao(negocioId, aceiteReg, aceiteVer) {
-    document.getElementById('modal_rev_aceite_regulamento').checked = aceiteReg === 1;
-    document.getElementById('modal_rev_aceite_veracidade').checked  = aceiteVer === 1;
-    new bootstrap.Modal(document.getElementById('modalRevisaoPremiacao')).show();
+        function abrirModalRevisaoPremiacao(negocioId, aceiteReg, aceiteVer) {
+        document.getElementById('modal_rev_aceite_regulamento').checked = aceiteReg === 1;
+        document.getElementById('modal_rev_aceite_veracidade').checked  = aceiteVer === 1;
+        new bootstrap.Modal(document.getElementById('modalRevisaoPremiacao')).show();
     }
+
+    // Validação antes de submeter
+    document.getElementById('formRevisaoPremiacao').addEventListener('submit', function(e) {
+        const regulamento = document.getElementById('modal_rev_aceite_regulamento');
+        const veracidade  = document.getElementById('modal_rev_aceite_veracidade');
+
+        if (!regulamento.checked || !veracidade.checked) {
+            e.preventDefault();
+
+            // Remove alerta anterior se existir
+            const anterior = document.getElementById('alerta-modal-premiacao');
+            if (anterior) anterior.remove();
+
+            const alerta = document.createElement('div');
+            alerta.id = 'alerta-modal-premiacao';
+            alerta.className = 'alert alert-warning py-2 mt-3 mb-0 small';
+            alerta.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i> Para se inscrever na premiação, você precisa aceitar o regulamento e confirmar a veracidade das informações.';
+
+            // Insere o alerta após os checkboxes (dentro do modal-body)
+            veracidade.closest('.modal-body').appendChild(alerta);
+
+            // Destaca os checkboxes não marcados
+            [regulamento, veracidade].forEach(function(el) {
+                if (!el.checked) {
+                    el.closest('.form-check').style.border = '1.5px solid #dc3545';
+                    el.closest('.form-check').style.background = '#fff5f5';
+                } else {
+                    el.closest('.form-check').style.border = '1px solid #e8ede5';
+                    el.closest('.form-check').style.background = '#f5f7f2';
+                }
+            });
+
+            return false;
+        }
+    });
+
+    // Limpa visual de erro ao marcar
+    ['modal_rev_aceite_regulamento', 'modal_rev_aceite_veracidade'].forEach(function(id) {
+        document.getElementById(id).addEventListener('change', function() {
+            this.closest('.form-check').style.border = '1px solid #e8ede5';
+            this.closest('.form-check').style.background = '#f5f7f2';
+            const alerta = document.getElementById('alerta-modal-premiacao');
+            if (alerta) alerta.remove();
+        });
+    });
     </script>
     <?php endif; ?>
 
