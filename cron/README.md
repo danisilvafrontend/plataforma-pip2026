@@ -9,8 +9,8 @@ Eles devem ser executados via **cron job no servidor** — nunca manualmente pel
 
 | Arquivo | Frequência recomendada | O que faz |
 |---|---|---|
-| `update_status.php` | Diário — uma vez por dia | Atualiza status dos empreendedores (ativo/inativo/dormant) com base no último login |
-| `atualizar_fases_premiacao.php` | A cada 5 minutos | Atualiza automaticamente o status das fases e edições da premiação com base nas datas configuradas |
+| `update_status.php` | Diário — 1x por dia às 03h | Atualiza status dos empreendedores (ativo/inativo/dormant) com base no último login |
+| `atualizar_fases_premiacao.php` | Diário — 1x por dia às 00h05 | Atualiza automaticamente o status das fases e edições da premiação com base nas datas configuradas |
 
 ---
 
@@ -18,15 +18,15 @@ Eles devem ser executados via **cron job no servidor** — nunca manualmente pel
 
 ### O que faz
 
-Atualiza duas tabelas baseando-se exclusivamente no horário atual comparado às datas cadastradas pelo admin:
+Atualiza duas tabelas baseando-se exclusivamente na data atual comparada às datas cadastradas pelo admin no painel.
 
 **1. `premiacao_fases.status`**
 
 | Condição | Status resultante |
 |---|---|
-| `NOW() < data_inicio` | `agendada` |
-| `data_inicio ≤ NOW() ≤ data_fim` | `em_andamento` |
-| `NOW() > data_fim` | `encerrada` |
+| `HOJE < data_inicio` | `agendada` |
+| `data_inicio ≤ HOJE ≤ data_fim` | `em_andamento` |
+| `HOJE > data_fim` | `encerrada` |
 | Status atual é `rascunho` | Não altera (admin ainda não publicou) |
 | Status atual é `apurada` | Não altera (encerrado manualmente pelo admin) |
 
@@ -39,9 +39,27 @@ Atualiza duas tabelas baseando-se exclusivamente no horário atual comparado às
 | Todas as fases `encerradas`/`apuradas` | `encerrada` |
 | Só fases `agendadas`, nenhuma ativa | `planejada` |
 
-### Por que a cada 5 minutos?
+### Por que 1x por dia às 00h05 é suficiente?
 
-As fases iniciam às **00h00** e encerram às **23h59**. Rodar a cada 5 minutos garante que a transição acontece no máximo com 5 minutos de atraso — completamente imperceptvel para os usuários.
+As fases são configuradas com granularidade de **dias inteiros** (iniciam à 00h00 de uma data e encerram às 23h59 de outra). Rodar o cron logo após a virada da meia-noite garante que ao usuário acordar, a fase já está no status correto. Como o PIP acontece **uma vez por ano**, esse agendamento é mais que suficiente.
+
+---
+
+## Cronograma PIP 2026 (referência)
+
+Este é o calendário da edição atual. Use-o para cadastrar as fases no painel admin com as datas e tipos corretos:
+
+| Fase | Tipo (`tipo_fase`) | Abertura | Encerramento | Voto popular | Avaliação técnica |
+|---|---|---|---|:---:|:---:|
+| Lançamento / Inscrições | `inscricoes` | 11/05/2026 | 24/07/2026 | ✗ | ✗ |
+| Avaliação dos Inscritos | `triagem_documental` | 25/07/2026 | 29/07/2026 | ✗ | ✗ |
+| Fase 1 | `classificatoria` | 30/07/2026 | 14/08/2026 | ✓ | ✓ |
+| Fase 2 | `classificatoria` | 24/08/2026 | 04/09/2026 | ✓ | ✓ |
+| Fase 3 (Final) | `final` | 07/09/2026 | 18/09/2026 | ✓ | ✗ |
+| Encontro 2026 | `resultado` | 24/09/2026 | 24/09/2026 | ✗ | ✗ |
+
+> **Nota:** A "Avaliação de Votação" que existia entre a Fase 1 e a Fase 2 foi removida do cronograma
+> porque essa apuração agora é feita automaticamente pelo sistema.
 
 ---
 
@@ -58,71 +76,63 @@ crontab -e
 Adicione as linhas abaixo (ajuste o caminho para onde o projeto está instalado):
 
 ```cron
-# Atualiza status das fases e edições da premiação a cada 5 minutos
-*/5 * * * * php /var/www/html/cron/atualizar_fases_premiacao.php >> /var/www/html/storage/logs/cron_premiacao.log 2>&1
+# Atualiza status das fases da premiação todo dia às 00h05 (logo após a virada)
+5 0 * * * php /var/www/html/cron/atualizar_fases_premiacao.php >> /var/www/html/storage/logs/cron_premiacao.log 2>&1
 
-# Atualiza status dos empreendedores uma vez por dia às 03h
+# Atualiza status dos empreendedores todo dia às 03h
 0 3 * * * php /var/www/html/cron/update_status.php >> /var/www/html/storage/logs/cron_empreendedores.log 2>&1
 ```
 
 > **Dica:** Para descobrir o caminho correto do PHP no servidor:
 > ```bash
 > which php
-> # ou
-> php -v
+> # Se retornar /usr/bin/php8.2, substitua `php` por esse caminho nas linhas acima
 > ```
-> Se retornar `/usr/bin/php8.2`, substitua `php` por `/usr/bin/php8.2` nas linhas acima.
 
 ### Opção 2 — AWS EventBridge Scheduler (sem acesso SSH)
 
-Se a plataforma roda no **Elastic Beanstalk**, **ECS**, ou sem acesso direto à instância, use o **EventBridge Scheduler** para disparar uma chamada HTTP ao script:
+Se a plataforma roda no **Elastic Beanstalk** ou **ECS** sem acesso direto à instância:
 
 1. No Console AWS, acesse **EventBridge → Scheduler → Create schedule**
-2. Frequência: `rate(5 minutes)`
-3. Target: **HTTP** para a URL abaixo (com token de segurança):
+2. Frequência: `cron(5 0 * * ? *)` (todo dia às 00h05 UTC — ajuste para UTC-3 se necessário: `cron(5 3 * * ? *)`)
+3. Target: chamada HTTP para a URL abaixo:
 
 ```
 https://staging.impactospositivos.com/cron/atualizar_fases_premiacao.php?token=SEU_TOKEN_AQUI
 ```
 
-> O token padrão está definido na variável de ambiente `CRON_SECRET`.
-> Se a variável não estiver configurada, o valor padrão é `pip2026_cron_secret`.
-> **Importante:** defina um token forte via variável de ambiente no servidor.
+> O token é definido pela variável de ambiente `CRON_SECRET` no servidor.
+> Se não estiver configurada, o valor padrão é `pip2026_cron_secret` — altere para um valor forte.
 
 ### Opção 3 — AWS Lambda + EventBridge (avançado)
 
-Para infraestrutura serverless, crie uma função Lambda simples que faz um GET na URL acima com o token, agendada pelo EventBridge.
+Crie uma função Lambda que faça um GET na URL acima com o token, agendada pelo EventBridge com expressão `cron(5 3 * * ? *)` (00h05 horário de Brasília).
 
 ---
 
 ## Segurança
 
-O script `atualizar_fases_premiacao.php` só aceita chamadas HTTP se o token correto for enviado:
+O script só aceita chamadas HTTP com o token correto:
 
 ```
 # Via query string
 https://seudominio.com/cron/atualizar_fases_premiacao.php?token=SEU_TOKEN
 
-# Via header HTTP (para uso com Lambda/EventBridge)
+# Via header HTTP
 X-Cron-Token: SEU_TOKEN
 ```
 
-Sem o token, retorna **403 Acesso negado**.
+Sem o token → retorna **403 Acesso negado**. Via CLI diretamente, o token não é necessário.
 
-Defina o token no servidor como variável de ambiente:
+Defina o token no servidor:
 
 ```bash
-# No .bashrc, .env, ou configuração do Elastic Beanstalk
 export CRON_SECRET="token_forte_aqui"
 ```
-
-Via CLI diretamente sempre funciona sem token (PHP_SAPI === 'cli').
 
 ---
 
 ## Verificando se o cron está funcionando
-
-Os logs ficam em `storage/logs/`. Para checar:
 
 ```bash
 # Últimas execuções
@@ -132,35 +142,36 @@ tail -50 /var/www/html/storage/logs/cron_premiacao.log
 tail -f /var/www/html/storage/logs/cron_premiacao.log
 ```
 
-Exemplo de saída esperada:
+Exemplo de saída no dia que uma fase muda:
 
 ```
-[2026-05-01 00:00:02] Fase #3 (Voto Popular): agendada → em_andamento
-[2026-05-01 00:00:02] Edição #1 (PIP 2026): planejada → ativa
-[2026-05-01 00:00:02] Fases verificadas: 5 | Atualizadas: 1
-[2026-05-01 00:00:02] Edições verificadas: 1 | Atualizadas: 1
-[2026-05-01 00:00:02] Concluído em 12.4ms.
+[2026-07-30 00:05:01] Fase #3 (Fase 1): agendada → em_andamento
+[2026-07-30 00:05:01] Edição #1 (PIP 2026): planejada → ativa
+[2026-07-30 00:05:01] Fases verificadas: 6 | Atualizadas: 1
+[2026-07-30 00:05:01] Edições verificadas: 1 | Atualizadas: 1
+[2026-07-30 00:05:01] Concluído em 11.3ms.
 ```
 
-Se nenhuma fase mudar de status naquela execução, o log mostrará apenas:
+Nos outros dias, quando nada muda:
 
 ```
-[2026-05-01 00:05:02] Fases verificadas: 5 | Atualizadas: 0
-[2026-05-01 00:05:02] Edições verificadas: 1 | Atualizadas: 0
-[2026-05-01 00:05:02] Concluído em 8.1ms.
+[2026-07-31 00:05:01] Fases verificadas: 6 | Atualizadas: 0
+[2026-07-31 00:05:01] Edições verificadas: 1 | Atualizadas: 0
+[2026-07-31 00:05:01] Concluído em 9.2ms.
 ```
 
 ---
 
 ## Teste manual
 
-Para testar sem aguardar o cron rodar, execute diretamente no servidor:
+Para testar sem aguardar o cron rodar:
 
 ```bash
+# Via terminal no servidor
 php /var/www/html/cron/atualizar_fases_premiacao.php
 ```
 
-Ou acesse via browser com o token:
+Ou via browser com o token (bom para testar o staging):
 
 ```
 https://staging.impactospositivos.com/cron/atualizar_fases_premiacao.php?token=pip2026_cron_secret
