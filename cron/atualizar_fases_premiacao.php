@@ -4,20 +4,29 @@
 // Cron para atualização automática de status das fases e edições da premiação.
 //
 // Regras das fases (premiacao_fases.status):
-//   rascunho   → permanece rascunho (admin não publicou ainda)
-//   apurada    → permanece apurada  (admin encerrou manualmente)
-//   agendada   → NOW() < data_inicio                → agendada
-//   em_andamento → data_inicio <= NOW() <= data_fim  → em_andamento
-//   encerrada  → NOW() > data_fim                   → encerrada
+//   rascunho     → permanece rascunho (admin não publicou ainda)
+//   apurada      → permanece apurada  (admin encerrou manualmente)
+//   agendada     → NOW() < data_inicio
+//   em_andamento → data_inicio <= NOW() <= data_fim
+//   encerrada    → NOW() > data_fim
 //
 // Regras da edição (premiacoes.status):
-//   planejada  → todas as fases ainda não iniciaram ou não há fases
+//   planejada  → nenhuma fase ativa ainda
 //   ativa      → ao menos uma fase em_andamento
 //   encerrada  → todas as fases encerradas/apuradas
 //
-// Agendamento sugerido (crontab):
-//   */5 * * * * php /caminho/para/cron/atualizar_fases_premiacao.php >> /var/log/pip_cron.log 2>&1
-//   (a cada 5 minutos — suficiente para precisão de hora inteira)
+// Cronograma PIP 2026 (referência):
+//   11/05 – 24/07  Lançamento / Inscrições
+//   25/07 – 29/07  Avaliação dos Inscritos
+//   30/07 – 14/08  Fase 1
+//   15/08 – 23/08  Avaliação Votação  (automática — não é fase manual)
+//   24/08 – 04/09  Fase 2
+//   07/09 – 18/09  Fase 3
+//   24/09          Encontro 2026
+//
+// Agendamento no servidor (crontab):
+//   5 0 * * * php /caminho/para/cron/atualizar_fases_premiacao.php >> /var/log/pip_cron_premiacao.log 2>&1
+//   (roda 1x por dia às 00h05 — suficiente pois as fases mudam em granularidade de dias)
 // ─────────────────────────────────────────────────────────────────────────────
 declare(strict_types=1);
 
@@ -48,40 +57,28 @@ try {
     $pdo = Database::getInstance();
 
     // ── 1. Atualiza status das FASES ─────────────────────────────────────────
-    //
-    // Busca apenas fases que NÃO estão em estado final (rascunho ou apurada)
+    // Busca apenas fases que já foram publicadas (não são rascunho nem apuradas)
     // e que precisam de recálculo baseado em data.
-    //
     $stmtFases = $pdo->query("
         SELECT id, premiacao_id, nome, status, data_inicio, data_fim
         FROM premiacao_fases
         WHERE status NOT IN ('rascunho', 'apurada')
-           OR (status = 'rascunho' AND data_inicio IS NOT NULL AND data_fim IS NOT NULL)
+          AND data_inicio IS NOT NULL
+          AND data_fim IS NOT NULL
     ");
     $fases = $stmtFases->fetchAll(PDO::FETCH_ASSOC);
 
     $atualizadasFases = 0;
 
     foreach ($fases as $fase) {
-        // Fases em rascunho sem datas definidas → ignorar
-        if (empty($fase['data_inicio']) || empty($fase['data_fim'])) {
-            continue;
-        }
-
-        // Fases em rascunho → só muda se o admin já tiver definido datas E publicado
-        // (não forçamos a saída do rascunho automaticamente — isso é intencional)
-        if ($fase['status'] === 'rascunho') {
-            continue;
-        }
-
         $agora      = new DateTimeImmutable('now');
         $dataInicio = new DateTimeImmutable($fase['data_inicio']);
         $dataFim    = new DateTimeImmutable($fase['data_fim']);
 
         $novoStatus = match(true) {
-            $agora < $dataInicio                          => 'agendada',
-            $agora >= $dataInicio && $agora <= $dataFim   => 'em_andamento',
-            default                                       => 'encerrada',
+            $agora < $dataInicio                        => 'agendada',
+            $agora >= $dataInicio && $agora <= $dataFim => 'em_andamento',
+            default                                     => 'encerrada',
         };
 
         if ($novoStatus !== $fase['status']) {
@@ -100,10 +97,6 @@ try {
 
 
     // ── 2. Atualiza status das EDIÇÕES (premiacoes) ──────────────────────────
-    //
-    // Busca edições que NÃO estão em estado final ('encerrada' definitivamente)
-    // e recalcula com base no estado atual das suas fases.
-    //
     $stmtEdicoes = $pdo->query("
         SELECT id, nome, ano, status
         FROM premiacoes
@@ -116,10 +109,9 @@ try {
     foreach ($edicoes as $edicao) {
         $stmtContagem = $pdo->prepare("
             SELECT
-                COUNT(*)                                                         AS total,
-                SUM(status = 'em_andamento')                                    AS em_andamento,
-                SUM(status IN ('encerrada', 'apurada'))                         AS finalizadas,
-                SUM(status IN ('agendada', 'rascunho'))                         AS pendentes
+                COUNT(*)                                        AS total,
+                SUM(status = 'em_andamento')                   AS em_andamento,
+                SUM(status IN ('encerrada', 'apurada'))        AS finalizadas
             FROM premiacao_fases
             WHERE premiacao_id = ?
               AND status != 'rascunho'
@@ -127,24 +119,16 @@ try {
         $stmtContagem->execute([(int)$edicao['id']]);
         $contagem = $stmtContagem->fetch(PDO::FETCH_ASSOC);
 
-        $total        = (int)($contagem['total']        ?? 0);
-        $emAndamento  = (int)($contagem['em_andamento'] ?? 0);
-        $finalizadas  = (int)($contagem['finalizadas']  ?? 0);
-        $pendentes    = (int)($contagem['pendentes']    ?? 0);
+        $total       = (int)($contagem['total']       ?? 0);
+        $emAndamento = (int)($contagem['em_andamento'] ?? 0);
+        $finalizadas = (int)($contagem['finalizadas']  ?? 0);
 
-        // Sem fases publicadas → planejada
-        if ($total === 0) {
-            $novoStatus = 'planejada';
-        } elseif ($emAndamento > 0) {
-            // Ao menos uma fase em andamento → edição ativa
-            $novoStatus = 'ativa';
-        } elseif ($finalizadas === $total) {
-            // Todas as fases encerradas/apuradas → edição encerrada
-            $novoStatus = 'encerrada';
-        } else {
-            // Ainda tem fases agendadas, nenhuma em andamento → planejada
-            $novoStatus = 'planejada';
-        }
+        $novoStatus = match(true) {
+            $total === 0             => 'planejada',
+            $emAndamento > 0        => 'ativa',
+            $finalizadas === $total => 'encerrada',
+            default                  => 'planejada',
+        };
 
         if ($novoStatus !== $edicao['status']) {
             $stmt = $pdo->prepare("
