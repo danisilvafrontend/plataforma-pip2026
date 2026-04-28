@@ -168,7 +168,7 @@ Para testar sem aguardar o cron rodar:
 
 ```bash
 # Via terminal no servidor
-php /var/www/html/cron/atualizar_fases_premiacao.php 
+php /var/www/html/cron/atualizar_fases_premiacao.php git 
 ```
 
 Ou via browser com o token (bom para testar o staging):

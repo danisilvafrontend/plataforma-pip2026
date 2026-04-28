@@ -19,24 +19,7 @@ $empreendedor = pdo_fetch_one($pdo, "
 ", [$negocio_id]);
 
 // ── Verifica se é o fundador principal ────────────────────────────────────
-$ehFundador = false;
-if ($empreendedor) {
-    $check = pdo_fetch_one($pdo, "
-        SELECT id FROM negocio_fundadores
-        WHERE negocio_id = ? AND tipo = 'principal'
-          AND (
-            email = ?
-            OR (nome = ? AND sobrenome = ?)
-          )
-        LIMIT 1
-    ", [
-        $negocio_id,
-        $empreendedor['email']     ?? '',
-        $empreendedor['nome']      ?? '',
-        $empreendedor['sobrenome'] ?? '',
-    ]);
-    $ehFundador = !empty($check);
-}
+$ehFundador = !empty($empreendedor) && !empty($empreendedor['eh_fundador']);
 
 $ehAdmin        = (strpos($_SERVER['REQUEST_URI'], '/admin/') !== false);
 $somenteLeitura = isset($somenteLeitura) && $somenteLeitura === true;
@@ -48,7 +31,7 @@ $somenteLeitura = isset($somenteLeitura) && $somenteLeitura === true;
     <div class="emp-review-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="emp-review-card-title">
             <i class="bi bi-person-badge-fill me-1"></i>
-            Empreendedor Responsável
+            Responsável
 
             <?php if ($ehFundador): ?>
                 <span class="badge bg-success ms-2" style="font-size:.7rem;">
@@ -233,7 +216,7 @@ $somenteLeitura = isset($somenteLeitura) && $somenteLeitura === true;
                     <div class="emp-review-item">
                         <span class="emp-review-label">Cadastro</span>
                         <div class="emp-review-value">
-                            <?= formatDateBR($empreendedor['created_at'] ?? $empreendedor['data_cadastro'] ?? '') ?>
+                            <?= formatDateBR($empreendedor['criado_em'] ?? $empreendedor['data_cadastro'] ?? '') ?>
                         </div>
                     </div>
                 </div>

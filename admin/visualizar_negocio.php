@@ -189,7 +189,7 @@ include __DIR__ . '/../app/views/admin/header.php';
     <?php endif; ?>
 
     <div class="admin-negocio-content mt-4">
-        <section id="empreendedor" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_empreendedor.php'; ?></section>
+        <section id="empreendedor" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco-empreendedor.php'; ?></section>
         <section id="etapa-1" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa1.php'; ?></section>
         <section id="etapa-2" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa2.php'; ?></section>
         <section id="etapa-3" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa3.php'; ?></section>
@@ -247,6 +247,7 @@ include __DIR__ . '/../app/views/admin/header.php';
                             <div class="row g-2 mb-4">
                                 <?php
                                 $opcoes = [
+                                    'dados_responsável'   => 'Dados básicos (nome, CPF, data nascimento)',
                                     'dados_basicos'   => 'Dados básicos (nome, CNPJ, endereço) (Etapa 1 Dados do Negócio)',
                                     'fundadores'      => 'Dados dos fundadores (Etapa 2 Fundadores)',
                                     'eixo_tematico'   => 'Eixo temático / subáreas (Etapa 3 Eixo Temático)',

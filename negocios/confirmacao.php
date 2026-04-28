@@ -153,6 +153,9 @@ $stmt = $pdo->prepare("
     WHERE nd.negocio_id = ?
 ");
 
+$stmt->execute([$negocio_id]);
+$docs = $stmt->fetch(PDO::FETCH_ASSOC);
+
 // Empreendedor responsável (dono da conta vinculada ao negócio)
 $empreendedorResponsavel = pdo_fetch_one($pdo, "
     SELECT e.*
@@ -161,9 +164,6 @@ $empreendedorResponsavel = pdo_fetch_one($pdo, "
     WHERE n.id = ?
     LIMIT 1
 ", [$negocio_id]) ?: [];
-$stmt->execute([$negocio_id]);
-$docs = $stmt->fetch(PDO::FETCH_ASSOC);
-
 /* -------------------------
    Partials (8 blocos)
    ------------------------- */
@@ -243,7 +243,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php'; ?>
     </nav>
 
     <div class="admin-negocio-content mt-4">
-        <section id="empreendedor" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_empreendedor.php'; ?>
+        <section id="empreendedor" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco-empreendedor.php'; ?>
         </section>
         <section id="etapa-1" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa1.php'; ?></section>
         <section id="etapa-2" class="admin-etapa-wrap"><?php include __DIR__ . '/blocos-cadastros/bloco_etapa2.php'; ?></section>
