@@ -54,46 +54,34 @@ try {
     $negociosIds = $stmtNegocios->fetchAll(PDO::FETCH_COLUMN);
 
     if (!empty($negociosIds)) {
-        // Cria os '?' dinâmicos para a query (ex: "?, ?, ?")
         $inQuery = implode(',', array_fill(0, count($negociosIds), '?'));
-        
-        // 2. Exclui os dependentes dos negócios (Todas as etapas e scores)
-        
-        // Etapa 8 / Geral: Scores
+
+        // 2. Exclui os dependentes dos negócios (apenas tabelas que existem no banco)
+
+        // Scores
         $pdo->prepare("DELETE FROM scores_negocios WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        
-        // Etapa 5: Apresentação e Galeria
+
+        // Etapa 8: Apresentação
         $pdo->prepare("DELETE FROM negocio_apresentacao WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        
+
         // Etapa 4: ODS
         $pdo->prepare("DELETE FROM negocio_ods WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        
-        // Etapa 3: Eixos e Subáreas
+
+        // Etapa 3: Subáreas
         $pdo->prepare("DELETE FROM negocio_subareas WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        
-        // Tabelas Adicionais (Caso existam na base)
-        $pdo->prepare("DELETE FROM negocio_impacto WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        $pdo->prepare("DELETE FROM negocio_visao WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        $pdo->prepare("DELETE FROM negocio_mercado WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        $pdo->prepare("DELETE FROM negocio_financeiro WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        $pdo->prepare("DELETE FROM negocio_sustentabilidade WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        $pdo->prepare("DELETE FROM negocio_documentos WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
 
         // Etapa 2: Fundadores
         $pdo->prepare("DELETE FROM negocio_fundadores WHERE negocio_id IN ($inQuery)")->execute($negociosIds);
-        
-        // 3. Finalmente, Exclui os negócios
-        $stmtDelNegocios = $pdo->prepare("DELETE FROM negocios WHERE empreendedor_id = ?");
-        $stmtDelNegocios->execute([$id]);
+
+        // 3. Exclui os negócios
+        $pdo->prepare("DELETE FROM negocios WHERE empreendedor_id = ?")->execute([$id]);
     }
 
-    // 4. Exclui registros de fundadores que possam estar atrelados pelo ID do empreendedor (caso tenha fugido do IN acima)
-    $stmtDelFundadoresEmp = $pdo->prepare("DELETE FROM negocio_fundadores WHERE empreendedor_id = ?");
-    $stmtDelFundadoresEmp->execute([$id]);
+    // 4. Exclui fundadores remanescentes atrelados diretamente ao empreendedor
+    $pdo->prepare("DELETE FROM negocio_fundadores WHERE empreendedor_id = ?")->execute([$id]);
 
-    // 5. Por último, exclui o empreendedor principal
-    $stmt = $pdo->prepare("DELETE FROM empreendedores WHERE id = ?");
-    $stmt->execute([$id]);
+    // 5. Exclui o empreendedor
+    $pdo->prepare("DELETE FROM empreendedores WHERE id = ?")->execute([$id]);
 
     $pdo->commit();
     // === FIM DA EXCLUSÃO ===
@@ -103,6 +91,6 @@ try {
     exit;
 
 } catch (PDOException $e) {
-    $pdo->rollBack(); // Desfaz qualquer alteração se deu erro
+    $pdo->rollBack();
     die("Erro ao excluir usuário e seus dados relacionados: " . $e->getMessage());
 }

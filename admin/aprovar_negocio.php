@@ -65,48 +65,77 @@ try {
     $stmtUpdate->execute([$negocio_id]);
 
     // Garante inscrição do negócio na premiação vigente após aprovação/publicação
-    $stmtPremiacao = $pdo->query("
-        SELECT id, nome, ano, status
-        FROM premiacoes
-        WHERE status IN ('ativa', 'planejada')
-        ORDER BY 
-            CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
-            ano DESC,
-            id DESC
+$stmtPremiacao = $pdo->query("
+    SELECT id, nome, ano, status
+    FROM premiacoes
+    WHERE status IN ('ativa', 'planejada')
+    ORDER BY 
+        CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
+        ano DESC,
+        id DESC
+    LIMIT 1
+");
+$premiacaoVigente = $stmtPremiacao->fetch(PDO::FETCH_ASSOC);
+
+if (!empty($premiacaoVigente['id'])) {
+
+    // Busca categoria do negócio para a inscrição
+    $stmtCat = $pdo->prepare("SELECT empreendedor_id, categoria FROM negocios WHERE id = ? LIMIT 1");
+    $stmtCat->execute([$negocio_id]);
+    $dadosNegocio = $stmtCat->fetch(PDO::FETCH_ASSOC);
+
+    $stmtBuscaInscricao = $pdo->prepare("
+        SELECT id, deseja_participar, aceite_regulamento, aceite_veracidade, status
+        FROM premiacao_inscricoes
+        WHERE premiacao_id = ? AND negocio_id = ?
         LIMIT 1
     ");
-    $premiacaoVigente = $stmtPremiacao->fetch(PDO::FETCH_ASSOC);
+    $stmtBuscaInscricao->execute([(int)$premiacaoVigente['id'], $negocio_id]);
+    $inscricaoAtual = $stmtBuscaInscricao->fetch(PDO::FETCH_ASSOC);
 
-    if (!empty($premiacaoVigente['id'])) {
-        $stmtBuscaInscricao = $pdo->prepare("
-            SELECT id, deseja_participar, aceite_regulamento, aceite_veracidade
-            FROM premiacao_inscricoes
-            WHERE premiacao_id = ? AND negocio_id = ?
-            LIMIT 1
-        ");
-        $stmtBuscaInscricao->execute([(int)$premiacaoVigente['id'], $negocio_id]);
-        $inscricaoAtual = $stmtBuscaInscricao->fetch(PDO::FETCH_ASSOC);
-
-        if ($inscricaoAtual) {
-            if (
-                (int)$inscricaoAtual['deseja_participar'] === 1 &&
-                (int)$inscricaoAtual['aceite_regulamento'] === 1 &&
-                (int)$inscricaoAtual['aceite_veracidade'] === 1
-            ) {
-                $stmtAtualizaInscricao = $pdo->prepare("
-                    UPDATE premiacao_inscricoes
-                    SET
-                        status = CASE
-                            WHEN status IN ('rascunho', 'enviada') THEN 'em_triagem'
-                            ELSE status
-                        END,
-                        updated_at = NOW()
-                    WHERE id = ?
-                ");
-                $stmtAtualizaInscricao->execute([$inscricaoAtual['id']]);
-            }
+    if ($inscricaoAtual) {
+        // Inscrição já existe: se tiver todos os aceites, promove para elegivel
+        if (
+            (int)$inscricaoAtual['deseja_participar'] === 1 &&
+            (int)$inscricaoAtual['aceite_regulamento'] === 1 &&
+            (int)$inscricaoAtual['aceite_veracidade'] === 1
+        ) {
+            $stmtAtualizaInscricao = $pdo->prepare("
+                UPDATE premiacao_inscricoes
+                SET status = 'elegivel',
+                    updated_at = NOW()
+                WHERE id = ? AND status IN ('rascunho', 'enviada', 'em_triagem')
+            ");
+            $stmtAtualizaInscricao->execute([$inscricaoAtual['id']]);
         }
+    } else {
+        // NÃO existe inscrição: o empreendedor enviou só para avaliação, sem passar
+        // pelo modal da premiação. Cria a inscrição automaticamente como elegivel
+        // (ele aceitou ao enviar para avaliação — fluxo sem premiação explícita).
+        // Se quiser NÃO inscrever nesses casos, remova este else.
+        $stmtInsert = $pdo->prepare("
+            INSERT INTO premiacao_inscricoes (
+                premiacao_id,
+                negocio_id,
+                empreendedor_id,
+                categoria,
+                aceite_regulamento,
+                aceite_veracidade,
+                deseja_participar,
+                status,
+                enviado_em,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, 1, 1, 1, 'elegivel', NOW(), NOW(), NOW())
+        ");
+        $stmtInsert->execute([
+            (int)$premiacaoVigente['id'],
+            $negocio_id,
+            (int)$dadosNegocio['empreendedor_id'],
+            $dadosNegocio['categoria']
+        ]);
     }
+}
 
         // PREPARA E ENVIA O E-MAIL (Mesmo formato dos parceiros)
     $emailDestino = !empty($dados['empreendedor_email']) ? $dados['empreendedor_email'] : $dados['email_comercial'];

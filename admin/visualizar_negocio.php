@@ -119,6 +119,14 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$negocio_id]);
 $docs = $stmt->fetch(PDO::FETCH_ASSOC);
+// Empreendedor responsável pelo negócio
+$empreendedorResponsavel = pdo_fetch_one($pdo, "
+    SELECT e.*
+    FROM empreendedores e
+    INNER JOIN negocios n ON n.empreendedor_id = e.id
+    WHERE n.id = ?
+    LIMIT 1
+", [$negocio_id]) ?: [];
 
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
@@ -152,6 +160,7 @@ include __DIR__ . '/../app/views/admin/header.php';
     </div>
 
     <nav class="admin-negocio-nav"> 
+        <a href="#empreendedor">Responsável</a>
         <a href="#etapa-1">Etapa 1</a>
         <a href="#etapa-2">Etapa 2</a>
         <a href="#etapa-3">Etapa 3</a>
@@ -180,6 +189,7 @@ include __DIR__ . '/../app/views/admin/header.php';
     <?php endif; ?>
 
     <div class="admin-negocio-content mt-4">
+        <section id="empreendedor" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_empreendedor.php'; ?></section>
         <section id="etapa-1" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa1.php'; ?></section>
         <section id="etapa-2" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa2.php'; ?></section>
         <section id="etapa-3" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa3.php'; ?></section>

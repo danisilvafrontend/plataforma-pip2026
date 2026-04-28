@@ -21,32 +21,34 @@ $pdo = new PDO(
 function labelStatusPremiacao(?string $status): string
 {
     return match ($status) {
-        'rascunho' => 'Rascunho',
-        'elegivel' => 'Elegível',
-        'inelegivel' => 'Inelegível',
-        'classificada_fase_1' => 'Classificada Fase 1',
-        'classificada_fase_2' => 'Classificada Fase 2',
-        'finalista' => 'Finalista',
-        'vencedora' => 'Vencedora',
-        'eliminada' => 'Eliminada',
-        default => 'Não inscrito',
+        'rascunho'            => 'Rascunho',
+        'enviada'             => 'Inscrito — Em análise',   // ← ADICIONAR
+        'emtriagem'           => 'Em triagem',              // ← ADICIONAR
+        'elegivel'            => 'Elegível',
+        'inelegivel'          => 'Inelegível',
+        'classificadafase1'   => 'Classificada Fase 1',     // ← checar nome exato no ENUM
+        'classificadafase2'   => 'Classificada Fase 2',
+        'finalista'           => 'Finalista',
+        'vencedora'           => 'Vencedora',
+        'eliminada'           => 'Eliminada',
+        default               => 'Não inscrito',
     };
 }
 
 function badgePremiacao(?string $status): array
 {
     return match ($status) {
-        'enviada' => ['bg' => '#e3f2fd', 'color' => '#1565c0'],
-        'em_triagem' => ['bg' => '#fff8e1', 'color' => '#f57f17'],
-        'elegivel' => ['bg' => '#e8f5e9', 'color' => '#2e7d32'],
-        'inelegivel' => ['bg' => '#fdecea', 'color' => '#c62828'],
-        'classificada_fase_1' => ['bg' => '#e0f7fa', 'color' => '#006064'],
-        'classificada_fase_2' => ['bg' => '#e0f2f1', 'color' => '#00695c'],
-        'finalista' => ['bg' => '#ede7f6', 'color' => '#5e35b1'],
-        'vencedora' => ['bg' => '#fff3cd', 'color' => '#856404'],
-        'eliminada' => ['bg' => '#fdecea', 'color' => '#c62828'],
-        'rascunho' => ['bg' => '#f5f5f5', 'color' => '#757575'],
-        default => ['bg' => '#f5f5f5', 'color' => '#757575'],
+        'enviada'           => ['bg' => '#e3f2fd', 'color' => '#1565c0'],   // já existe ✅
+        'emtriagem'         => ['bg' => '#fff8e1', 'color' => '#f57f17'],   // já existe ✅
+        'elegivel'          => ['bg' => '#e8f5e9', 'color' => '#2e7d32'],
+        'inelegivel'        => ['bg' => '#fdecea', 'color' => '#c62828'],
+        'classificadafase1' => ['bg' => '#e0f7fa', 'color' => '#006064'],
+        'classificadafase2' => ['bg' => '#e0f2f1', 'color' => '#00695c'],
+        'finalista'         => ['bg' => '#ede7f6', 'color' => '#5e35b1'],
+        'vencedora'         => ['bg' => '#fff3cd', 'color' => '#856404'],
+        'eliminada'         => ['bg' => '#fdecea', 'color' => '#c62828'],
+        'rascunho'          => ['bg' => '#f5f5f5', 'color' => '#757575'],
+        default             => ['bg' => '#f5f5f5', 'color' => '#757575'],
     };
 }
 

@@ -86,7 +86,6 @@
 
                         <div class="vitrine-card-actions">
                             <a href="/negocio.php?id=<?= $n['id'] ?>" class="btn btn-outline-primary">Ver negócio</a>
-                            <a href="/negocio.php?id=<?= $n['id'] ?>#apoiar" class="btn btn-outline-secondary">Apoiar</a>
                         </div>
                     </article>
                 </div>

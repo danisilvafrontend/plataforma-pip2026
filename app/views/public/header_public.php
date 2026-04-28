@@ -73,14 +73,14 @@ try {
 
   <?php if (!empty($extraHead ?? null)) echo $extraHead; ?>
   <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QB72YGX3EV"></script>
+  <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-QB72YGX3EV"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
 
     gtag('config', 'G-QB72YGX3EV');
-  </script>
+  </script> -->
 </head>
 <body>
 <div class="gtranslate_wrapper"></div>
@@ -109,6 +109,11 @@ try {
         <li class="nav-item">
           <a class="nav-link" href="/vitrine_nacional.php">
             <i class="bi bi-grid me-1"></i> Vitrine Nacional
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/premiacao.php">
+            <i class="bi bi-trophy-fill me-1"></i> Premiação 2026
           </a>
         </li>
         <li class="nav-item">

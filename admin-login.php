@@ -155,8 +155,6 @@ $header_included = try_include_public_header();
           </div>
         </form>
 
-        <hr>
-        <p class="text-center small text-muted mb-0">Versão MVP — remova scripts de criação após uso</p>
       </div>
     </div>
   </div>

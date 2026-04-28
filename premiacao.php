@@ -1,7 +1,8 @@
 <?php
 // /premiacao.php — Página pública de votação da premiação ativa
 session_start();
-
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
 require_once __DIR__ . '/app/helpers/premiacao_auth.php';
 
 ini_set('display_errors', 1);
