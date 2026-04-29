@@ -25,9 +25,6 @@ $empreendedor = $stmt->fetch();
 if (!$empreendedor) die("Empreendedor não encontrado.");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome            = trim($_POST['nome'] ?? '');
-    $sobrenome       = trim($_POST['sobrenome'] ?? '');
-    $cpf             = trim($_POST['cpf'] ?? '');
     $email           = trim($_POST['email'] ?? '');
     $celular         = trim($_POST['celular'] ?? '');
     $data_nascimento = $_POST['data_nascimento'] ?? null;
@@ -47,9 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     else { $estado = null; $cidade = null; $forcarLimpeza[] = 'estado'; $forcarLimpeza[] = 'cidade'; }
 
     $campos = []; $params = [];
-    if ($nome !== '')              { $campos[] = "nome = ?";             $params[] = $nome; }
-    if ($sobrenome !== '')         { $campos[] = "sobrenome = ?";        $params[] = $sobrenome; }
-    if ($cpf !== '')               { $campos[] = "cpf = ?";              $params[] = $cpf; }
     if ($email !== '')             { $campos[] = "email = ?";            $params[] = $email; }
     if ($celular !== '')           { $campos[] = "celular = ?";          $params[] = $celular; }
     if (!empty($data_nascimento))  { $campos[] = "data_nascimento = ?";  $params[] = $data_nascimento; }
@@ -68,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($campos)) {
         $params[] = $_SESSION['empreendedor_id'];
         $pdo->prepare("UPDATE empreendedores SET " . implode(", ", $campos) . " WHERE id = ?")->execute($params);
-        if ($nome !== '')  $_SESSION['empreendedor_nome']  = $nome;
         if ($email !== '') $_SESSION['empreendedor_email'] = $email;
         $_SESSION['eh_fundador']    = $eh_fundador;
         $_SESSION['flash_message']  = "Dados atualizados com sucesso!";
@@ -108,21 +101,50 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
       </div>
 
       <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label fw-600">Nome</label>
-          <input type="text" name="nome" class="form-control"
-                 value="<?= htmlspecialchars($empreendedor['nome'] ?? '', ENT_QUOTES) ?>" required>
+        <!-- Nome — bloqueado, vem do banco -->
+        <div class="col-md-4">
+          <label class="form-label fw-600" for="nome">Nome</label>
+          <input type="text" id="nome" class="form-control bg-light"
+                value="<?= htmlspecialchars($empreendedor['nome'] ?? '', ENT_QUOTES) ?>"
+                readonly>
+          <div class="form-text">
+            <span class="text-success">
+              <i class="bi bi-lock-fill me-1"></i>Definido no cadastro via Receita Federal. Não pode ser alterado.
+            </span>
+          </div>
         </div>
-        <div class="col-md-6">
-          <label class="form-label fw-600">Sobrenome</label>
-          <input type="text" name="sobrenome" class="form-control"
-                 value="<?= htmlspecialchars($empreendedor['sobrenome'] ?? '', ENT_QUOTES) ?>" required>
+
+        <!-- Sobrenome — bloqueado, vem do banco -->
+        <div class="col-md-4">
+          <label class="form-label fw-600" for="sobrenome">Sobrenome</label>
+          <input type="text" id="sobrenome" class="form-control bg-light"
+                value="<?= htmlspecialchars($empreendedor['sobrenome'] ?? '', ENT_QUOTES) ?>"
+                readonly>
+          <div class="form-text">
+            <span class="text-success">
+              <i class="bi bi-lock-fill me-1"></i>Definido no cadastro via Receita Federal. Não pode ser alterado.
+            </span>
+          </div>
         </div>
-        <div class="col-md-6">
-          <label class="form-label fw-600">CPF</label>
-          <input type="text" name="cpf" class="form-control"
-                 value="<?= htmlspecialchars($empreendedor['cpf'] ?? '', ENT_QUOTES) ?>"
-                 placeholder="000.000.000-00">
+
+        <!-- CPF — bloqueado, vem do banco com máscara -->
+        <div class="col-md-4">
+          <label class="form-label fw-600" for="cpf">CPF</label>
+          <input type="text" id="cpf" class="form-control bg-light"
+                value="<?php
+                  $cpfRaw = preg_replace('/\D/', '', $empreendedor['cpf'] ?? '');
+                  if (strlen($cpfRaw) === 11) {
+                    echo substr($cpfRaw,0,3).'.'.substr($cpfRaw,3,3).'.'.substr($cpfRaw,6,3).'-'.substr($cpfRaw,9,2);
+                  } else {
+                    echo htmlspecialchars($empreendedor['cpf'] ?? '', ENT_QUOTES);
+                  }
+                ?>"
+                readonly>
+          <div class="form-text">
+            <span class="text-success">
+              <i class="bi bi-lock-fill me-1"></i>CPF cadastrado. Não pode ser alterado.
+            </span>
+          </div>
         </div>
         <div class="col-md-6">
           <label class="form-label fw-600">E-mail</label>

@@ -36,28 +36,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
   <form method="post" action="/negocios/processar_etapa1.php">
     <input type="hidden" name="modo" value="cadastro">
 
-    <!-- ── Identificação ───────────────────────────────── -->
-    <div class="form-section">
-      <div class="form-section-title"><i class="bi bi-card-text"></i> Identificação</div>
-
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">
-            <i class="bi bi-eye-fill lbl-pub me-1"></i> Nome Fantasia *
-          </label>
-          <input type="text" name="nome_fantasia" class="form-control"
-                 placeholder="Como seu negócio é conhecido" required>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">
-            <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Razão Social *
-          </label>
-          <input type="text" name="razao_social" class="form-control"
-                 placeholder="Razão social conforme CNPJ" required>
-        </div>
-      </div>
-    </div>
-
     <!-- ── Categoria ───────────────────────────────────── -->
     <div class="form-section">
       <div class="form-section-title"><i class="bi bi-eye-fill lbl-pub me-1"></i> Categoria *</div>
@@ -127,6 +105,42 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         </div>
       </div>
     </div>
+
+    <!-- ── Identificação ───────────────────────────────── -->
+    <div class="form-section">
+      <div class="form-section-title"><i class="bi bi-card-text"></i> Identificação</div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">
+            <i class="bi bi-eye-fill lbl-pub me-1"></i> Nome Fantasia *
+          </label>
+          <input type="text" name="nome_fantasia" class="form-control"
+                 placeholder="Como seu negócio é conhecido" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">
+            <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Razão Social *
+          </label>
+          <!-- NOVO: wrapper para spinner e badge -->
+          <div class="position-relative">
+            <input type="text" name="razao_social" id="razao_social"
+              class="form-control bg-light"
+              placeholder="Razão social conforme CNPJ"
+              readonly>
+            <span id="razaoSocialSpinner"
+                  class="position-absolute top-50 end-0 translate-middle-y me-2 d-none"
+                  style="color:#6c757d;">
+              <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            </span>
+            <span id="razaoSocialBadge"
+                  class="position-absolute top-50 end-0 translate-middle-y me-2 d-none"
+                  style="font-size:.75rem;"></span>
+          </div>
+          <div id="razaoSocialHelp" class="form-text"></div>
+        </div>
+      </div>
+    </div>   
 
     <!-- ── Contato e Fundação ──────────────────────────── -->
     <div class="form-section">
@@ -375,14 +389,23 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 </script>
 
 <script>
-  // CPF / CNPJ — lógica original preservada integralmente
+  // CPF / CNPJ — lógica completa com integração API cpfcnpj.com.br
   (function() {
-    const radios       = document.querySelectorAll('input[name="categoria"]');
-    const labelCnpjCpf = document.getElementById('cnpjCpfLabel');
-    const help         = document.getElementById('cnpjCpfHelp');
-    const cnpjCpfInput = document.getElementById('cnpj_cpf');
-    const cnpjCpfError = document.getElementById('cnpjCpfError');
 
+    const PROXY = '../app/api/cpfcnpj_proxy.php';
+
+    const radios            = document.querySelectorAll('input[name="categoria"]');
+    const labelCnpjCpf      = document.getElementById('cnpjCpfLabel');
+    const help              = document.getElementById('cnpjCpfHelp');
+    const cnpjCpfInput      = document.getElementById('cnpj_cpf');
+    const cnpjCpfError      = document.getElementById('cnpjCpfError');
+    const razaoInput        = document.getElementById('razao_social');
+    const razaoSpinner      = document.getElementById('razaoSocialSpinner');
+    const razaoBadge        = document.getElementById('razaoSocialBadge');
+    const razaoHelp         = document.getElementById('razaoSocialHelp');
+    let   cnpjDebounceTimer = null;
+
+    // ── Helpers gerais ─────────────────────────────────────────────
     function onlyDigits(str) { return (str || '').replace(/\D/g, ''); }
 
     function setInvalid(msg) {
@@ -398,6 +421,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
       cnpjCpfInput.setCustomValidity('');
     }
 
+    // ── Validação CPF ──────────────────────────────────────────────
     function isValidCPF(cpf) {
       cpf = onlyDigits(cpf);
       if (cpf.length !== 11) return false;
@@ -412,6 +436,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
       return ((r < 2) ? 0 : 11 - r) === parseInt(cpf.charAt(10));
     }
 
+    // ── Validação CNPJ ─────────────────────────────────────────────
     function isValidCNPJ(cnpj) {
       cnpj = onlyDigits(cnpj);
       if (cnpj.length !== 14) return false;
@@ -428,18 +453,118 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
       return ((r < 2) ? 0 : 11 - r) === parseInt(cnpj[13]);
     }
 
+    // ── Máscaras ───────────────────────────────────────────────────
     function formatCPF(d) {
-      d = d.slice(0,11);
-      return d.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1-$2').slice(0,14);
+      d = d.slice(0, 11);
+      return d
+        .replace(/^(\d{3})(\d)/, '$1.$2')
+        .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1-$2')
+        .slice(0, 14);
     }
     function formatCNPJ(d) {
-      d = d.slice(0,14);
-      return d.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2').slice(0,18);
+      d = d.slice(0, 14);
+      return d
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .slice(0, 18);
     }
     function applyMaskAuto(v) {
       const d = onlyDigits(v);
       return d.length <= 11 ? formatCPF(d) : formatCNPJ(d);
     }
+
+    // ── Estado da Razão Social ─────────────────────────────────────
+    function razaoSetLoading(isLoading) {
+      if (!razaoSpinner || !razaoBadge) return;
+      if (isLoading) {
+        razaoSpinner.classList.remove('d-none');
+        razaoBadge.classList.add('d-none');
+      } else {
+        razaoSpinner.classList.add('d-none');
+      }
+    }
+    function razaoSetSuccess(nome) {
+      if (!razaoInput) return;
+      razaoInput.value = nome;
+      razaoInput.setAttribute('readonly', 'readonly');
+      razaoInput.classList.add('bg-light');
+      if (razaoBadge) {
+        razaoBadge.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+        razaoBadge.classList.remove('d-none');
+      }
+      if (razaoHelp) {
+        razaoHelp.innerHTML = '<span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido automaticamente via Receita Federal. Não pode ser alterado.</span>';
+      }
+    }
+    function razaoSetError(msg) {
+  if (!razaoInput) return;
+  razaoInput.value = '';
+  // NÃO remove readonly
+  razaoInput.classList.remove('bg-light');
+  if (razaoBadge) {
+    razaoBadge.innerHTML = '<i class="bi bi-exclamation-circle-fill text-danger"></i>';
+    razaoBadge.classList.remove('d-none');
+  }
+  if (razaoHelp) {
+    razaoHelp.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>'
+      + (msg || 'Não foi possível consultar o CNPJ.')
+      + ' Verifique e tente novamente.</span>';
+  }
+}
+    function razaoClear() {
+  if (!razaoInput) return;
+  razaoInput.value = '';
+  // NÃO remove readonly — campo sempre bloqueado para digitação
+  razaoInput.classList.remove('bg-light'); // só retira o fundo escurecido
+  if (razaoBadge) razaoBadge.classList.add('d-none');
+  if (razaoHelp)  razaoHelp.innerHTML = '';
+  razaoSetLoading(false);
+}
+
+    // ── Consulta à API cpfcnpj.com.br ─────────────────────────────
+    function consultarCNPJ(cnpjDigits) {
+      razaoSetLoading(true);
+      if (razaoHelp) razaoHelp.innerHTML = '<span class="text-muted">Consultando Receita Federal…</span>';
+
+      fetch(PROXY + '?tipo=cnpj&doc=' + cnpjDigits)
+        .then(function(res) {
+          razaoSetLoading(false);
+          if (!res.ok) {
+            if (res.status === 400 || res.status === 404) razaoSetError('CNPJ não encontrado na Receita Federal.');
+            else if (res.status === 401 || res.status === 403) razaoSetError('Token inválido ou sem créditos.');
+            else razaoSetError('Erro ao consultar (HTTP ' + res.status + ').');
+            return null;
+          }
+          return res.json();
+        })
+        .then(function(data) {
+          if (!data) return;
+
+          // Log temporário para ver o que a API está retornando (remova após confirmar)
+          console.log('[CNPJ API response]', data);
+
+          const nome = (
+            data.razao ||
+            data.nome ||
+            data.RAZAO_SOCIAL ||
+            data.company ||
+            ''
+          ).trim();
+
+          if (nome) razaoSetSuccess(nome);
+          else razaoSetError('Razão Social não retornada pela API.');
+        })
+        .catch(function(err) {
+          razaoSetLoading(false);
+          razaoSetError('Falha na conexão com a API. Verifique sua internet.');
+          console.error('[CNPJ API]', err);
+        });
+    }
+
+    // ── Categoria ──────────────────────────────────────────────────
     function getSelectedCategory() {
       const radio = document.querySelector('input[name="categoria"]:checked');
       return radio ? radio.value : '';
@@ -449,52 +574,126 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
       clearInvalid();
       const digits = onlyDigits(cnpjCpfInput.value.trim());
       if (category === 'Ideação') {
-        if (digits.length === 11) { if (!isValidCPF(digits)) { setInvalid('CPF inválido.'); return false; } }
+        if (digits.length === 11)      { if (!isValidCPF(digits))  { setInvalid('CPF inválido.');  return false; } }
         else if (digits.length === 14) { if (!isValidCNPJ(digits)) { setInvalid('CNPJ inválido.'); return false; } }
         else { setInvalid('Informe CPF (11 dígitos) ou CNPJ (14 dígitos).'); return false; }
       } else {
-        if (digits.length !== 14) { setInvalid('Informe um CNPJ válido com 14 dígitos.'); return false; }
-        if (!isValidCNPJ(digits)) { setInvalid('CNPJ inválido.'); return false; }
+        if (digits.length !== 14)  { setInvalid('Informe um CNPJ válido com 14 dígitos.'); return false; }
+        if (!isValidCNPJ(digits))  { setInvalid('CNPJ inválido.'); return false; }
       }
       return true;
     }
+
     function onCategoryChange() {
-      const cat = getSelectedCategory();
-      if (cat === 'Ideação') {
-        if (labelCnpjCpf) labelCnpjCpf.innerHTML = '<i class="bi bi-eye-slash-fill lbl-priv me-1"></i> CPF ou CNPJ *';
-        if (help) help.textContent = "Na categoria Ideação, você pode informar CPF (11 dígitos) ou CNPJ (14 dígitos).";
-        if (cnpjCpfInput) { cnpjCpfInput.removeAttribute('maxlength'); cnpjCpfInput.setAttribute('placeholder','CPF ou CNPJ'); cnpjCpfInput.value = applyMaskAuto(cnpjCpfInput.value); }
-      } else if (cat) {
-        if (labelCnpjCpf) labelCnpjCpf.innerHTML = '<i class="bi bi-eye-slash-fill lbl-priv me-1"></i> CNPJ *';
-        if (help) help.textContent = "Para esta categoria, informe apenas um CNPJ válido (14 dígitos).";
-        if (cnpjCpfInput) { cnpjCpfInput.setAttribute('maxlength','18'); cnpjCpfInput.setAttribute('placeholder','00.000.000/0000-00'); cnpjCpfInput.value = formatCNPJ(onlyDigits(cnpjCpfInput.value)); }
-      } else {
-        if (labelCnpjCpf) labelCnpjCpf.innerHTML = '<i class="bi bi-eye-slash-fill lbl-priv me-1"></i> CPF ou CNPJ *';
-        if (help) help.textContent = "";
-        if (cnpjCpfInput) { cnpjCpfInput.removeAttribute('maxlength'); cnpjCpfInput.setAttribute('placeholder',''); cnpjCpfInput.value = applyMaskAuto(cnpjCpfInput.value); }
-      }
-      validateCnpjCpfForCategory(cat);
+  const cat = getSelectedCategory();
+
+  if (cat === 'Ideação') {
+    if (labelCnpjCpf) labelCnpjCpf.innerHTML = '<i class="bi bi-eye-slash-fill lbl-priv me-1"></i> CPF ou CNPJ *';
+    if (help) help.textContent = 'Na categoria Ideação, você pode informar CPF (11 dígitos) ou CNPJ (14 dígitos).';
+    if (cnpjCpfInput) {
+      cnpjCpfInput.removeAttribute('maxlength');
+      cnpjCpfInput.setAttribute('placeholder', 'CPF ou CNPJ');
+      cnpjCpfInput.value = applyMaskAuto(cnpjCpfInput.value);
     }
 
+    // Ideação: Razão Social não obrigatória, campo bloqueado e limpo
+    if (razaoInput) {
+      razaoInput.removeAttribute('required');
+      razaoInput.setAttribute('placeholder', 'Somente necessário se informar CNPJ');
+    }
+    razaoClear();
+
+  } else if (cat) {
+    if (labelCnpjCpf) labelCnpjCpf.innerHTML = '<i class="bi bi-eye-slash-fill lbl-priv me-1"></i> CNPJ *';
+    if (help) help.textContent = 'Para esta categoria, informe apenas um CNPJ válido (14 dígitos).';
+    if (cnpjCpfInput) {
+      cnpjCpfInput.setAttribute('maxlength', '18');
+      cnpjCpfInput.setAttribute('placeholder', '00.000.000/0000-00');
+      cnpjCpfInput.value = formatCNPJ(onlyDigits(cnpjCpfInput.value));
+    }
+
+    // Outras categorias: CNPJ obrigatório → Razão Social também obrigatória
+    if (razaoInput) {
+      razaoInput.setAttribute('required', 'required');
+      razaoInput.setAttribute('placeholder', 'Razão social conforme CNPJ');
+    }
+
+    const digits = cnpjCpfInput ? onlyDigits(cnpjCpfInput.value) : '';
+    if (digits.length === 14 && isValidCNPJ(digits)) consultarCNPJ(digits);
+    else razaoClear();
+
+  } else {
+    if (labelCnpjCpf) labelCnpjCpf.innerHTML = '<i class="bi bi-eye-slash-fill lbl-priv me-1"></i> CPF ou CNPJ *';
+    if (help) help.textContent = '';
+    if (cnpjCpfInput) {
+      cnpjCpfInput.removeAttribute('maxlength');
+      cnpjCpfInput.setAttribute('placeholder', '');
+      cnpjCpfInput.value = applyMaskAuto(cnpjCpfInput.value);
+    }
+    if (razaoInput) razaoInput.removeAttribute('required');
+    razaoClear();
+  }
+
+  validateCnpjCpfForCategory(cat);
+}
+
+    // ── Eventos do input CNPJ/CPF ──────────────────────────────────
     if (cnpjCpfInput) {
       cnpjCpfInput.addEventListener('input', function() {
         const cat = getSelectedCategory();
-        cnpjCpfInput.value = (cat && cat !== 'Ideação') ? formatCNPJ(onlyDigits(cnpjCpfInput.value)) : applyMaskAuto(cnpjCpfInput.value);
+        cnpjCpfInput.value = (cat && cat !== 'Ideação')
+          ? formatCNPJ(onlyDigits(cnpjCpfInput.value))
+          : applyMaskAuto(cnpjCpfInput.value);
         clearInvalid();
+
+        // Dispara consulta à API com debounce de 600ms quando CNPJ ficar completo
+        if (cat && cat !== 'Ideação') {
+          const digits = onlyDigits(cnpjCpfInput.value);
+          clearTimeout(cnpjDebounceTimer);
+          if (digits.length === 14 && isValidCNPJ(digits)) {
+            razaoClear();
+            if (razaoHelp) razaoHelp.innerHTML = '<span class="text-muted">Aguardando…</span>';
+            cnpjDebounceTimer = setTimeout(function() {
+              consultarCNPJ(digits);
+            }, 600);
+          } else {
+            razaoClear();
+          }
+        } else {
+          // Ideação: se digitou CNPJ completo e válido, consulta normalmente
+          const digits = onlyDigits(cnpjCpfInput.value);
+          clearTimeout(cnpjDebounceTimer);
+          if (digits.length === 14 && isValidCNPJ(digits)) {
+            // CNPJ informado em Ideação → Razão Social passa a ser obrigatória
+            if (razaoInput) razaoInput.setAttribute('required', 'required');
+            razaoClear();
+            if (razaoHelp) razaoHelp.innerHTML = '<span class="text-muted">Aguardando…</span>';
+            cnpjDebounceTimer = setTimeout(function() { consultarCNPJ(digits); }, 600);
+          } else {
+            // CPF ou CNPJ incompleto → Razão Social não obrigatória
+            if (razaoInput) razaoInput.removeAttribute('required');
+            razaoClear();
+          }
+        }
       });
+
       cnpjCpfInput.addEventListener('paste', function(e) {
         e.preventDefault();
         const paste = (e.clipboardData || window.clipboardData).getData('text');
         const cat   = getSelectedCategory();
-        cnpjCpfInput.value = (cat && cat !== 'Ideação') ? formatCNPJ(onlyDigits(paste)) : applyMaskAuto(paste);
+        cnpjCpfInput.value = (cat && cat !== 'Ideação')
+          ? formatCNPJ(onlyDigits(paste))
+          : applyMaskAuto(paste);
         cnpjCpfInput.dispatchEvent(new Event('input', { bubbles: true }));
       });
+
       cnpjCpfInput.addEventListener('blur',  function() { validateCnpjCpfForCategory(getSelectedCategory()); });
       cnpjCpfInput.addEventListener('focus', clearInvalid);
     }
 
     radios.forEach(function(r) { r.addEventListener('change', onCategoryChange); });
 
+    // ── Submit: remove máscara antes de enviar ─────────────────────
     const form = cnpjCpfInput ? cnpjCpfInput.closest('form') : null;
     if (form) {
       form.addEventListener('submit', function(ev) {
@@ -508,11 +707,13 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
       });
     }
 
+    // ── Seleção inicial ────────────────────────────────────────────
     (function applyInitialSelection() {
       const checked = document.querySelector('input[name="categoria"]:checked');
       if (checked) { checked.closest('.categoria-option')?.classList.add('selected'); }
       onCategoryChange();
     })();
+
   })();
 </script>
 

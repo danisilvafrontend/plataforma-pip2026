@@ -169,37 +169,79 @@ include __DIR__ . '/../app/views/public/header_public.php';
       </div>
       <div class="reg-card-body">
         <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-600">Nome *</label>
-            <input type="text" name="nome" class="form-control"
-                   value="<?= htmlspecialchars($data['nome'] ?? '', ENT_QUOTES) ?>" required>
+          <!-- CPF — digitado primeiro, dispara a consulta -->
+          <div class="col-md-4">
+            <label class="form-label fw-600" for="cpf">
+              CPF <span class="text-danger">*</span>
+            </label>
+            <div class="position-relative">
+              <input type="text" name="cpf" id="cpf" class="form-control"
+                    placeholder="000.000.000-00" maxlength="14" required
+                    value="<?= htmlspecialchars($data['cpf'] ?? '', ENT_QUOTES) ?>">
+              <span id="cpfSpinner"
+                    class="position-absolute top-50 end-0 translate-middle-y me-2 d-none"
+                    style="color:#6c757d;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+              </span>
+              <span id="cpfBadge"
+                    class="position-absolute top-50 end-0 translate-middle-y me-2 d-none"
+                    style="font-size:.75rem;"></span>
+            </div>
+            <div class="invalid-feedback" id="cpfError"></div>
+            <div id="cpfHelp" class="form-text"></div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label fw-600">Sobrenome *</label>
-            <input type="text" name="sobrenome" class="form-control"
-                   value="<?= htmlspecialchars($data['sobrenome'] ?? '', ENT_QUOTES) ?>" required>
+
+          <!-- Nome — preenchido via API -->
+          <div class="col-md-4">
+            <label class="form-label fw-600" for="nome">
+              Nome <span class="text-danger">*</span>
+            </label>
+            <div class="position-relative">
+              <input type="text" name="nome" id="nome" class="form-control bg-light"
+                    placeholder="Preenchido automaticamente via CPF"
+                    readonly required
+                    value="<?= htmlspecialchars($data['nome'] ?? '', ENT_QUOTES) ?>">
+            </div>
+            <div id="nomeHelp" class="form-text">
+              <?php if (!empty($data['nome'])): ?>
+                <span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal.</span>
+              <?php endif; ?>
+            </div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label fw-600">CPF *</label>
-            <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00"
-                   value="<?= htmlspecialchars($data['cpf'] ?? '', ENT_QUOTES) ?>" required>
+
+          <!-- Sobrenome — preenchido via API -->
+          <div class="col-md-4">
+            <label class="form-label fw-600" for="sobrenome">
+              Sobrenome <span class="text-danger">*</span>
+            </label>
+            <div class="position-relative">
+              <input type="text" name="sobrenome" id="sobrenome" class="form-control bg-light"
+                    placeholder="Preenchido automaticamente via CPF"
+                    readonly required
+                    value="<?= htmlspecialchars($data['sobrenome'] ?? '', ENT_QUOTES) ?>">
+            </div>
+            <div id="sobrenomeHelp" class="form-text">
+              <?php if (!empty($data['sobrenome'])): ?>
+                <span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal.</span>
+              <?php endif; ?>
+            </div>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-600">E-mail *</label>
             <input type="email" name="email" class="form-control"
                    value="<?= htmlspecialchars($data['email'] ?? '', ENT_QUOTES) ?>" required>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label fw-600">Celular *</label>
             <input type="text" name="celular" class="form-control" placeholder="(11) 90000-0000"
                    value="<?= htmlspecialchars($data['celular'] ?? '', ENT_QUOTES) ?>" required>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label fw-600">Data de nascimento *</label>
             <input type="date" name="data_nascimento" class="form-control"
                    value="<?= htmlspecialchars($data['data_nascimento'] ?? '', ENT_QUOTES) ?>" required>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label fw-600">Gênero *</label>
             <select name="genero" class="form-select" required>
               <option value="">Selecione</option>
@@ -414,6 +456,226 @@ include __DIR__ . '/../app/views/public/header_public.php';
 
   </form>
 </div>
+
+<script>
+(function () {
+
+
+  const cpfInput      = document.getElementById('cpf');
+  const cpfSpinner    = document.getElementById('cpfSpinner');
+  const cpfBadge      = document.getElementById('cpfBadge');
+  const cpfHelp       = document.getElementById('cpfHelp');
+  const cpfError      = document.getElementById('cpfError');
+  const nomeInput     = document.getElementById('nome');
+  const nomeHelp      = document.getElementById('nomeHelp');
+  const sobrenomeInput= document.getElementById('sobrenome');
+  const sobrenomeHelp = document.getElementById('sobrenomeHelp');
+  let   debounce      = null;
+
+  // ── Utilitários ─────────────────────────────────────────────────
+  function onlyDigits(s) { return (s || '').replace(/\D/g, ''); }
+
+  function formatCPF(d) {
+    d = d.slice(0, 11);
+    return d.replace(/^(\d{3})(\d)/, '$1.$2')
+            .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/\.(\d{3})(\d)/, '.$1-$2')
+            .slice(0, 14);
+  }
+
+  // ── Validação CPF ────────────────────────────────────────────────
+  function isValidCPF(cpf) {
+    cpf = onlyDigits(cpf);
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let s = 0;
+    for (let i = 0; i < 9; i++) s += parseInt(cpf[i]) * (10 - i);
+    let r = s % 11, d1 = r < 2 ? 0 : 11 - r;
+    if (d1 !== parseInt(cpf[9])) return false;
+    s = 0;
+    for (let i = 0; i < 10; i++) s += parseInt(cpf[i]) * (11 - i);
+    r = s % 11;
+    return (r < 2 ? 0 : 11 - r) === parseInt(cpf[10]);
+  }
+
+  // ── Estados do CPF ───────────────────────────────────────────────
+  function cpfSetLoading(on) {
+    if (on) { cpfSpinner.classList.remove('d-none'); cpfBadge.classList.add('d-none'); }
+    else    { cpfSpinner.classList.add('d-none'); }
+  }
+  function cpfSetError(msg) {
+    cpfInput.classList.add('is-invalid');
+    if (cpfError) cpfError.textContent = msg || 'CPF inválido.';
+    cpfInput.setCustomValidity(msg || 'Inválido');
+    cpfBadge.innerHTML = '<i class="bi bi-exclamation-circle-fill text-danger"></i>';
+    cpfBadge.classList.remove('d-none');
+    cpfHelp.innerHTML = '';
+  }
+  function cpfClearError() {
+    cpfInput.classList.remove('is-invalid');
+    if (cpfError) cpfError.textContent = '';
+    cpfInput.setCustomValidity('');
+  }
+
+  // ── Estados de Nome/Sobrenome ────────────────────────────────────
+  function nomeSobrenomeClear() {
+    nomeInput.value      = '';
+    sobrenomeInput.value = '';
+    nomeInput.removeAttribute('readonly');
+    sobrenomeInput.removeAttribute('readonly');
+    nomeInput.classList.remove('bg-light');
+    sobrenomeInput.classList.remove('bg-light');
+    nomeInput.setAttribute('placeholder', 'Seu nome');
+    sobrenomeInput.setAttribute('placeholder', 'Seu sobrenome');
+    nomeHelp.innerHTML      = '';
+    sobrenomeHelp.innerHTML = '';
+  }
+
+  function nomeSobrenomeSetSuccess(nomeCompleto) {
+    // Separa: primeira palavra = nome, restante = sobrenome
+    const partes    = nomeCompleto.trim().split(/\s+/);
+    const nome      = partes[0] || '';
+    const sobrenome = partes.slice(1).join(' ') || '';
+
+    nomeInput.value      = nome;
+    sobrenomeInput.value = sobrenome;
+
+    nomeInput.setAttribute('readonly', 'readonly');
+    sobrenomeInput.setAttribute('readonly', 'readonly');
+    nomeInput.classList.add('bg-light');
+    sobrenomeInput.classList.add('bg-light');
+
+    const msgLock = '<span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal. Não pode ser alterado.</span>';
+    nomeHelp.innerHTML      = msgLock;
+    sobrenomeHelp.innerHTML = msgLock;
+
+    // Badge verde no CPF
+    cpfBadge.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+    cpfBadge.classList.remove('d-none');
+    cpfHelp.innerHTML = '<span class="text-success">CPF válido ✓</span>';
+  }
+
+  function nomeSobrenomeSetError(msg) {
+    nomeSobrenomeClear();
+    cpfBadge.innerHTML = '<i class="bi bi-exclamation-circle-fill text-danger"></i>';
+    cpfBadge.classList.remove('d-none');
+    cpfHelp.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>'
+      + (msg || 'Não foi possível consultar o CPF.') + ' Preencha o nome manualmente.</span>';
+    // Libera campos para digitar manualmente
+    nomeInput.removeAttribute('readonly');
+    sobrenomeInput.removeAttribute('readonly');
+    nomeInput.classList.remove('bg-light');
+    sobrenomeInput.classList.remove('bg-light');
+    nomeInput.setAttribute('placeholder', 'Digite seu nome');
+    sobrenomeInput.setAttribute('placeholder', 'Digite seu sobrenome');
+  }
+
+  // ── Consulta à API (Produto 1 = Dados Básicos CPF) ───────────────
+  // Endpoint: https://api.cpfcnpj.com.br/{TOKEN}/1/{CPF_SEM_MASCARA}
+  // Retorna: { cpf, nome, sexo, ... }
+  function consultarCPF(digits) {
+    cpfSetLoading(true);
+    cpfHelp.innerHTML = '<span class="text-muted">Consultando Receita Federal…</span>';
+
+    fetch('../app/api/cpfcnpj_proxy.php?tipo=cpf&doc=' + digits)
+      .then(function (res) {
+        cpfSetLoading(false);
+        if (!res.ok) {
+          if (res.status === 400 || res.status === 404)
+            nomeSobrenomeSetError('CPF não encontrado na Receita Federal.');
+          else if (res.status === 401 || res.status === 403)
+            nomeSobrenomeSetError('Token inválido ou sem créditos.');
+          else
+            nomeSobrenomeSetError('Erro HTTP ' + res.status + '.');
+          return null;
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        const nome = (data.nome || '').trim();
+        if (nome) nomeSobrenomeSetSuccess(nome);
+        else      nomeSobrenomeSetError('Nome não retornado pela API. Preencha manualmente.');
+      })
+      .catch(function (err) {
+        cpfSetLoading(false);
+        nomeSobrenomeSetError('Falha na conexão com a API.');
+        console.error('[CPF API]', err);
+      });
+  }
+
+  // ── Input do CPF ─────────────────────────────────────────────────
+  cpfInput.addEventListener('input', function () {
+    cpfInput.value = formatCPF(onlyDigits(cpfInput.value));
+    cpfClearError();
+    cpfBadge.classList.add('d-none');
+    cpfHelp.innerHTML = '';
+
+    const d = onlyDigits(cpfInput.value);
+    clearTimeout(debounce);
+
+    if (d.length === 11) {
+      if (!isValidCPF(d)) {
+        cpfSetError('CPF inválido. Verifique os números digitados.');
+        nomeSobrenomeClear();
+      } else {
+        // CPF completo e válido → aguarda 600ms e consulta
+        nomeSobrenomeClear();
+        cpfHelp.innerHTML = '<span class="text-muted">Aguardando…</span>';
+        debounce = setTimeout(function () { consultarCPF(d); }, 600);
+      }
+    } else {
+      nomeSobrenomeClear();
+    }
+  });
+
+  cpfInput.addEventListener('paste', function (e) {
+    e.preventDefault();
+    const paste = (e.clipboardData || window.clipboardData).getData('text');
+    cpfInput.value = formatCPF(onlyDigits(paste));
+    cpfInput.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  cpfInput.addEventListener('focus', function () {
+    cpfClearError();
+  });
+
+  // ── Submit: remove máscara antes de enviar ────────────────────────
+  const form = cpfInput.closest('form');
+  if (form) {
+    form.addEventListener('submit', function (ev) {
+      const d = onlyDigits(cpfInput.value);
+      if (!isValidCPF(d)) {
+        ev.preventDefault();
+        cpfSetError('CPF inválido.');
+        cpfInput.focus();
+        return;
+      }
+      cpfInput.value = d; // envia só os dígitos → PHP já faz preg_replace
+    });
+  }
+
+  // ── Se voltou do POST com erro (valor já preenchido no PHP) ──────
+  (function init() {
+    const d = onlyDigits(cpfInput.value);
+    if (d.length === 11) {
+      cpfInput.value = formatCPF(d);
+      // Se nome/sobrenome também voltaram preenchidos, mantém readonly
+      if (nomeInput.value.trim() !== '') {
+        nomeInput.setAttribute('readonly', 'readonly');
+        sobrenomeInput.setAttribute('readonly', 'readonly');
+        nomeInput.classList.add('bg-light');
+        sobrenomeInput.classList.add('bg-light');
+        const msgLock = '<span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal.</span>';
+        nomeHelp.innerHTML      = msgLock;
+        sobrenomeHelp.innerHTML = msgLock;
+        cpfBadge.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+        cpfBadge.classList.remove('d-none');
+      }
+    }
+  })();
+
+})();
+</script>
 
 <script>
 const form       = document.getElementById('cadastroForm');

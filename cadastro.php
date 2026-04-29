@@ -1,4 +1,5 @@
 <?php
+// /public_html/cadastro.php
 session_start();
 
 $config = require __DIR__ . '/app/config/db.php';
@@ -92,20 +93,23 @@ include __DIR__ . '/app/views/public/header_public.php';
 
                   <div class="row g-2">
                     <div class="col-md-6">
-                      <label class="form-label cadastro-label" for="cpfInput">
-                        CPF <span class="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="cpf"
-                        id="cpfInput"
-                        class="form-control form-control-lg"
-                        placeholder="000.000.000-00"
-                        maxlength="14"
-                        required
-                      >
-                      <div class="invalid-feedback" id="cpfFeedback">CPF inválido.</div>
-                      <div class="form-text">Digite seu CPF para iniciarmos.</div>
+                      <label class="form-label" for="cpf">CPF <span class="text-danger">*</span></label>
+                      <div class="position-relative">
+                        <input type="text" name="cpf" id="cpf"
+                              class="form-control"
+                              placeholder="000.000.000-00"
+                              maxlength="14" required
+                              value="<?= htmlspecialchars($_POST['cpf'] ?? '', ENT_QUOTES) ?>">
+                        <span id="cpfSpinner"
+                              class="position-absolute top-50 end-0 translate-middle-y me-2 d-none"
+                              style="color:#6c757d;">
+                          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        </span>
+                        <span id="cpfBadge"
+                              class="position-absolute top-50 end-0 translate-middle-y me-2 d-none"
+                              style="font-size:.75rem;"></span>
+                      </div>
+                      <div id="cpfHelp" class="form-text"></div>
                     </div>
 
                     <div class="col-md-6">
@@ -131,15 +135,37 @@ include __DIR__ . '/app/views/public/header_public.php';
 
                   <div class="row g-2">
                     <div class="col-md-6">
-                      <label class="form-label cadastro-label">Nome <span class="text-danger">*</span></label>
-                      <input type="text" name="nome" class="form-control" placeholder="Seu primeiro nome" required>
+                      <label class="form-label" for="nome_display">Nome <span class="text-danger">*</span></label>
+                      <input type="text" id="nome_display"
+                            class="form-control bg-light"
+                            placeholder="Preenchido automaticamente via CPF"
+                            readonly required
+                            value="<?= htmlspecialchars($_POST['nome'] ?? '', ENT_QUOTES) ?>">
+                      <div id="nomeHelp" class="form-text">
+                        <?php if (!empty($_POST['nome'])): ?>
+                          <span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal.</span>
+                        <?php endif; ?>
+                      </div>
                     </div>
 
+                    <!-- Sobrenome — preenchido via API, sem name (hidden envia) -->
                     <div class="col-md-6">
-                      <label class="form-label cadastro-label">Sobrenome <span class="text-danger">*</span></label>
-                      <input type="text" name="sobrenome" class="form-control" placeholder="Restante do seu nome" required>
+                      <label class="form-label" for="sobrenome_display">Sobrenome <span class="text-danger">*</span></label>
+                      <input type="text" id="sobrenome_display"
+                            class="form-control bg-light"
+                            placeholder="Preenchido automaticamente via CPF"
+                            readonly required
+                            value="<?= htmlspecialchars($_POST['sobrenome'] ?? '', ENT_QUOTES) ?>">
+                      <div id="sobrenomeHelp" class="form-text">
+                        <?php if (!empty($_POST['sobrenome'])): ?>
+                          <span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal.</span>
+                        <?php endif; ?>
+                      </div>
                     </div>
                   </div>
+
+                  <input type="hidden" name="nome"      id="nome_hidden">
+                  <input type="hidden" name="sobrenome" id="sobrenome_hidden">
 
                   <div class="row g-2 mt-1">
                     <div class="col-md-6">
@@ -781,288 +807,250 @@ include __DIR__ . '/app/views/public/header_public.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const form = document.getElementById('formCadastroComunidade');
+
+  // ── Proxy (token fica no servidor) ────────────────────────────────
+  const PROXY = './app/api/cpfcnpj_proxy.php';
+
+  const form             = document.getElementById('formCadastroComunidade');
   if (!form) return;
 
-  const steps = Array.from(document.querySelectorAll('.step'));
-  const nextButtons = document.querySelectorAll('.next');
-  const prevButtons = document.querySelectorAll('.prev');
-  const progressBar = document.getElementById('cadastroProgressBar');
-  const stepAtualLabel = document.getElementById('stepAtualLabel');
-  const stepIndicators = document.querySelectorAll('[data-step-indicator]');
+  const steps             = Array.from(document.querySelectorAll('.step'));
+  const nextButtons       = document.querySelectorAll('.next');
+  const prevButtons       = document.querySelectorAll('.prev');
+  const progressBar       = document.getElementById('cadastroProgressBar');
+  const stepAtualLabel    = document.getElementById('stepAtualLabel');
+  const stepIndicators    = document.querySelectorAll('[data-step-indicator]');
   const progressContainer = document.querySelector('.cadastro-progress-bar');
-
-  const cpfInput = document.getElementById('cpfInput');
-  const cpfFeedback = document.getElementById('cpfFeedback');
-
-  const stepNames = [
-    'Dados pessoais',
-    'Interesses',
-    'Perfil'
-  ];
-
+  const stepNames         = ['Dados pessoais', 'Interesses', 'Perfil'];
   let currentStep = 0;
 
-  function getStepPercent(index) {
-    return ((index + 1) / steps.length) * 100;
-  }
+  const cpfInput         = document.getElementById('cpf');
+  const cpfSpinner       = document.getElementById('cpfSpinner');
+  const cpfBadge         = document.getElementById('cpfBadge');
+  const cpfHelp          = document.getElementById('cpfHelp');
+  const nomeDisplay      = document.getElementById('nome_display');
+  const nomeHidden       = document.getElementById('nome_hidden');
+  const nomeHelp         = document.getElementById('nomeHelp');
+  const sobrenomeDisplay = document.getElementById('sobrenome_display');
+  const sobrenomeHidden  = document.getElementById('sobrenome_hidden');
+  const sobrenomeHelp    = document.getElementById('sobrenomeHelp');
+  let debounce = null;
 
-  function updateProgress(index) {
-    const percent = getStepPercent(index);
-
-    if (progressBar) {
-      progressBar.style.width = percent + '%';
-    }
-
-    if (progressContainer) {
-      progressContainer.setAttribute('aria-valuenow', String(Math.round(percent)));
-    }
-
-    if (stepAtualLabel) {
-      stepAtualLabel.textContent = String(index + 1);
-    }
-
-    const progressLabels = document.querySelectorAll('.cadastro-progress-label');
-    if (progressLabels.length > 1) {
-      progressLabels[1].textContent = stepNames[index] || `Etapa ${index + 1}`;
-    }
-
-    stepIndicators.forEach((indicator, i) => {
-      indicator.classList.remove('is-active', 'is-complete');
-      indicator.removeAttribute('aria-current');
-
-      if (i < index) {
-        indicator.classList.add('is-complete');
-      } else if (i === index) {
-        indicator.classList.add('is-active');
-        indicator.setAttribute('aria-current', 'step');
-      }
-    });
-  }
-
-  function showStep(index) {
-    steps.forEach((step, i) => {
-      step.classList.toggle('active', i === index);
-    });
-
-    currentStep = index;
-    updateProgress(index);
-
-    const firstField = steps[index].querySelector('input, select, textarea');
-    if (firstField) {
-      setTimeout(() => firstField.focus(), 120);
-    }
-
-    window.scrollTo({
-      top: form.offsetTop - 40,
-      behavior: 'smooth'
-    });
-  }
+  // ── Utilitários ───────────────────────────────────────────────────
+  function onlyDigits(s) { return (s || '').replace(/\D/g, ''); }
 
   function aplicarMascaraCPF(valor) {
-    let v = valor.replace(/\D/g, '');
+    let v = onlyDigits(valor);
     if (v.length > 11) v = v.substring(0, 11);
-
-    if (v.length > 9) {
-      v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-    } else if (v.length > 6) {
-      v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-    } else if (v.length > 3) {
-      v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
-    }
-
+    if (v.length > 9)      v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
     return v;
   }
 
   function validarCPF(cpf) {
     cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf === '') return false;
-
-    if (
-      cpf.length !== 11 ||
-      cpf === '00000000000' ||
-      cpf === '11111111111' ||
-      cpf === '22222222222' ||
-      cpf === '33333333333' ||
-      cpf === '44444444444' ||
-      cpf === '55555555555' ||
-      cpf === '66666666666' ||
-      cpf === '77777777777' ||
-      cpf === '88888888888' ||
-      cpf === '99999999999'
-    ) {
-      return false;
-    }
-
+    if (!cpf || cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
     let add = 0;
-    for (let i = 0; i < 9; i++) {
-      add += parseInt(cpf.charAt(i), 10) * (10 - i);
-    }
-
+    for (let i = 0; i < 9; i++) add += parseInt(cpf[i]) * (10 - i);
     let rev = 11 - (add % 11);
     if (rev === 10 || rev === 11) rev = 0;
-    if (rev !== parseInt(cpf.charAt(9), 10)) return false;
-
+    if (rev !== parseInt(cpf[9])) return false;
     add = 0;
-    for (let i = 0; i < 10; i++) {
-      add += parseInt(cpf.charAt(i), 10) * (11 - i);
-    }
-
+    for (let i = 0; i < 10; i++) add += parseInt(cpf[i]) * (11 - i);
     rev = 11 - (add % 11);
     if (rev === 10 || rev === 11) rev = 0;
-    if (rev !== parseInt(cpf.charAt(10), 10)) return false;
+    return rev === parseInt(cpf[10]);
+  }
 
-    return true;
+  // ── Estados da API ────────────────────────────────────────────────
+  function setApiLoading(on) {
+    if (!cpfSpinner || !cpfBadge) return;
+    if (on) { cpfSpinner.classList.remove('d-none'); cpfBadge.classList.add('d-none'); }
+    else    { cpfSpinner.classList.add('d-none'); }
+  }
+
+  function setApiSuccess(nomeCompleto) {
+    const partes    = nomeCompleto.trim().split(/\s+/);
+    const nome      = partes[0] || '';
+    const sobrenome = partes.slice(1).join(' ') || '';
+    if (nomeDisplay)      { nomeDisplay.value = nome;           nomeDisplay.setAttribute('readonly','readonly'); nomeDisplay.classList.add('bg-light'); }
+    if (nomeHidden)       nomeHidden.value = nome;
+    if (sobrenomeDisplay) { sobrenomeDisplay.value = sobrenome; sobrenomeDisplay.setAttribute('readonly','readonly'); sobrenomeDisplay.classList.add('bg-light'); }
+    if (sobrenomeHidden)  sobrenomeHidden.value = sobrenome;
+    const msgLock = '<span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal. Não pode ser alterado.</span>';
+    if (nomeHelp)      nomeHelp.innerHTML      = msgLock;
+    if (sobrenomeHelp) sobrenomeHelp.innerHTML = msgLock;
+    if (cpfBadge) { cpfBadge.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>'; cpfBadge.classList.remove('d-none'); }
+    if (cpfHelp)  cpfHelp.innerHTML = '<span class="text-success">CPF válido ✓</span>';
+  }
+
+  function setApiError(msg) {
+    clearApiFields();
+    if (nomeDisplay)      { nomeDisplay.removeAttribute('readonly'); nomeDisplay.classList.remove('bg-light'); nomeDisplay.setAttribute('placeholder','Digite seu nome'); }
+    if (sobrenomeDisplay) { sobrenomeDisplay.removeAttribute('readonly'); sobrenomeDisplay.classList.remove('bg-light'); sobrenomeDisplay.setAttribute('placeholder','Digite seu sobrenome'); }
+    if (cpfBadge) { cpfBadge.innerHTML = '<i class="bi bi-exclamation-circle-fill text-danger"></i>'; cpfBadge.classList.remove('d-none'); }
+    if (cpfHelp)  cpfHelp.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + (msg||'Erro.') + ' Preencha manualmente.</span>';
+  }
+
+  function clearApiFields() {
+    if (nomeDisplay)      { nomeDisplay.value = ''; nomeDisplay.removeAttribute('readonly'); nomeDisplay.classList.remove('bg-light'); nomeDisplay.setAttribute('placeholder','Preenchido automaticamente via CPF'); }
+    if (nomeHidden)       nomeHidden.value = '';
+    if (sobrenomeDisplay) { sobrenomeDisplay.value = ''; sobrenomeDisplay.removeAttribute('readonly'); sobrenomeDisplay.classList.remove('bg-light'); sobrenomeDisplay.setAttribute('placeholder','Preenchido automaticamente via CPF'); }
+    if (sobrenomeHidden)  sobrenomeHidden.value = '';
+    if (nomeHelp)         nomeHelp.innerHTML = '';
+    if (sobrenomeHelp)    sobrenomeHelp.innerHTML = '';
+    if (cpfBadge)         cpfBadge.classList.add('d-none');
+    if (cpfHelp)          cpfHelp.innerHTML = '';
+    setApiLoading(false);
+  }
+
+  if (nomeDisplay)      nomeDisplay.addEventListener('input',      function () { if (nomeHidden)      nomeHidden.value      = nomeDisplay.value; });
+  if (sobrenomeDisplay) sobrenomeDisplay.addEventListener('input', function () { if (sobrenomeHidden) sobrenomeHidden.value = sobrenomeDisplay.value; });
+
+  // ── Consulta via proxy ────────────────────────────────────────────
+  function consultarCPF(digits) {
+    setApiLoading(true);
+    if (cpfHelp) cpfHelp.innerHTML = '<span class="text-muted">Consultando Receita Federal…</span>';
+    fetch(PROXY + '?tipo=cpf&doc=' + digits)
+      .then(function (res) { return res.json().then(function (d) { return { status: res.status, data: d }; }); })
+      .then(function (result) {
+        setApiLoading(false);
+        if (result.status !== 200) { setApiError(result.data.erro || 'Erro ao consultar CPF.'); return; }
+        const nome = (result.data.nome || '').trim();
+        if (nome) setApiSuccess(nome);
+        else      setApiError('Nome não retornado pela Receita Federal.');
+      })
+      .catch(function () { setApiLoading(false); setApiError('Falha na conexão. Verifique sua internet.'); });
+  }
+
+  // ── Listener CPF ──────────────────────────────────────────────────
+  if (cpfInput) {
+    cpfInput.addEventListener('input', function (e) {
+      e.target.value = aplicarMascaraCPF(e.target.value);
+      const d = onlyDigits(cpfInput.value);
+      clearTimeout(debounce);
+      if (cpfBadge) cpfBadge.classList.add('d-none');
+      if (d.length === 11) {
+        if (!validarCPF(d)) {
+          cpfInput.classList.remove('is-valid'); cpfInput.classList.add('is-invalid'); cpfInput.setCustomValidity('CPF inválido');
+          if (cpfHelp) cpfHelp.innerHTML = '<span class="text-danger">CPF inválido. Verifique os números.</span>';
+          clearApiFields();
+        } else {
+          cpfInput.classList.remove('is-invalid'); cpfInput.classList.add('is-valid'); cpfInput.setCustomValidity('');
+          clearApiFields();
+          if (cpfHelp) cpfHelp.innerHTML = '<span class="text-muted">Aguardando…</span>';
+          debounce = setTimeout(function () { consultarCPF(d); }, 600);
+        }
+      } else {
+        cpfInput.classList.remove('is-valid','is-invalid');
+        cpfInput.setCustomValidity(d.length === 0 ? 'CPF obrigatório' : 'CPF incompleto');
+        clearApiFields();
+      }
+    });
+    cpfInput.addEventListener('blur', function () {
+      const d = onlyDigits(cpfInput.value);
+      if (d.length > 0 && d.length < 11) { cpfInput.classList.add('is-invalid'); cpfInput.setCustomValidity('CPF incompleto'); if (cpfHelp) cpfHelp.innerHTML = '<span class="text-danger">CPF incompleto.</span>'; }
+    });
+    cpfInput.addEventListener('paste', function (e) {
+      e.preventDefault();
+      cpfInput.value = aplicarMascaraCPF((e.clipboardData || window.clipboardData).getData('text'));
+      cpfInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
+  // ── Init (restaura se voltou do POST) ─────────────────────────────
+  (function init() {
+    if (!cpfInput) return;
+    const d = onlyDigits(cpfInput.value);
+    if (d.length === 11 && validarCPF(d)) {
+      cpfInput.value = aplicarMascaraCPF(d); cpfInput.classList.add('is-valid'); cpfInput.setCustomValidity('');
+      if (nomeDisplay && nomeDisplay.value.trim() !== '') {
+        if (nomeHidden)       nomeHidden.value      = nomeDisplay.value;
+        if (sobrenomeHidden)  sobrenomeHidden.value = sobrenomeDisplay ? sobrenomeDisplay.value : '';
+        if (nomeDisplay)      { nomeDisplay.setAttribute('readonly','readonly'); nomeDisplay.classList.add('bg-light'); }
+        if (sobrenomeDisplay) { sobrenomeDisplay.setAttribute('readonly','readonly'); sobrenomeDisplay.classList.add('bg-light'); }
+        const msgLock = '<span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal.</span>';
+        if (nomeHelp)      nomeHelp.innerHTML      = msgLock;
+        if (sobrenomeHelp) sobrenomeHelp.innerHTML = msgLock;
+        if (cpfBadge) { cpfBadge.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>'; cpfBadge.classList.remove('d-none'); }
+        if (cpfHelp)  cpfHelp.innerHTML = '<span class="text-success">CPF válido ✓</span>';
+      }
+    }
+  })();
+
+  // ── Navegação por steps ───────────────────────────────────────────
+  function getStepPercent(i) { return ((i + 1) / steps.length) * 100; }
+
+  function updateProgress(index) {
+    const percent = getStepPercent(index);
+    if (progressBar)       progressBar.style.width = percent + '%';
+    if (progressContainer) progressContainer.setAttribute('aria-valuenow', String(Math.round(percent)));
+    if (stepAtualLabel)    stepAtualLabel.textContent = String(index + 1);
+    const progressLabels = document.querySelectorAll('.cadastro-progress-label');
+    if (progressLabels.length > 1) progressLabels[1].textContent = stepNames[index] || ('Etapa ' + (index + 1));
+    stepIndicators.forEach(function (indicator, i) {
+      indicator.classList.remove('is-active','is-complete'); indicator.removeAttribute('aria-current');
+      if (i < index)        indicator.classList.add('is-complete');
+      else if (i === index) { indicator.classList.add('is-active'); indicator.setAttribute('aria-current','step'); }
+    });
+  }
+
+  function showStep(index) {
+    steps.forEach(function (step, i) { step.classList.toggle('active', i === index); });
+    currentStep = index; updateProgress(index);
+    const firstField = steps[index].querySelector('input, select, textarea');
+    if (firstField) setTimeout(function () { firstField.focus(); }, 120);
+    window.scrollTo({ top: form.offsetTop - 40, behavior: 'smooth' });
+  }
+
+  function validarGrupoLimite(name, maximo) {
+    const itens = form.querySelectorAll('input[name="' + name + '"]');
+    if (!itens.length) return true;
+    const marcados = Array.from(itens).filter(function (i) { return i.checked; });
+    const valido   = marcados.length <= maximo;
+    itens.forEach(function (item) { item.setCustomValidity(valido ? '' : 'Selecione no máximo ' + maximo + ' opções.'); });
+    return valido;
   }
 
   function validarInputCPF() {
     if (!cpfInput) return true;
-
-    const valor = cpfInput.value;
-    const limpo = valor.replace(/\D/g, '');
-
-    if (limpo.length === 0) {
-      cpfInput.classList.remove('is-valid', 'is-invalid');
-      cpfInput.setCustomValidity('CPF obrigatÃ³rio');
-      if (cpfFeedback) cpfFeedback.textContent = 'Informe seu CPF.';
-      return false;
-    }
-
-    if (limpo.length < 11) {
-      cpfInput.classList.remove('is-valid');
-      cpfInput.classList.add('is-invalid');
-      cpfInput.setCustomValidity('CPF incompleto');
-      if (cpfFeedback) cpfFeedback.textContent = 'CPF incompleto.';
-      return false;
-    }
-
-    if (!validarCPF(limpo)) {
-      cpfInput.classList.remove('is-valid');
-      cpfInput.classList.add('is-invalid');
-      cpfInput.setCustomValidity('CPF invÃ¡lido');
-      if (cpfFeedback) cpfFeedback.textContent = 'CPF invÃ¡lido.';
-      return false;
-    }
-
-    cpfInput.classList.remove('is-invalid');
-    cpfInput.classList.add('is-valid');
-    cpfInput.setCustomValidity('');
-    return true;
-  }
-
-  function validarGrupoLimite(name, maximo) {
-    const itens = form.querySelectorAll(`input[name="${name}"]`);
-    if (!itens.length) return true;
-
-    const marcados = Array.from(itens).filter(item => item.checked);
-    const valido = marcados.length <= maximo;
-
-    itens.forEach(item => {
-      item.setCustomValidity(valido ? '' : `Selecione no mÃ¡ximo ${maximo} opÃ§Ãµes.`);
-    });
-
-    return valido;
+    const limpo = onlyDigits(cpfInput.value);
+    if (limpo.length === 0) { cpfInput.setCustomValidity('CPF obrigatório'); return false; }
+    if (limpo.length < 11)  { cpfInput.setCustomValidity('CPF incompleto');  return false; }
+    if (!validarCPF(limpo)) { cpfInput.setCustomValidity('CPF inválido');    return false; }
+    cpfInput.setCustomValidity(''); return true;
   }
 
   function validarStep(stepIndex) {
-    const step = steps[stepIndex];
-    if (!step) return true;
-
-    const fields = step.querySelectorAll('input, select, textarea');
+    const step = steps[stepIndex]; if (!step) return true;
     let isStepValid = true;
-
-    fields.forEach(field => {
+    step.querySelectorAll('input, select, textarea').forEach(function (field) {
       if (field.disabled || field.type === 'hidden') return;
-
-      if (!field.checkValidity()) {
-        isStepValid = false;
-      }
+      if (!field.checkValidity()) isStepValid = false;
     });
-
-    if (step.contains(cpfInput)) {
-      if (!validarInputCPF()) {
-        isStepValid = false;
-      }
-    }
-
-    if (stepIndex === 0) {
-      if (!validarGrupoLimite('identificacoes[]', 3)) {
-        isStepValid = false;
-      }
-    }
-
+    if (step.contains(cpfInput) && !validarInputCPF()) isStepValid = false;
+    if (stepIndex === 0 && !validarGrupoLimite('identificacoes[]', 3)) isStepValid = false;
     step.classList.add('was-validated');
-
     const firstInvalid = step.querySelector(':invalid');
-    if (firstInvalid) {
-      firstInvalid.focus();
-    }
-
+    if (firstInvalid) firstInvalid.focus();
     return isStepValid;
   }
 
-  if (cpfInput) {
-    cpfInput.addEventListener('input', function (e) {
-      e.target.value = aplicarMascaraCPF(e.target.value);
-      validarInputCPF();
-    });
-
-    cpfInput.addEventListener('blur', function () {
-      validarInputCPF();
-    });
-  }
-
-  const identificacoes = form.querySelectorAll('input[name="identificacoes[]"]');
-  identificacoes.forEach(item => {
-    item.addEventListener('change', function () {
-      validarGrupoLimite('identificacoes[]', 3);
-    });
+  form.querySelectorAll('input[name="identificacoes[]"]').forEach(function (item) {
+    item.addEventListener('change', function () { validarGrupoLimite('identificacoes[]', 3); });
   });
-
-  nextButtons.forEach(button => {
-    button.addEventListener('click', function () {
-      if (!validarStep(currentStep)) return;
-
-      if (currentStep < steps.length - 1) {
-        showStep(currentStep + 1);
-      }
-    });
-  });
-
-  prevButtons.forEach(button => {
-    button.addEventListener('click', function () {
-      if (currentStep > 0) {
-        showStep(currentStep - 1);
-      }
-    });
-  });
-
+  nextButtons.forEach(function (btn) { btn.addEventListener('click', function () { if (!validarStep(currentStep)) return; if (currentStep < steps.length - 1) showStep(currentStep + 1); }); });
+  prevButtons.forEach(function (btn) { btn.addEventListener('click', function () { if (currentStep > 0) showStep(currentStep - 1); }); });
   form.addEventListener('submit', function (event) {
-    const cpfOk = validarInputCPF();
-    const limiteOk = validarGrupoLimite('identificacoes[]', 3);
-    const currentStepOk = validarStep(currentStep);
-
-    if (!form.checkValidity() || !cpfOk || !limiteOk || !currentStepOk) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const firstInvalidGlobal = form.querySelector(':invalid');
-      if (firstInvalidGlobal) {
-        const invalidStep = firstInvalidGlobal.closest('.step');
-        if (invalidStep) {
-          const invalidStepIndex = steps.indexOf(invalidStep);
-          if (invalidStepIndex >= 0) {
-            showStep(invalidStepIndex);
-          }
-        }
-
-        setTimeout(() => firstInvalidGlobal.focus(), 120);
-      }
+    const cpfOk = validarInputCPF(), limiteOk = validarGrupoLimite('identificacoes[]', 3), stepOk = validarStep(currentStep);
+    if (!form.checkValidity() || !cpfOk || !limiteOk || !stepOk) {
+      event.preventDefault(); event.stopPropagation();
+      const inv = form.querySelector(':invalid');
+      if (inv) { const s = inv.closest('.step'); if (s) { const idx = steps.indexOf(s); if (idx >= 0) showStep(idx); } setTimeout(function () { inv.focus(); }, 120); }
     }
-
     form.classList.add('was-validated');
   });
-
   showStep(0);
 });
 </script>
