@@ -145,9 +145,6 @@ try {
     }
 
     // ── Fase ativa por role ───────────────────────────────────────────────
-    // Colunas reais da tabela:
-    //   tecnica => permite_avaliacao_tecnica
-    //   juri    => permite_juri_final
     $faseAtiva = null;
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
         if (is_tecnica()) {
@@ -370,6 +367,7 @@ include __DIR__ . '/../app/views/admin/header.php';
             <?php
               $nid         = (int)$n['id'];
               $inscricaoId = $inscricoesPorNegocio[$nid] ?? null;
+              $redirectUrl = urlencode('/admin/negocios.php?' . http_build_query($_GET));
             ?>
             <tr>
               <td style="color:#9aab9d; font-size:.78rem; font-family:monospace;">
@@ -436,15 +434,21 @@ include __DIR__ . '/../app/views/admin/header.php';
                   </a>
 
                   <?php if (is_tecnica() && $inscricaoId && $faseAtiva): ?>
-                    <a href="/admin/premiacao_voto_tecnico.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= urlencode('/admin/negocios.php?' . http_build_query($_GET)) ?>"
-                       class="act-btn"
-                       title="Avaliar como Técnico"
-                       style="background:rgba(25,135,84,.12);color:#198754;">
-                      <i class="bi bi-clipboard2-check"></i>
-                    </a>
+                    <!-- FORM POST para o endpoint correto de voto técnico -->
+                    <form method="POST" action="/premiacao/votar_tecnico.php" style="display:inline;">
+                      <input type="hidden" name="inscricao_id" value="<?= $inscricaoId ?>">
+                      <input type="hidden" name="fase_id"      value="<?= (int)$faseAtiva ?>">
+                      <input type="hidden" name="redirect"     value="/admin/negocios.php?<?= htmlspecialchars(http_build_query($_GET)) ?>">
+                      <button type="submit"
+                              class="act-btn"
+                              title="Avaliar como Técnico"
+                              style="background:rgba(25,135,84,.12);color:#198754;">
+                        <i class="bi bi-clipboard2-check"></i>
+                      </button>
+                    </form>
 
                   <?php elseif (is_juri() && $inscricaoId && $faseAtiva): ?>
-                    <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= urlencode('/admin/negocios.php?' . http_build_query($_GET)) ?>"
+                    <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= $redirectUrl ?>"
                        class="act-btn"
                        title="Avaliar como Júri"
                        style="background:rgba(102,51,153,.12);color:#6633cc;">
