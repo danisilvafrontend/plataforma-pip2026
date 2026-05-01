@@ -1,11 +1,13 @@
 <?php
 // /premiacao/votar_tecnico.php — Endpoint POST para registrar voto técnico
 // ================================================================
-// REGRAS CORRIGIDAS:
+// REGRAS:
+// - Apenas usuários com role = 'tecnica' podem votar
 // - Limite: 10 votos por técnico, por categoria (SEMPRE, em todas as fases)
 // - Fase 1: Pode votar em qualquer elegível (até 10 por categoria)
-// - Fase 2: Pode votar apenas nos 20 classificados da F1 (até 10)
-// - Final: Pode votar apenas nos 6 finalistas da F2 (até 10)
+// - Fase 2: Pode votar apenas nos classificados da F1 (até 10)
+// - Final: Pode votar apenas nos classificados da F2 (até 10)
+// - Tabela de classificados: premiacao_classificados (fase_id, categoria_id, negocio_id)
 // ================================================================
 
 ob_start();
@@ -36,14 +38,14 @@ function jsonOk(string $msg, array $extra = []): never {
     exit;
 }
 
-// ── Validações básicas ────────────────────────────────────────────────────────
+// ── Método ────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonErro('Método não permitido.', 405);
 }
 
+// ── Autenticação: somente role = tecnica ─────────────────────────────────────
 $actor = premiacao_current_actor();
 
-// Validar que é técnico
 if (!$actor || $actor['tipo'] !== 'tecnico') {
     jsonErro('Você precisa estar logado como técnico para votar.', 401);
 }
@@ -59,9 +61,9 @@ if ($inscricaoId <= 0 || $faseId <= 0) {
     jsonErro('Dados inválidos.');
 }
 
-// ── Valida fase: deve existir, estar em_andamento e permitir votação técnica ──
+// ── Valida fase: deve existir, estar em_andamento e permitir avaliação técnica ─
 $stmtFase = $pdo->prepare("
-    SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim, 
+    SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim,
            pf.tipo_fase, pf.rodada
     FROM premiacao_fases pf
     WHERE pf.id = ?
@@ -83,7 +85,7 @@ if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
     jsonErro('A votação técnica não está aberta no momento.');
 }
 
-// ── Valida inscrição: deve ser elegível e pertencer à mesma premiação ─────────
+// ── Valida inscrição: elegível e pertencente à mesma premiação ────────────────
 $stmtInsc = $pdo->prepare("
     SELECT pi.id, pi.negocio_id, pi.categoria
     FROM premiacao_inscricoes pi
@@ -98,6 +100,8 @@ $inscricao = $stmtInsc->fetch(PDO::FETCH_ASSOC);
 if (!$inscricao) {
     jsonErro('Inscrição não encontrada ou negócio não elegível.');
 }
+
+$negocioId = (int)$inscricao['negocio_id'];
 
 // ── Busca categoria_id a partir do nome da categoria na inscrição ─────────────
 $stmtCat = $pdo->prepare("
@@ -115,83 +119,82 @@ if (!$categoriaRow) {
 
 $categoriaId = (int)$categoriaRow['id'];
 
-// ── Validação de Classificação (Fase 2 e Final) ────────────────────────────
-if ($fase['tipo_fase'] === 'classificatoria' && $fase['rodada'] == 2) {
-    // Fase 2: validar contra classificados da Fase 1
+// ── Validação de Classificação via premiacao_classificados ────────────────────
+// Fase 2: só pode votar nos classificados da Fase 1
+if ($fase['tipo_fase'] === 'classificatoria' && (int)$fase['rodada'] === 2) {
+
     $stmtFase1 = $pdo->prepare("
         SELECT id FROM premiacao_fases
-        WHERE premiacao_id = ? AND tipo_fase = 'classificatoria' AND rodada = 1
+        WHERE premiacao_id = ?
+          AND tipo_fase = 'classificatoria'
+          AND rodada = 1
         LIMIT 1
     ");
     $stmtFase1->execute([$fase['premiacao_id']]);
     $fase1Row = $stmtFase1->fetch(PDO::FETCH_ASSOC);
 
     if ($fase1Row) {
-        $fase1Id = (int)$fase1Row['id'];
-        
-        $stmtValidaFase1 = $pdo->prepare("
-            SELECT COUNT(*) FROM premiacao_classificados_fase
-            WHERE fase_id = ?
+        $stmtValida = $pdo->prepare("
+            SELECT COUNT(*) FROM premiacao_classificados
+            WHERE fase_id     = ?
               AND categoria_id = ?
-              AND inscricao_id = ?
-              AND status = 'classificado'
+              AND negocio_id   = ?
         ");
-        $stmtValidaFase1->execute([$fase1Id, $categoriaId, $inscricaoId]);
-        if ((int)$stmtValidaFase1->fetchColumn() === 0) {
-            jsonErro('Esta inscrição não foi classificada na Fase 1. Você pode votar apenas nos 20 classificados da Fase 1.');
+        $stmtValida->execute([(int)$fase1Row['id'], $categoriaId, $negocioId]);
+        if ((int)$stmtValida->fetchColumn() === 0) {
+            jsonErro('Este negócio não foi classificado na Fase 1. Você pode votar apenas nos classificados da Fase 1.');
         }
     }
-}
 
-elseif ($fase['tipo_fase'] === 'final') {
-    // Fase Final: validar contra classificados da Fase 2
+// Fase Final: só pode votar nos classificados da Fase 2
+} elseif ($fase['tipo_fase'] === 'final') {
+
     $stmtFase2 = $pdo->prepare("
         SELECT id FROM premiacao_fases
-        WHERE premiacao_id = ? AND tipo_fase = 'classificatoria' AND rodada = 2
+        WHERE premiacao_id = ?
+          AND tipo_fase = 'classificatoria'
+          AND rodada = 2
         LIMIT 1
     ");
     $stmtFase2->execute([$fase['premiacao_id']]);
     $fase2Row = $stmtFase2->fetch(PDO::FETCH_ASSOC);
 
     if ($fase2Row) {
-        $fase2Id = (int)$fase2Row['id'];
-        
-        $stmtValidaFase2 = $pdo->prepare("
-            SELECT COUNT(*) FROM premiacao_classificados_fase
-            WHERE fase_id = ?
+        $stmtValida = $pdo->prepare("
+            SELECT COUNT(*) FROM premiacao_classificados
+            WHERE fase_id     = ?
               AND categoria_id = ?
-              AND inscricao_id = ?
-              AND status = 'classificado'
+              AND negocio_id   = ?
         ");
-        $stmtValidaFase2->execute([$fase2Id, $categoriaId, $inscricaoId]);
-        if ((int)$stmtValidaFase2->fetchColumn() === 0) {
-            jsonErro('Esta inscrição não é finalista. Você pode votar apenas nos 6 finalistas da Fase 2.');
+        $stmtValida->execute([(int)$fase2Row['id'], $categoriaId, $negocioId]);
+        if ((int)$stmtValida->fetchColumn() === 0) {
+            jsonErro('Este negócio não é finalista. Você pode votar apenas nos 6 finalistas da Fase 2.');
         }
     }
 }
 
-// ── VALIDAÇÃO DE LIMITE: Máximo 10 votos por técnico, por categoria (SEMPRE) ──
+// ── Limite: máximo 10 votos por técnico, por categoria (sempre) ───────────────
 $stmtContaVotos = $pdo->prepare("
     SELECT COUNT(*) FROM premiacao_votos_tecnicos
-    WHERE fase_id = ?
+    WHERE fase_id     = ?
       AND categoria_id = ?
       AND tipo_eleitor = ?
-      AND eleitor_id = ?
+      AND eleitor_id   = ?
 ");
 $stmtContaVotos->execute([$faseId, $categoriaId, $tipoEleitor, $eleitorId]);
 $votosJaFeitos = (int)$stmtContaVotos->fetchColumn();
 
-$maxVotosPorCategoria = 10;  // SEMPRE 10, em todas as fases
+$maxVotosPorCategoria = 10;
 
 if ($votosJaFeitos >= $maxVotosPorCategoria) {
     jsonErro(
-        "Você já votou em $votosJaFeitos inscrições desta categoria. " .
+        "Você já votou em {$votosJaFeitos} inscrições desta categoria. " .
         "O máximo permitido é 10 votos por categoria.",
         400
     );
 }
 
-// ── Verifica voto duplicado ───────────────────────────────────────────────────
+// ── Voto duplicado ────────────────────────────────────────────────────────────
 $stmtDup = $pdo->prepare("
     SELECT COUNT(*) FROM premiacao_votos_tecnicos
     WHERE fase_id      = ?
@@ -219,7 +222,7 @@ $stmtInsert->execute([
     $eleitorId
 ]);
 
-// ── Se requisição AJAX responde JSON; se form POST normal faz redirect ────────
+// ── Responde: AJAX → JSON, form normal → redirect ────────────────────────────
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
