@@ -33,17 +33,16 @@ function dataBr(?string $dt): string
     return date('d/m/Y H:i', strtotime($dt));
 }
 
-// ── Filtros ────────────────────────────────────────────────────────────────────────────────
-$filtroAno       = (int)  ($_GET['ano']          ?? 0);
-$filtroPremiacao = (int)  ($_GET['premiacao_id'] ?? 0);
-$filtroFase      = (int)  ($_GET['fase_id']      ?? 0);
-$filtroCategoria = (int)  ($_GET['categoria_id'] ?? 0);
-$filtroTecnico   = (int)  ($_GET['user_id']      ?? 0);
+// ── Filtros ─────────────────────────────────────────────────────────────────────
+$filtroAno       = (int) ($_GET['ano']          ?? 0);
+$filtroPremiacao = (int) ($_GET['premiacao_id'] ?? 0);
+$filtroFase      = (int) ($_GET['fase_id']      ?? 0);
+$filtroCategoria = (int) ($_GET['categoria_id'] ?? 0);
+$filtroTecnico   = (int) ($_GET['user_id']      ?? 0);
 
-// ── Anos ──────────────────────────────────────────────────────────────────────────────────
+// ── Listas para filtros ──────────────────────────────────────────────────────────
 $anos = $pdo->query("SELECT DISTINCT ano FROM premiacoes ORDER BY ano DESC")->fetchAll(PDO::FETCH_COLUMN);
 
-// ── Premiações ────────────────────────────────────────────────────────────────────────────
 if ($filtroAno > 0) {
     $stmtPrem = $pdo->prepare("SELECT id, nome FROM premiacoes WHERE ano = ? ORDER BY id DESC");
     $stmtPrem->execute([$filtroAno]);
@@ -52,7 +51,6 @@ if ($filtroAno > 0) {
 }
 $premiacoes = $stmtPrem->fetchAll();
 
-// ── Fases com avaliação técnica habilitada ───────────────────────────────────────────────
 if ($filtroPremiacao > 0) {
     $stmtF = $pdo->prepare("
         SELECT id, nome FROM premiacao_fases
@@ -71,7 +69,6 @@ if ($filtroPremiacao > 0) {
     ")->fetchAll();
 }
 
-// ── Categorias ────────────────────────────────────────────────────────────────────────────
 if ($filtroPremiacao > 0) {
     $stmtC = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id = ? ORDER BY ordem");
     $stmtC->execute([$filtroPremiacao]);
@@ -85,36 +82,35 @@ if ($filtroPremiacao > 0) {
     ")->fetchAll();
 }
 
-// ── Técnicos (role = 'tecnico') ───────────────────────────────────────────────────────────────
+// Técnicos ativos: aceita role 'tecnico' ou 'tecnica'
 $tecnicos = $pdo->query("
     SELECT id, nome FROM users
-    WHERE role = 'tecnico' AND status = 'ativo'
+    WHERE role IN ('tecnico','tecnica') AND status = 'ativo'
     ORDER BY nome
 ")->fetchAll();
 
 $totalTecnicos = count($tecnicos);
 
-// ── WHERE base ────────────────────────────────────────────────────────────────────────────────
+// ── WHERE base ────────────────────────────────────────────────────────────────────
 $where  = ['1=1'];
 $params = [];
 if ($filtroAno > 0)       { $where[] = 'p.ano = ?';            $params[] = $filtroAno; }
-if ($filtroPremiacao > 0) { $where[] = 'psa.premiacao_id = ?'; $params[] = $filtroPremiacao; }
-if ($filtroFase > 0)      { $where[] = 'psa.fase_id = ?';      $params[] = $filtroFase; }
-if ($filtroCategoria > 0) { $where[] = 'psa.categoria_id = ?'; $params[] = $filtroCategoria; }
-if ($filtroTecnico > 0)   { $where[] = 'psa.selecionado_por_user_id = ?'; $params[] = $filtroTecnico; }
+if ($filtroPremiacao > 0) { $where[] = 'vt.premiacao_id = ?';  $params[] = $filtroPremiacao; }
+if ($filtroFase > 0)      { $where[] = 'vt.fase_id = ?';       $params[] = $filtroFase; }
+if ($filtroCategoria > 0) { $where[] = 'vt.categoria_id = ?';  $params[] = $filtroCategoria; }
+if ($filtroTecnico > 0)   { $where[] = 'vt.user_id = ?';       $params[] = $filtroTecnico; }
 $whereSql = implode(' AND ', $where);
 
-// ── KPIs ──────────────────────────────────────────────────────────────────────────────────
+// ── KPIs ───────────────────────────────────────────────────────────────────────────
 $kpiRow = $pdo->prepare("
     SELECT
-        COUNT(*)                                   AS total_selecoes,
-        COUNT(DISTINCT psa.selecionado_por_user_id) AS tecnicos_que_avaliaram,
-        COUNT(DISTINCT psa.inscricao_id)            AS negocios_selecionados,
-        COUNT(DISTINCT psa.categoria_id)            AS categorias_com_selecao
-    FROM premiacao_selecoes_admin psa
-    INNER JOIN premiacoes p ON p.id = psa.premiacao_id
-    WHERE psa.tipo_selecao = 'tecnica'
-      AND $whereSql
+        COUNT(*)                          AS total_selecoes,
+        COUNT(DISTINCT vt.user_id)        AS tecnicos_que_avaliaram,
+        COUNT(DISTINCT vt.inscricao_id)   AS negocios_selecionados,
+        COUNT(DISTINCT vt.categoria_id)   AS categorias_com_selecao
+    FROM premiacao_votos_tecnicos vt
+    INNER JOIN premiacoes p ON p.id = vt.premiacao_id
+    WHERE $whereSql
 ");
 $kpiRow->execute($params);
 $kpi = $kpiRow->fetch();
@@ -125,54 +121,58 @@ $negociosSelecionados = (int)($kpi['negocios_selecionados']  ?? 0);
 $categoriasComSel     = (int)($kpi['categorias_com_selecao'] ?? 0);
 $pctParticipacao      = $totalTecnicos > 0 ? round(($tecnicosAvaliaram / $totalTecnicos) * 100) : 0;
 
-// ── Ranking: negócios mais selecionados pela bancada técnica ─────────────────────────────────
+// ── Ranking: negócios mais votados pela bancada técnica ───────────────────────────────
 $stmtRank = $pdo->prepare("
     SELECT
         n.nome_fantasia,
-        pi2.categoria                               AS categoria_inscricao,
-        pc.nome                                     AS categoria_nome,
-        COUNT(psa.id)                               AS total_selecoes,
-        COUNT(DISTINCT psa.selecionado_por_user_id) AS tecnicos_que_escolheram,
+        pi2.categoria                         AS categoria_inscricao,
+        pc.nome                               AS categoria_nome,
+        COUNT(vt.id)                          AS total_votos,
+        COUNT(DISTINCT vt.user_id)            AS tecnicos_que_escolheram,
         ROUND(
-            COUNT(DISTINCT psa.selecionado_por_user_id) * 100.0
-            / NULLIF((SELECT COUNT(*) FROM users WHERE role='tecnico' AND status='ativo'), 0)
-        , 1)                                        AS pct_adesao,
+            COUNT(DISTINCT vt.user_id) * 100.0
+            / NULLIF(
+                (SELECT COUNT(*) FROM users WHERE role IN ('tecnico','tecnica') AND status='ativo'), 0
+            )
+        , 1)                                  AS pct_adesao,
         sn.score_geral,
         sn.score_impacto,
         sn.score_escala
-    FROM premiacao_selecoes_admin psa
-    INNER JOIN premiacoes           p   ON p.id   = psa.premiacao_id
-    INNER JOIN premiacao_categorias pc  ON pc.id  = psa.categoria_id
-    INNER JOIN premiacao_inscricoes pi2 ON pi2.id = psa.inscricao_id
+    FROM premiacao_votos_tecnicos vt
+    INNER JOIN premiacoes           p   ON p.id   = vt.premiacao_id
+    INNER JOIN premiacao_categorias pc  ON pc.id  = vt.categoria_id
+    INNER JOIN premiacao_inscricoes pi2 ON pi2.id = vt.inscricao_id
     INNER JOIN negocios             n   ON n.id   = pi2.negocio_id
     LEFT  JOIN scores_negocios      sn  ON sn.negocio_id = pi2.negocio_id
-    WHERE psa.tipo_selecao = 'tecnica'
-      AND $whereSql
-    GROUP BY psa.inscricao_id, n.nome_fantasia, pi2.categoria, pc.nome,
+    WHERE $whereSql
+    GROUP BY vt.inscricao_id, n.nome_fantasia, pi2.categoria, pc.nome,
              sn.score_geral, sn.score_impacto, sn.score_escala
     ORDER BY tecnicos_que_escolheram DESC, sn.score_geral DESC
 ");
 $stmtRank->execute($params);
 $ranking = $stmtRank->fetchAll();
 
-// ── Painel: técnico × categorias disponíveis ──────────────────────────────────────────────────
-$categorias_painel = $pdo->query("
-    SELECT pc.id, pc.nome
-    FROM premiacao_categorias pc
-    ORDER BY pc.ordem
-")->fetchAll();
+// ── Categorias para o painel ───────────────────────────────────────────────────────────
+if ($filtroPremiacao > 0) {
+    $stmtCP = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id = ? ORDER BY ordem");
+    $stmtCP->execute([$filtroPremiacao]);
+    $categorias_painel = $stmtCP->fetchAll();
+} else {
+    $categorias_painel = $pdo->query("SELECT id, nome FROM premiacao_categorias ORDER BY ordem")->fetchAll();
+}
 
 $todasCategorias = [];
 foreach ($categorias_painel as $c) {
     $todasCategorias[$c['id']] = $c['nome'];
 }
 
+// ── Painel: técnico × categorias ────────────────────────────────────────────────────────
 $painelParams = [];
-$painelWhere  = ["psa.tipo_selecao = 'tecnica'"];
+$painelWhere  = ['1=1'];
 if ($filtroAno > 0)       { $painelWhere[] = 'p.ano = ?';            $painelParams[] = $filtroAno; }
-if ($filtroPremiacao > 0) { $painelWhere[] = 'psa.premiacao_id = ?'; $painelParams[] = $filtroPremiacao; }
-if ($filtroFase > 0)      { $painelWhere[] = 'psa.fase_id = ?';      $painelParams[] = $filtroFase; }
-if ($filtroCategoria > 0) { $painelWhere[] = 'psa.categoria_id = ?'; $painelParams[] = $filtroCategoria; }
+if ($filtroPremiacao > 0) { $painelWhere[] = 'vt.premiacao_id = ?';  $painelParams[] = $filtroPremiacao; }
+if ($filtroFase > 0)      { $painelWhere[] = 'vt.fase_id = ?';       $painelParams[] = $filtroFase; }
+if ($filtroCategoria > 0) { $painelWhere[] = 'vt.categoria_id = ?';  $painelParams[] = $filtroCategoria; }
 $painelWhereSql = implode(' AND ', $painelWhere);
 
 $stmtPainel = $pdo->prepare("
@@ -180,16 +180,16 @@ $stmtPainel = $pdo->prepare("
         u.id                AS user_id,
         u.nome              AS tecnico_nome,
         u.email             AS tecnico_email,
-        psa.categoria_id,
-        COUNT(psa.id)       AS selecoes_cat,
-        MAX(psa.created_at) AS ultimo_em
+        vt.categoria_id,
+        COUNT(vt.id)        AS selecoes_cat,
+        MAX(vt.created_at)  AS ultimo_em
     FROM users u
-    LEFT JOIN premiacao_selecoes_admin psa ON psa.selecionado_por_user_id = u.id
-    LEFT JOIN premiacoes p ON p.id = psa.premiacao_id
-    WHERE u.role = 'tecnico' AND u.status = 'ativo'
-      AND ($painelWhereSql OR psa.id IS NULL)
-    GROUP BY u.id, u.nome, u.email, psa.categoria_id
-    ORDER BY u.nome, psa.categoria_id
+    LEFT JOIN premiacao_votos_tecnicos vt ON vt.user_id = u.id
+    LEFT JOIN premiacoes p ON p.id = vt.premiacao_id
+    WHERE u.role IN ('tecnico','tecnica') AND u.status = 'ativo'
+      AND ($painelWhereSql OR vt.id IS NULL)
+    GROUP BY u.id, u.nome, u.email, vt.categoria_id
+    ORDER BY u.nome, vt.categoria_id
 ");
 $stmtPainel->execute($painelParams);
 $painelRaw = $stmtPainel->fetchAll();
@@ -215,11 +215,11 @@ foreach ($painelRaw as $row) {
     }
 }
 
-// ── Log detalhado ────────────────────────────────────────────────────────────────────────────────
+// ── Log detalhado ───────────────────────────────────────────────────────────────────────
 $stmtLog = $pdo->prepare("
     SELECT
-        psa.id,
-        psa.created_at,
+        vt.id,
+        vt.created_at,
         u.nome              AS tecnico_nome,
         u.email             AS tecnico_email,
         n.nome_fantasia,
@@ -227,30 +227,24 @@ $stmtLog = $pdo->prepare("
         pf.nome             AS fase_nome,
         pr.nome             AS premiacao_nome,
         pr.ano              AS premiacao_ano,
-        psa.observacao,
         sn.score_geral,
         sn.score_impacto
-    FROM premiacao_selecoes_admin psa
-    INNER JOIN premiacoes           pr  ON pr.id  = psa.premiacao_id
-    INNER JOIN premiacao_fases      pf  ON pf.id  = psa.fase_id
-    INNER JOIN premiacao_categorias pc  ON pc.id  = psa.categoria_id
-    INNER JOIN premiacao_inscricoes pi2 ON pi2.id = psa.inscricao_id
+    FROM premiacao_votos_tecnicos vt
+    INNER JOIN premiacoes           pr  ON pr.id  = vt.premiacao_id
+    INNER JOIN premiacao_fases      pf  ON pf.id  = vt.fase_id
+    INNER JOIN premiacao_categorias pc  ON pc.id  = vt.categoria_id
+    INNER JOIN premiacao_inscricoes pi2 ON pi2.id = vt.inscricao_id
     INNER JOIN negocios             n   ON n.id   = pi2.negocio_id
-    INNER JOIN users                u   ON u.id   = psa.selecionado_por_user_id
-    INNER JOIN premiacoes           p   ON p.id   = psa.premiacao_id
+    INNER JOIN users                u   ON u.id   = vt.user_id
+    INNER JOIN premiacoes           p   ON p.id   = vt.premiacao_id
     LEFT  JOIN scores_negocios      sn  ON sn.negocio_id = pi2.negocio_id
-    WHERE psa.tipo_selecao = 'tecnica'
-      AND $whereSql
-    ORDER BY psa.created_at DESC
+    WHERE $whereSql
+    ORDER BY vt.created_at DESC
 ");
 $stmtLog->execute($params);
 $log = $stmtLog->fetchAll();
 
-// ── Contexto da regra para a fase selecionada ───────────────────────────────────────────────
-// Colunas corretas da tabela premiacao_fases:
-//   qtd_classificados_tecnica  (era max_classificados_tecnica)
-//   qtd_classificados_popular  (era max_classificados_popular)
-//   qtd_classificados_final    (era max_classificados_total)
+// ── Regra da fase selecionada ────────────────────────────────────────────────────────
 $regraFase = null;
 if ($filtroFase > 0) {
     $stmtRegra = $pdo->prepare("
@@ -275,7 +269,7 @@ require_once $appBase . '/views/admin/header.php';
         <div>
             <h1 class="mb-1">Bancada Técnica</h1>
             <p class="text-muted mb-0">
-                Registro das seleções da avaliação técnica nas fases classificatórias.
+                Registro dos votos da avaliação técnica nas fases classificatórias.
                 <span class="ms-2 badge" style="background:#eaf7ef;color:#1E3425;font-size:11px;">
                     Fase 1: top 10 técnica + top 10 popular → até 20 classificados
                 </span>
@@ -289,7 +283,7 @@ require_once $appBase . '/views/admin/header.php';
                 <i class="bi bi-clipboard2-check me-1"></i>
                 <?= $totalTecnicos ?> técnico<?= $totalTecnicos !== 1 ? 's' : '' ?> ativo<?= $totalTecnicos !== 1 ? 's' : '' ?>
             </span>
-            <a href="premiacao_bancada_tecnica.php?<?= http_build_query(array_filter([
+            <a href="premiacao_voto_tecnico.php?<?= http_build_query(array_filter([
                 'ano'          => $filtroAno       ?: null,
                 'premiacao_id' => $filtroPremiacao ?: null,
                 'fase_id'      => $filtroFase      ?: null,
@@ -307,7 +301,6 @@ require_once $appBase . '/views/admin/header.php';
             $topTec   = (int)($regraFase['qtd_classificados_tecnica'] ?? 10);
             $topPop   = (int)($regraFase['qtd_classificados_popular'] ?? 10);
             $topTotal = (int)($regraFase['qtd_classificados_final']   ?? 20);
-            $tipoF    = $regraFase['tipo_fase'] ?? '';
         ?>
         <div class="regra-alert">
             <i class="bi bi-info-circle-fill fs-5"></i>
@@ -316,9 +309,6 @@ require_once $appBase . '/views/admin/header.php';
                 Bancada técnica seleciona até <strong><?= $topTec ?></strong> negócios por categoria.
                 Esses <?= $topTec ?> se unem aos top <?= $topPop ?> do voto popular (removendo duplicados)
                 para compor até <strong><?= $topTotal ?> classificados</strong> por categoria.
-                <?php if ($topTotal > ($topTec + $topPop)): ?>
-                    Vagas restantes são preenchidas pelo próximo elegível não duplicado.
-                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -442,7 +432,7 @@ require_once $appBase . '/views/admin/header.php';
                 <button type="submit" class="btn btn-sm btn-success w-100">
                     <i class="bi bi-search"></i>
                 </button>
-                <a href="premiacao_bancada_tecnica.php" class="btn btn-sm btn-outline-secondary w-100" title="Limpar">
+                <a href="premiacao_voto_tecnico.php" class="btn btn-sm btn-outline-secondary w-100" title="Limpar">
                     <i class="bi bi-x-lg"></i>
                 </a>
             </div>
@@ -457,7 +447,7 @@ require_once $appBase . '/views/admin/header.php';
                 <i class="bi bi-person-lines-fill me-2" style="color:#CDDE00;"></i>
                 Painel de Participação
             </h5>
-            <span class="text-muted" style="font-size:12px;">seleções por técnico × categoria</span>
+            <span class="text-muted" style="font-size:12px;">votos por técnico × categoria</span>
         </div>
         <div class="card-body p-0">
             <?php if (empty($painelPorTecnico)): ?>
@@ -476,7 +466,7 @@ require_once $appBase . '/views/admin/header.php';
                                     <th class="text-center"><?= h($catNome) ?></th>
                                 <?php endforeach; ?>
                                 <th class="text-center">Total</th>
-                                <th class="pe-3">Última seleção</th>
+                                <th class="pe-3">Último voto</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -514,31 +504,27 @@ require_once $appBase . '/views/admin/header.php';
     <!-- Ranking + Log -->
     <div class="row g-4">
 
-        <!-- Ranking de negócios -->
+        <!-- Ranking -->
         <div class="col-lg-5">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-bar-chart-fill me-2" style="color:#CDDE00;"></i>
-                        Mais Selecionados pela Bancada
+                        Mais Votados pela Bancada
                     </h5>
-                    <span class="badge" style="background:#e8ede9;color:#6c7a6e;font-size:10px;">
-                        % adesão dos técnicos
-                    </span>
+                    <span class="badge" style="background:#e8ede9;color:#6c7a6e;font-size:10px;">% adesão dos técnicos</span>
                 </div>
                 <div class="card-body p-0">
                     <?php if (empty($ranking)): ?>
                         <div class="text-center py-5 text-muted">
                             <i class="bi bi-inbox d-block fs-2 mb-2"></i>
-                            Nenhuma seleção registrada.
+                            Nenhum voto registrado.
                         </div>
                     <?php else: ?>
                         <?php $maxSel = max(1, (int)($ranking[0]['tecnicos_que_escolheram'] ?? 1)); ?>
                         <ul class="list-unstyled mb-0">
                             <?php foreach ($ranking as $i => $row): ?>
-                                <li class="px-3 py-2 <?= $i < count($ranking) - 1 ? 'border-bottom' : '' ?>"
-                                    style="border-color:#f0f4f1;">
-
+                                <li class="px-3 py-2 <?= $i < count($ranking) - 1 ? 'border-bottom' : '' ?>" style="border-color:#f0f4f1;">
                                     <div class="d-flex align-items-center gap-2 mb-1">
                                         <span class="rank-medal">
                                             <?= match($i) {
@@ -549,28 +535,21 @@ require_once $appBase . '/views/admin/header.php';
                                             } ?>
                                         </span>
                                         <div class="flex-grow-1 overflow-hidden">
-                                            <div class="fw-semibold text-truncate" style="font-size:13px;"
-                                                title="<?= h($row['nome_fantasia']) ?>">
+                                            <div class="fw-semibold text-truncate" style="font-size:13px;" title="<?= h($row['nome_fantasia']) ?>">
                                                 <?= h($row['nome_fantasia']) ?>
                                             </div>
                                             <div class="text-muted" style="font-size:11px;"><?= h($row['categoria_nome']) ?></div>
                                         </div>
                                         <div class="text-end flex-shrink-0">
-                                            <div class="fw-bold" style="font-size:15px;color:#1E3425;">
-                                                <?= $row['pct_adesao'] ?>%
-                                            </div>
+                                            <div class="fw-bold" style="font-size:15px;color:#1E3425;"><?= $row['pct_adesao'] ?>%</div>
                                             <div style="font-size:10px;color:#9aab9d;">
                                                 <?= $row['tecnicos_que_escolheram'] ?>/<?= $totalTecnicos ?> técnico<?= $row['tecnicos_que_escolheram'] != 1 ? 's' : '' ?>
                                             </div>
                                         </div>
                                     </div>
-
                                     <div class="rank-bar-wrap ms-5">
-                                        <div class="rank-bar-fill"
-                                            style="width:<?= min(100, (float)$row['pct_adesao']) ?>%">
-                                        </div>
+                                        <div class="rank-bar-fill" style="width:<?= min(100, (float)$row['pct_adesao']) ?>%"></div>
                                     </div>
-
                                     <?php if ($row['score_geral'] || $row['score_impacto']): ?>
                                         <div class="ms-5 mt-1 d-flex gap-1 flex-wrap">
                                             <?php if ($row['score_geral']): ?>
@@ -594,23 +573,21 @@ require_once $appBase . '/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Log de seleções -->
+        <!-- Log de votos -->
         <div class="col-lg-7">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-journal-text me-2" style="color:#CDDE00;"></i>
-                        Log de Seleções
+                        Log de Votos Técnicos
                     </h5>
-                    <span class="text-muted" style="font-size:12px;">
-                        <?= count($log) ?> registro<?= count($log) !== 1 ? 's' : '' ?>
-                    </span>
+                    <span class="text-muted" style="font-size:12px;"><?= count($log) ?> registro<?= count($log) !== 1 ? 's' : '' ?></span>
                 </div>
                 <div class="card-body p-0">
                     <?php if (empty($log)): ?>
                         <div class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                            Nenhuma seleção técnica registrada.
+                            Nenhum voto técnico registrado.
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
@@ -651,18 +628,8 @@ require_once $appBase . '/views/admin/header.php';
                                                     <span class="text-muted">—</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="pe-3" style="font-size:11px;white-space:nowrap;">
-                                                <?= dataBr($row['created_at']) ?>
-                                            </td>
+                                            <td class="pe-3" style="font-size:11px;white-space:nowrap;"><?= dataBr($row['created_at']) ?></td>
                                         </tr>
-                                        <?php if (!empty($row['observacao'])): ?>
-                                            <tr style="background:#fafbfa;">
-                                                <td colspan="7" class="ps-5 py-1" style="font-size:11px;color:#6c7a6e;border-top:none;">
-                                                    <i class="bi bi-chat-left-text me-1"></i>
-                                                    <?= h($row['observacao']) ?>
-                                                </td>
-                                            </tr>
-                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
