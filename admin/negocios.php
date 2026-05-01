@@ -54,7 +54,7 @@ try {
         $where[] = "n.status_vitrine = 'indeferido'";
     }
 
-    // Premiação ativa (para filtrar lista de júri/técnica)
+    // Premiação ativa
     $stmtPremAtiva = $pdo->query("
         SELECT id
         FROM premiacoes
@@ -124,15 +124,14 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Busca inscrições da premiação ativa para o bloco de votação ──────────────
-    // Mapeia negocio_id => inscricao_id para montar os links de voto com inscricao_id
+    // ── Inscrições da premiação ativa: mapa negocio_id => inscricao_id ────────────
     $inscricoesPorNegocio = [];
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
         $negIds = array_column($negocios, 'id');
         if (!empty($negIds)) {
             $placeholders = implode(',', array_fill(0, count($negIds), '?'));
             $stmtInsc = $pdo->prepare("
-                SELECT negocio_id, id AS inscricao_id, categoria
+                SELECT negocio_id, id AS inscricao_id
                 FROM premiacao_inscricoes
                 WHERE premiacao_id = ?
                   AND negocio_id IN ({$placeholders})
@@ -145,41 +144,24 @@ try {
         }
     }
 
-    // ── Busca fase ativa de voto técnico / júri ───────────────────────────────
+    // ── Fase ativa por role ───────────────────────────────────────────────
+    // Colunas reais da tabela:
+    //   tecnica => permite_avaliacao_tecnica
+    //   juri    => permite_juri_final
     $faseAtiva = null;
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
-        $stmtFase = $pdo->prepare("
+        if (is_tecnica()) {
+            $colFase = 'permite_avaliacao_tecnica';
+        } else {
+            $colFase = 'permite_juri_final';
+        }
+        $stmtFaseRole = $pdo->prepare("
             SELECT id FROM premiacao_fases
             WHERE premiacao_id = ?
               AND status = 'em_andamento'
-              AND (
-                  (? = 1 AND permite_avaliacao_tecnica = 1)
-                  OR
-                  (? = 0 AND permite_avaliacao_juri = 1)
-              )
-            ORDER BY rodada ASC
-            LIMIT 1
+              AND {$colFase} = 1
+            ORDER BY rodada ASC LIMIT 1
         ");
-        $ehTecnica = is_tecnica() ? 1 : 0;
-        $ehJuri    = is_juri()    ? 1 : 0; // usado na segunda cláusula OR
-        // simplificando: busca pela role correta
-        if (is_tecnica()) {
-            $stmtFaseRole = $pdo->prepare("
-                SELECT id FROM premiacao_fases
-                WHERE premiacao_id = ?
-                  AND status = 'em_andamento'
-                  AND permite_avaliacao_tecnica = 1
-                ORDER BY rodada ASC LIMIT 1
-            ");
-        } else {
-            $stmtFaseRole = $pdo->prepare("
-                SELECT id FROM premiacao_fases
-                WHERE premiacao_id = ?
-                  AND status = 'em_andamento'
-                  AND permite_avaliacao_juri = 1
-                ORDER BY rodada ASC LIMIT 1
-            ");
-        }
         $stmtFaseRole->execute([$premiacaoAtualId]);
         $faseAtiva = $stmtFaseRole->fetchColumn() ?: null;
     }
@@ -386,7 +368,7 @@ include __DIR__ . '/../app/views/admin/header.php';
         <?php else: ?>
           <?php foreach ($negocios as $n): ?>
             <?php
-              $nid        = (int)$n['id'];
+              $nid         = (int)$n['id'];
               $inscricaoId = $inscricoesPorNegocio[$nid] ?? null;
             ?>
             <tr>
@@ -454,19 +436,17 @@ include __DIR__ . '/../app/views/admin/header.php';
                   </a>
 
                   <?php if (is_tecnica() && $inscricaoId && $faseAtiva): ?>
-                    <!-- Botão de voto técnico -->
                     <a href="/admin/premiacao_voto_tecnico.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= urlencode('/admin/negocios.php?' . http_build_query($_GET)) ?>"
                        class="act-btn"
-                       title="Votar como Técnico"
+                       title="Avaliar como Técnico"
                        style="background:rgba(25,135,84,.12);color:#198754;">
                       <i class="bi bi-clipboard2-check"></i>
                     </a>
 
                   <?php elseif (is_juri() && $inscricaoId && $faseAtiva): ?>
-                    <!-- Botão de voto júri -->
                     <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= urlencode('/admin/negocios.php?' . http_build_query($_GET)) ?>"
                        class="act-btn"
-                       title="Votar como Júri"
+                       title="Avaliar como Júri"
                        style="background:rgba(102,51,153,.12);color:#6633cc;">
                       <i class="bi bi-star-half"></i>
                     </a>
