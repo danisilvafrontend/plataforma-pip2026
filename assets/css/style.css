@@ -1,4 +1,3 @@
-
 :root {
 
     /* ================================================
@@ -422,6 +421,9 @@
 /* ════════════════════════════════
    HERO HOME
 ════════════════════════════════ */
+body {
+  overflow-x: hidden;
+}
 .hero-home {
   padding: 4rem 0 3.5rem;
   background-color: #f5f7f2;
@@ -549,7 +551,146 @@
   font-size: .78rem;
   color: #8aaa8f;
 }
+.hero-home--nova {
+  background-image:
+    linear-gradient(rgba(255,255,255,.7), rgba(255,255,255,.7)),
+    url('/assets/images/background-01.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
 
+.hero-panel-novo {
+  background: rgba(255,255,255,.5);
+  border: 1px solid rgba(30,52,37,.10);
+  border-radius: 24px;
+  padding: 1.75rem;
+  box-shadow: 0 14px 40px rgba(30,52,37,.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-panel-novo::after {
+  content: '';
+  position: absolute;
+  inset: auto -30px -30px auto;
+  width: 180px;
+  height: 180px;
+  background: url('/assets/images/grafismo-verde.png') no-repeat center/contain;
+  opacity: .4;
+  pointer-events: none;
+}
+
+.hero-panel-kicker {
+  display: inline-block;
+  font-size: .75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #5a8a62;
+  margin-bottom: 1rem;
+}
+
+.hero-panel-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: #4a5e4f;
+}
+
+.hero-panel-list li + li {
+  margin-top: .75rem;
+}
+
+.participar-home {
+  background: #fff;
+  position: relative;
+}
+
+.participar-card {
+  height: 100%;
+  background: #fff;
+  border-radius: 22px;
+  padding: 2rem 1.5rem;
+  border: 1px solid rgba(30,52,37,.08);
+  box-shadow: 0 10px 28px rgba(30,52,37,.06);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.participar-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 36px rgba(30,52,37,.10);
+  border-color: rgba(151,163,39,.30);
+}
+
+.participar-card::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 120px;
+  height: 120px;
+  background: url('/assets/images/grafismo-preto.png') no-repeat center/contain;
+  opacity: 0.2;
+  pointer-events: none;
+  mix-blend-mode: multiply; /* ← faz o branco sumir, só o grafismo aparece */
+}
+
+.participar-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: .38rem .8rem;
+  border-radius: 999px;
+  background: #eef4df;
+  color: #5c6318;
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 1rem;
+}
+
+.participar-card h3 {
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: #1E3425;
+  margin-bottom: .85rem;
+}
+
+.participar-card p {
+  color: #6c8070;
+  font-size: .95rem;
+  line-height: 1.7;
+  margin-bottom: 1.4rem;
+}
+
+.btn-participar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: .72rem 1.2rem;
+  background: #1E3425;
+  color: #CDDE00 !important;
+  font-weight: 700;
+  transition: background .15s ease, transform .15s ease;
+}
+
+.btn-participar:hover {
+  background: #162a1c;
+  transform: translateY(-2px);
+}
+
+.btn-hero-link {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  color: #1E3425;
+  text-decoration: none;
+  padding: .7rem .4rem;
+}
 /* ════════════════════════════════
    COMO FUNCIONA
 ════════════════════════════════ */
@@ -608,7 +749,234 @@
   color: #6c8070;
   margin: 0;
 }
+/* =========================================================
+   COMO FUNCIONA
+   ========================================================= */
 
+.como-funciona-home {
+  background: #f5f7f2;
+  position: relative;
+  
+  /* Quebra o container do <main> e vai até as bordas da viewport */
+  margin-left:  calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
+
+/* Faixa com grafismo de fundo suave */
+.como-funciona-home::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/assets/images/background-02.png') no-repeat center/cover; /* ← absoluto */
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.como-funciona-home .container { position: relative; z-index: 1; }
+
+.como-bloco {
+  background: #fff;
+  border-radius: 22px;
+  padding: 2rem 1.5rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border: 1px solid rgba(30,52,37,0.08);
+  box-shadow: 0 8px 24px rgba(30,52,37,0.06);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.como-bloco:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(30,52,37,0.10);
+}
+
+/* Card de destaque — parceiro com fundo escuro */
+.como-bloco--destaque {
+  background: #1E3425;
+  border-color: rgba(205,222,0,0.20);
+}
+
+.como-bloco--destaque .como-bloco-steps li,
+.como-bloco--destaque .como-bloco-steps span:last-child {
+  color: rgba(255,255,255,0.82);
+}
+
+.como-bloco-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #1E3425;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #CDDE00;
+}
+
+.como-bloco--destaque .como-bloco-header {
+  color: #CDDE00;
+  border-bottom-color: rgba(205,222,0,0.35);
+}
+
+.como-bloco-header i {
+  font-size: 1.5rem;
+  color: #5a8a62;
+}
+
+.como-bloco--destaque .como-bloco-header i {
+  color: #97A327;
+}
+
+.como-bloco-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+}
+
+.como-bloco-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  color: #4a5e4f;
+  font-size: .93rem;
+  line-height: 1.55;
+}
+
+.como-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #CDDE00;
+  color: #1E3425;
+  font-weight: 800;
+  font-size: .78rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.como-num--parceiro {
+  background: #97A327;
+  color: #fff;
+}
+
+/* Variação do botão para fundo escuro */
+.btn-participar--alt {
+  background: #CDDE00;
+  color: #1E3425 !important;
+}
+
+.btn-participar--alt:hover {
+  background: #b8c800;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 767.98px) {
+  .como-bloco { padding: 1.5rem 1.25rem; }
+}
+
+/* ════════════════════════════════
+BLOCO: VITRINE HOME
+════════════════════════════════ */
+.vitrine-home {
+  background: #f8faf6;
+  
+  /* Quebra o container do <main> e vai até as bordas da viewport */
+  margin-left:  calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
+
+/* Chamada discreta para premiação */
+.premiacao-chamada {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.premiacao-chamada-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: #1E3425;
+  border-radius: 16px;
+  padding: 1.25rem 1.75rem;
+  flex-wrap: wrap;
+}
+
+.premiacao-chamada-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(205,222,0,.18);
+  color: #CDDE00;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premiacao-chamada-texto {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.premiacao-chamada-texto strong {
+  color: #fff;
+  font-size: .92rem;
+  font-weight: 700;
+}
+
+.premiacao-chamada-texto span {
+  color: rgba(255,255,255,.65);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+
+.premiacao-chamada-btn {
+  display: inline-flex;
+  align-items: center;
+  background: #CDDE00;
+  color: #1E3425 !important;
+  font-weight: 700;
+  font-size: .85rem;
+  border-radius: 999px;
+  padding: .55rem 1.2rem;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .15s, transform .12s;
+}
+
+.premiacao-chamada-btn:hover {
+  background: #b8c800;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 575.98px) {
+  .premiacao-chamada-inner {
+    padding: 1.25rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .premiacao-chamada-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
 /* ════════════════════════════════
    VITRINE — botão "Ver Todos"
 ════════════════════════════════ */
@@ -629,6 +997,313 @@
   background: #162a1c;
 }
 
+/* ════════════════════════════════
+BLOCO: CTA FINAL
+════════════════════════════════ */
+
+.cta-final-inner {
+  background: linear-gradient(135deg, #1E3425 0%, #2a4630 100%);
+  border-radius: 24px;
+  padding: 3.5rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-final-grafismo {
+  position: absolute;
+  inset: 0;
+  background: url('/assets/images/aneis.png') no-repeat center/cover;
+  opacity: .1;
+  pointer-events: none;
+  mix-blend-mode: luminosity;
+}
+
+.cta-final-title {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.cta-final-sub {
+  color: rgba(255,255,255,.7);
+  font-size: 1rem;
+  line-height: 1.7;
+  max-width: 480px;
+}
+
+.cta-final-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.cta-final-card {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: .65rem;
+  transition: background .15s, transform .15s;
+  position: relative;
+}
+
+.cta-final-card:hover {
+  background: rgba(255,255,255,.13);
+  transform: translateY(-4px);
+}
+
+/* Card em destaque */
+.cta-final-card--destaque {
+  background: rgba(205,222,0,.12);
+  border-color: rgba(205,222,0,.35);
+}
+
+.cta-final-card--destaque:hover {
+  background: rgba(205,222,0,.18);
+}
+
+.cta-final-card-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #CDDE00;
+  color: #1E3425;
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .25rem .8rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.cta-final-card-icon {
+  font-size: 1.8rem;
+  color: #CDDE00;
+  margin-bottom: .25rem;
+}
+
+.cta-final-card h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.cta-final-card p {
+  font-size: .83rem;
+  color: rgba(255,255,255,.65);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.cta-final-card .btn-participar,
+.cta-final-card .btn-participar--sociedade,
+.cta-final-card .btn-premiacao-primary {
+  width: 100%;
+  margin-top: .5rem;
+  font-size: .85rem;
+}
+
+.cta-final-card .btn-participar--sociedade {
+  border-color: rgba(255,255,255,.5);
+  color: #fff !important;
+}
+
+.cta-final-card .btn-participar--sociedade:hover {
+  background: rgba(255,255,255,.1);
+  border-color: #fff;
+}
+
+@media (max-width: 767.98px) {
+  .cta-final-cards {
+    grid-template-columns: 1fr;
+    max-width: 380px;
+  }
+  .cta-final-inner {
+    padding: 2.5rem 1.25rem;
+    border-radius: 18px;
+  }
+}
+
+/* ════════════════════════════════
+BLOCO: PREMIAÇÃO
+════════════════════════════════ */
+.premiacao-home {
+  background: #fff;
+}
+
+.premiacao-inner {
+  background: linear-gradient(135deg, #1E3425 0%, #2d5038 100%);
+  border-radius: 24px;
+  padding: 3rem 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grafismo de fundo */
+.premiacao-grafismo {
+  position: absolute;
+  inset: 0;
+  background:
+    url('/assets/images/ip-background-01.png') no-repeat right center / cover;
+  opacity: .06;
+  pointer-events: none;
+  mix-blend-mode: luminosity;
+}
+
+/* Kicker claro */
+.section-kicker--claro {
+  background: rgba(205,222,0,.18);
+  color: #CDDE00;
+}
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: .32rem .85rem;
+  border-radius: 999px;
+  background: rgba(30, 52, 37, .08);
+  color: #1E3425;
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  line-height: 1;
+}
+/* Sobre fundo escuro — texto e borda claros */
+.section-kicker--claro {
+  background: rgba(205, 222, 0, .18);
+  color: #CDDE00;
+}
+
+/* Sobre fundo branco — pill com borda sutil */
+.section-kicker--outline {
+  background: transparent;
+  color: #1E3425;
+  border: 1.5px solid rgba(30, 52, 37, .20);
+}
+
+/* Variação amarelo-limão — para seções de destaque claro */
+.section-kicker--accent {
+  background: rgba(205, 222, 0, .22);
+  color: #5c6318;
+}
+.premiacao-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.premiacao-sub {
+  color: rgba(255,255,255,.75);
+  font-size: .97rem;
+  line-height: 1.75;
+  max-width: 480px;
+}
+
+.btn-premiacao-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #CDDE00;
+  color: #1E3425 !important;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: .7rem 1.6rem;
+  font-size: .92rem;
+  text-decoration: none;
+  transition: background .15s, transform .12s;
+}
+
+.btn-premiacao-primary:hover {
+  background: #b8c800;
+  transform: translateY(-2px);
+}
+
+.btn-premiacao-outline {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: #fff !important;
+  font-weight: 700;
+  border: 2px solid rgba(255,255,255,.4);
+  border-radius: 999px;
+  padding: .68rem 1.5rem;
+  font-size: .92rem;
+  text-decoration: none;
+  transition: border-color .15s, background .15s;
+}
+
+.btn-premiacao-outline:hover {
+  border-color: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.08);
+}
+
+/* Pilares */
+.premiacao-pilares {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.premiacao-pilar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  transition: background .15s;
+}
+
+.premiacao-pilar:hover {
+  background: rgba(255,255,255,.13);
+}
+
+.premiacao-pilar-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(205,222,0,.2);
+  color: #CDDE00;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premiacao-pilar strong {
+  display: block;
+  color: #fff;
+  font-size: .9rem;
+  font-weight: 700;
+  margin-bottom: .15rem;
+}
+
+.premiacao-pilar span {
+  color: rgba(255,255,255,.6);
+  font-size: .8rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 767.98px) {
+  .premiacao-inner {
+    padding: 2rem 1.5rem;
+    border-radius: 18px;
+  }
+  .premiacao-sub { max-width: 100%; }
+}
 /* ════════════════════════════════
    CTA PARCEIROS
 ════════════════════════════════ */
@@ -708,7 +1383,28 @@
   color: #1E3425;
   box-shadow: 0 2px 10px rgba(30,52,37,.05);
 }
+/* ════════════════════════════════
+BLOCO: PARCEIROS HOME
+════════════════════════════════ */
+.parceiros-header-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: nowrap;   /* título e botão sempre na mesma linha */
+}
 
+/* No mobile, empilha normalmente */
+@media (max-width: 575.98px) {
+  .parceiros-header-top {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .parceiros-header-top .btn-vitrine-ver-todos {
+    width: 100%;
+    justify-content: center;
+  }
+}
 /* ════════════════════════════════
 GRID DE PARCEIROS
 ═════════════════════════════════ */

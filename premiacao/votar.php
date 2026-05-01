@@ -52,9 +52,8 @@ if ($inscricaoId <= 0 || $faseId <= 0) {
 
 // ── Valida fase: deve existir, estar em_andamento e permitir voto popular ─────
 $stmtFase = $pdo->prepare("
-    SELECT pf.id, pf.premiacao_id, p.data_inicio_votacao, p.data_fim_votacao
+    SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim
     FROM premiacao_fases pf
-    INNER JOIN premiacoes p ON p.id = pf.premiacao_id
     WHERE pf.id = ?
       AND pf.permite_voto_popular = 1
       AND pf.status = 'em_andamento'
@@ -68,8 +67,8 @@ if (!$fase) {
 }
 
 $agora = time();
-$ini   = strtotime($fase['data_inicio_votacao'] ?? '');
-$fim   = strtotime($fase['data_fim_votacao']    ?? '');
+$ini   = $fase['data_inicio'] ? strtotime($fase['data_inicio']) : 0;
+$fim   = $fase['data_fim']    ? strtotime($fase['data_fim'])    : 0;
 if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
     jsonErro('A votação não está aberta no momento.');
 }

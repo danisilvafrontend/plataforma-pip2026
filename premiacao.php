@@ -19,8 +19,6 @@ $pdo = new PDO(
 // ── 1. Premiação ativa ────────────────────────────────────────────────────────
 $premiacao = $pdo->query("
     SELECT id, nome, slug, ano, status,
-           data_inicio_votacao, data_fim_votacao,
-           data_inicio_inscricoes, data_fim_inscricoes,
            regulamento_url
     FROM premiacoes
     WHERE status IN ('ativa','planejada')
@@ -46,13 +44,18 @@ if ($premiacaoId > 0) {
     $faseAtiva = $stmtFase->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
-// Validação extra via datas da premiação
+// Validação via datas da fase ativa (data_inicio / data_fim em premiacao_fases)
 $votacaoAbertaPorData = false;
-if ($premiacao && $faseAtiva) {
-    $agora = time();
-    $ini   = $premiacao['data_inicio_votacao'] ? strtotime($premiacao['data_inicio_votacao']) : 0;
-    $fim   = $premiacao['data_fim_votacao']    ? strtotime($premiacao['data_fim_votacao'])    : 0;
-    $votacaoAbertaPorData = ($ini && $fim && $agora >= $ini && $agora <= $fim);
+if ($faseAtiva) {
+    $stmtFaseDatas = $pdo->prepare("SELECT data_inicio, data_fim FROM premiacao_fases WHERE id = ? LIMIT 1");
+    $stmtFaseDatas->execute([$faseAtiva['id']]);
+    $faseDatas = $stmtFaseDatas->fetch(PDO::FETCH_ASSOC);
+    if ($faseDatas) {
+        $agora = time();
+        $ini   = $faseDatas['data_inicio'] ? strtotime($faseDatas['data_inicio']) : 0;
+        $fim   = $faseDatas['data_fim']    ? strtotime($faseDatas['data_fim'])    : 0;
+        $votacaoAbertaPorData = ($ini && $fim && $agora >= $ini && $agora <= $fim);
+    }
 }
 $votacaoAberta = $faseAtiva && $votacaoAbertaPorData;
 

@@ -1,4 +1,9 @@
 <!-- Bloco 01 - Dados do Negócio -->
+<?php
+$ehAdmin = (strpos($_SERVER['REQUEST_URI'], '/admin/') !== false);
+$somenteLeitura = isset($somenteLeitura) && $somenteLeitura === true;
+$ocultarCamposSensiveis = function_exists('is_juri_ou_tecnica') && is_juri_ou_tecnica();
+?>
 <div class="emp-review-card mb-4">
     <div class="emp-review-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="emp-review-card-title">
@@ -53,6 +58,7 @@
                         </div>
                     </div>
 
+                    <?php if (!$ocultarCamposSensiveis): ?>
                     <div class="emp-review-item">
                         <span class="emp-review-label">Telefone Comercial</span>
                         <div class="emp-review-value">
@@ -60,6 +66,7 @@
                             <i class="bi bi-eye-slash text-danger-emphasis ms-1"></i>
                         </div>
                     </div>
+                    <?php endif; ?>
 
                     <div class="emp-review-item">
                         <span class="emp-review-label">Data Fundação</span>
@@ -102,12 +109,14 @@
                     <div class="emp-review-item">
                         <span class="emp-review-label">Endereço</span>
                         <div class="emp-review-value">
+                            <?php if (!$ocultarCamposSensiveis): ?>
                             <div>
                                 <i class="bi bi-eye-slash text-danger-emphasis me-1"></i>
                                 <?= htmlspecialchars($negocio['rua'] ?? '') ?>, <?= htmlspecialchars($negocio['numero'] ?? '') ?>
                                 <?= !empty($negocio['complemento']) ? ' - ' . htmlspecialchars($negocio['complemento']) : '' ?>
                                 - <?= htmlspecialchars($negocio['cep'] ?? '') ?>
                             </div>
+                            <?php endif; ?>
                             <div class="mt-1">
                                 <i class="bi bi-eye text-secondary me-1"></i>
                                 <?= htmlspecialchars($negocio['municipio'] ?? '') ?> / <?= htmlspecialchars($negocio['estado'] ?? '') ?>

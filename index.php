@@ -2,6 +2,9 @@
 // /home/dscria59_dani/public_html/index.php
 declare(strict_types=1);
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 $pageTitle   = 'Impactos Positivos — Home';
 $extraFooter = '<script>console.log("Home carregada");</script>';
 
@@ -50,284 +53,305 @@ include __DIR__ . '/app/views/public/header_public.php';
 <!-- ═══════════════════════════════════════════════
      HERO
 ════════════════════════════════════════════════ -->
-<section class="hero-home">
-  <div class="container">
-    <div class="row align-items-center g-5">
-
-      <div class="col-lg-6">
-        <span class="hero-badge">
-          <i class="bi bi-stars me-1"></i> Plataforma de Impacto Social
-        </span>
-        <h1 class="hero-title mt-3">
-          Conectando <span class="hero-highlight">negócios, parceiros e sociedade</span> por um futuro mais sustentável
-        </h1>
-        <p class="hero-sub mt-3">
-          A Impactos Positivos é uma plataforma que fortalece o ecossistema de impacto no Brasil, dando visibilidade a iniciativas transformadoras e ampliando conexões entre empreendedores, parceiros e comunidade.
-        </p>
-        <div class="d-flex flex-wrap gap-3 mt-4">
-          <a href="/empreendedores/register.php" class="btn-hero-primary">
-            <i class="bi bi-rocket-takeoff-fill me-2"></i> Faça sua Inscrição
-          </a>
-          <a href="/parceiros/cadastro.php" class="btn-hero-outline">
-            <i class="bi bi-diagram-3-fill me-2"></i> Seja um Parceiro
-          </a>
-        </div>
-      </div>
-
-      <div class="col-lg-6 d-none d-lg-flex justify-content-center">
-        <div class="hero-stats-card">
-          <div class="hero-stat">
-            <i class="bi bi-briefcase-fill"></i>
-            <div>
-              <strong>Negócios de Impacto</strong>
-              <span>cadastrados na plataforma</span>
-            </div>
-          </div>
-          <div class="hero-stat">
-            <i class="bi bi-people-fill"></i>
-            <div>
-              <strong>Parceiros e Apoiadores</strong>
-              <span>que acreditam no impacto</span>
-            </div>
-          </div>
-          <div class="hero-stat">
-            <i class="bi bi-globe-americas"></i>
-            <div>
-              <strong>Estados Representados</strong>
-              <span>em todo o Brasil</span>
-            </div>
-          </div>
-          <div class="hero-stat">
-            <i class="bi bi-award-fill"></i>
-            <div>
-              <strong>Prêmio Nacional</strong>
-              <span>reconhecendo quem transforma</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════
-     COMO FUNCIONA
-════════════════════════════════════════════════ -->
-<section class="section-como-funciona py-5">
-  <div class="container">
-    <div class="section-header text-center mb-5">
-      <h2 class="section-title">Como funciona</h2>
-      <p class="section-sub">Em poucos passos, seu negócio ganha visibilidade nacional</p>
-    </div>
-    <div class="row g-4 justify-content-center">
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="como-card">
-          <div class="como-step">1</div>
-          <i class="bi bi-pencil-square como-icon"></i>
-          <h5>Cadastre-se</h5>
-          <p>Crie sua conta de empreendedor e preencha os dados do seu negócio de impacto.</p>
-        </div>
-      </div>
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="como-card">
-          <div class="como-step">2</div>
-          <i class="bi bi-card-checklist como-icon"></i>
-          <h5>Complete o Perfil</h5>
-          <p>Adicione apresentação, impacto social, ODS, eixo temático e muito mais.</p>
-        </div>
-      </div>
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="como-card">
-          <div class="como-step">3</div>
-          <i class="bi bi-megaphone-fill como-icon"></i>
-          <h5>Apareça na Vitrine</h5>
-          <p>Seu negócio fica visível para parceiros, investidores e toda a comunidade.</p>
-        </div>
-      </div>
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="como-card">
-          <div class="como-step">4</div>
-          <i class="bi bi-trophy-fill como-icon"></i>
-          <h5>Concorra ao Prêmio</h5>
-          <p>Participe do Prêmio Impactos Positivos e seja reconhecido nacionalmente.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════
-     SOBRE O MOVIMENTO
-════════════════════════════════════════════════ -->
-<section class="py-5 section-movimento">
-  <div class="container">
-    <div class="row align-items-center g-4">
-      <div class="col-lg-6">
-        <span class="hero-badge mb-3">Nosso movimento</span>
-        <h2 class="section-title mb-3">Mais do que uma plataforma, um ecossistema em movimento</h2>
-        <p class="section-sub mb-3">
-          A Impactos Positivos conecta negócios, parceiros e sociedade civil para fortalecer o ecossistema de impacto no Brasil.
-        </p>
-        <p class="text-muted mb-0">
-          Nosso propósito é ampliar visibilidade, reconhecimento e colaboração entre iniciativas que geram transformação social, ambiental e econômica.
-        </p>
-      </div>
-      <div class="col-lg-6">
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <div class="mini-pillars-card">
-              <i class="bi bi-people-fill"></i>
-              <h5>Conexões</h5>
-              <p>Fortalecemos relações entre negócios, organizações e comunidade.</p>
-            </div>
-          </div>
-          <div class="col-sm-6">
-            <div class="mini-pillars-card">
-              <i class="bi bi-lightbulb-fill"></i>
-              <h5>Transformação</h5>
-              <p>Valorizamos inovação com impacto real nos territórios.</p>
-            </div>
-          </div>
-          <div class="col-sm-6">
-            <div class="mini-pillars-card">
-              <i class="bi bi-globe-americas"></i>
-              <h5>ODS</h5>
-              <p>Promovemos negócios alinhados aos Objetivos de Desenvolvimento Sustentável.</p>
-            </div>
-          </div>
-          <div class="col-sm-6">
-            <div class="mini-pillars-card">
-              <i class="bi bi-heart-fill"></i>
-              <h5>Impacto consciente</h5>
-              <p>Reconhecemos iniciativas que unem propósito e sustentabilidade.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════
-     Nossos princípios
-════════════════════════════════════════════════ -->
-
-<section class="py-5 bg-light">
-  <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="section-title">Princípios que orientam nossa atuação</h2>
-      <p class="section-sub">Tudo o que construímos parte de valores que fortalecem o ecossistema de impacto.</p>
-    </div>
-
-    <div class="row g-3 justify-content-center">
-      <?php
-      $principios = ['Educação', 'Transformação', 'Engajamento', 'Envolvimento', 'Colaboração', 'Sinergia'];
-      foreach ($principios as $principio):
-      ?>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="principio-chip text-center"><?= htmlspecialchars($principio) ?></div>
-        </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════
-     Impacto reconhecido
-════════════════════════════════════════════════ -->
-
-<section class="py-5">
+<section class="hero-home hero-home--nova">
   <div class="container">
     <div class="row align-items-center g-4">
       <div class="col-lg-7">
-        <h2 class="section-title mb-3">Reconhecimento para quem transforma o Brasil</h2>
-        <p class="section-sub mb-3">
-          O Prêmio Impactos Positivos valoriza iniciativas que contribuem para um futuro mais justo, sustentável e inclusivo.
+        <span class="hero-badge mb-3">Plataforma de Impacto no Brasil</span>
+        <h1 class="hero-title mb-3">
+          Conectamos negócios de impacto, parceiros e sociedade civil em uma plataforma de visibilidade, reconhecimento e transformação.
+        </h1>
+        <p class="hero-sub mb-4">
+          A Impactos Positivos fortalece o ecossistema de impacto no Brasil ao reunir iniciativas transformadoras, organizações parceiras e pessoas que querem acompanhar, apoiar e ampliar resultados positivos nos territórios.
         </p>
-        <ul class="list-unstyled text-muted mb-0">
-          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> Negócios de impacto</li>
-          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> Ecossistemas de impacto</li>
-          <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> Cidadãos e instituições inspiradoras</li>
-          <li><i class="bi bi-check2-circle text-success me-2"></i> Comunicadores que ampliam visibilidade ao tema</li>
-        </ul>
+
+        <div class="d-flex flex-wrap gap-2">
+          <a href="/empreendedores/register.php" class="btn-hero-primary">Cadastrar negócio</a>
+          <a href="/parceiros/cadastro.php" class="btn-hero-outline">Quero ser parceiro</a>
+          <a href="vitrine_nacional.php" class="btn-hero-link">Explorar iniciativas</a>
+        </div>
       </div>
+
       <div class="col-lg-5">
-        <div class="cta-box h-100">
-          <h3 class="cta-title">Conheça a premiação</h3>
-          <p class="cta-sub mb-4">
-            Descubra como a plataforma amplia o reconhecimento de quem gera impacto positivo no país.
-          </p>
-          <a href="https://impactospositivos.com/sobre-a-premiacao/" target="_blank" rel="noopener noreferrer" class="btn-cta-parceiro">
-            <i class="bi bi-award-fill me-2"></i> Ver Premiação
-          </a>
+        <div class="hero-panel-novo">
+          <span class="hero-panel-kicker">Impactos Positivos</span>
+          <ul class="hero-panel-list">
+            <li>Visibilidade para iniciativas transformadoras</li>
+            <li>Conexões entre negócios, parceiros e comunidade</li>
+            <li>Reconhecimento e fortalecimento do ecossistema</li>
+            <li>Atuação alinhada aos ODS</li>
+          </ul>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════
-     VITRINE DE NEGÓCIOS
-════════════════════════════════════════════════ -->
-<!-- <?php if (!empty($negociosDestaque)): ?>
-<section class="py-5">
+<section class="participar-home py-5">
   <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h2 class="hero-title mt-3">
-          Conheça <span class="hero-highlight">Negócios de Impacto</span>
-        </h2>
+    <div class="text-center mb-5">
+      <h2 class="section-title">Cada perfil tem um papel na transformação</h2>
+      <p class="section-sub mx-auto">
+        A plataforma foi construída para públicos diferentes, com jornadas específicas e complementares dentro do ecossistema de impacto.
+      </p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="participar-card participar-card--empreendedor">
+          <span class="participar-tag">Empreendedores</span>
+          <h3>Cadastre seu negócio de impacto</h3>
+          <p>Apresente sua trajetória, seus diferenciais, ODS, impacto gerado e amplie sua visibilidade nacional.</p>
+          <a href="/empreendedores/register.php" class="btn-participar">Criar conta de empreendedor</a>
+        </div>
       </div>
-      <a href="/vitrine_nacional.php" class="btn-vitrine-ver-todos">
-        Ver Todos <i class="bi bi-arrow-right ms-1"></i>
+
+      <div class="col-lg-4">
+        <div class="participar-card participar-card--parceiro">
+          <span class="participar-tag">Parceiros</span>
+          <h3>Conecte sua organização ao ecossistema</h3>
+          <p>Fortaleça sua atuação institucional e aproxime sua marca de iniciativas que transformam territórios.</p>
+          <a href="/parceiros/cadastro.php" class="btn-participar">Tornar-se parceiro</a>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="participar-card participar-card--sociedade">
+          <span class="participar-tag">Sociedade civil</span>
+          <h3>Acompanhe, descubra e participe</h3>
+          <p>Conheça negócios e iniciativas inspiradoras, acompanhe histórias e participe do movimento de impacto positivo.</p>
+          <a href="cadastro.php" class="btn-participar">Acessar comunidade</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== COMO FUNCIONA ===== -->
+<section class="como-funciona-home py-5">
+  <div class="container">
+
+    <div class="text-center mb-5">
+      <h2 class="section-title">Uma jornada simples para fazer parte</h2>
+      <p class="section-sub mx-auto">
+        Cada perfil tem um caminho direto dentro da plataforma. Veja como é fácil começar.
+      </p>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- Empreendedor -->
+      <div class="col-lg-4">
+        <div class="como-bloco">
+          <div class="como-bloco-header como-bloco-header--empreendedor">
+            <i class="bi bi-rocket-takeoff"></i>
+            <span>Empreendedor</span>
+          </div>
+          <ul class="como-bloco-steps">
+            <li>
+              <span class="como-num">1</span>
+              <span>Crie sua conta na plataforma</span>
+            </li>
+            <li>
+              <span class="como-num">2</span>
+              <span>Preencha os dados do seu negócio de impacto</span>
+            </li>
+            <li>
+              <span class="como-num">3</span>
+              <span>Publique sua iniciativa e ganhe visibilidade nacional</span>
+            </li>
+          </ul>
+          <a href="/empreendedores/register.php" class="btn-participar mt-auto">
+            Cadastrar negócio
+          </a>
+        </div>
+      </div>
+
+      <!-- Parceiro -->
+      <div class="col-lg-4">
+        <div class="como-bloco como-bloco--destaque">
+          <div class="como-bloco-header como-bloco-header--parceiro">
+            <i class="bi bi-building"></i>
+            <span>Parceiro</span>
+          </div>
+          <ul class="como-bloco-steps">
+            <li>
+              <span class="como-num como-num--parceiro">1</span>
+              <span>Realize o cadastro institucional</span>
+            </li>
+            <li>
+              <span class="como-num como-num--parceiro">2</span>
+              <span>Apresente sua atuação e interesses</span>
+            </li>
+            <li>
+              <span class="como-num como-num--parceiro">3</span>
+              <span>Conecte-se ao ecossistema de impacto</span>
+            </li>
+          </ul>
+          <a href="/parceiros/cadastro.php" class="btn-participar btn-participar--alt mt-auto">
+            Tornar-se parceiro
+          </a>
+        </div>
+      </div>
+
+      <!-- Sociedade -->
+      <div class="col-lg-4">
+        <div class="como-bloco">
+          <div class="como-bloco-header como-bloco-header--sociedade">
+            <i class="bi bi-people"></i>
+            <span>Sociedade civil</span>
+          </div>
+          <ul class="como-bloco-steps">
+            <li>
+              <span class="como-num">1</span>
+              <span>Acesse a plataforma gratuitamente</span>
+            </li>
+            <li>
+              <span class="como-num">2</span>
+              <span>Descubra iniciativas e causas transformadoras</span>
+            </li>
+            <li>
+              <span class="como-num">3</span>
+              <span>Acompanhe e fortaleça o movimento de impacto</span>
+            </li>
+          </ul>
+          <a href="/cadastro.php" class="btn-participar mt-auto">
+            Acessar comunidade
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ════ BLOCO: VITRINE + PREMIAÇÃO ════ -->
+<section class="vitrine-home py-5">
+  <div class="container">
+
+    <!-- Cabeçalho da seção -->
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
+      <div>
+        <span class="section-kicker section-kicker--accent">Ecossistema de impacto</span>
+        <h2 class="section-title mt-2 mb-1">Conheça as iniciativas cadastradas</h2>
+        <p class="section-sub mb-0">
+          Negócios reais que geram transformação social, ambiental e econômica em todo o Brasil.
+        </p>
+      </div>
+      <a href="/vitrine.php" class="btn-vitrine-ver-todos">
+        Ver todas as iniciativas <i class="bi bi-arrow-right ms-1"></i>
       </a>
     </div>
-    <?php include __DIR__ . '/app/views/public/grid_vitrine.php'; ?>
-  </div>
-</section>
-<?php endif; ?> -->
+    <?php if (!empty($negociosDestaque)): ?>
+    <!-- Grid de iniciativas -->
+      <?php include __DIR__ . '/app/views/public/grid_vitrine.php'; ?>
+    <?php endif; ?>
 
-<!-- ═══════════════════════════════════════════════
-     CTA PARCEIROS
-════════════════════════════════════════════════ -->
-<section class="section-cta py-5">
-  <div class="container">
-    <div class="cta-box">
-      <div class="row align-items-center g-4">
-        <div class="col-lg-8">
-          <h3 class="cta-title">Sua empresa acredita em impacto?</h3>
-          <p class="cta-sub mb-0">
-            Torne-se um Parceiro de Impacto e conecte sua marca a negócios que transformam comunidades em todo o Brasil.
-          </p>
+    <!-- Chamada discreta para a premiação -->
+    <div class="premiacao-chamada mt-5">
+      <div class="premiacao-chamada-inner">
+        <div class="premiacao-chamada-icon">
+          <i class="bi bi-trophy-fill"></i>
         </div>
-        <div class="col-lg-4 text-lg-end">
-          <a href="/parceiros/cadastro.php" class="btn-cta-parceiro">
-            <i class="bi bi-diagram-3-fill me-2"></i> Quero ser Parceiro
-          </a>
+        <div class="premiacao-chamada-texto">
+          <strong>Prêmio Impactos Positivos <?= date('Y') ?> — Inscrições abertas</strong>
+          <span>Negócios cadastrados na plataforma podem se inscrever e concorrer ao reconhecimento nacional.</span>
         </div>
+        <a href="premiacao.php" class="premiacao-chamada-btn">
+          Saiba mais <i class="bi bi-arrow-right ms-1"></i>
+        </a>
       </div>
     </div>
+
   </div>
 </section>
+<!-- ════ FIM: VITRINE + PREMIAÇÃO ════ -->
 
+
+<!-- ════ BLOCO: PARCEIROS ════ -->
 <?php if (!empty($parceirosGrid)): ?>
-<section class="py-5">
+<section class="parceiros-home py-5">
   <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-      <div>
-        <h2 class="section-title mb-1">Parceiros que fortalecem o ecossistema</h2>
-        <p class="section-sub mb-0">Organizações que caminham com a Impactos Positivos na construção de conexões e transformação.</p>
-      </div>
 
-      <a href="/parceiros.php" class="btn-vitrine-ver-todos">
-        Ver Perfis dos Parceiros <i class="bi bi-arrow-right ms-1"></i>
-      </a>
+    <div class="parceiros-header mb-4">
+      <!-- Linha 1: kicker + título + botão -->
+      <div class="parceiros-header-top">
+        <div>
+          <span class="section-kicker section-kicker--accent">Rede de parceiros</span>
+          <h2 class="section-title mt-2 mb-0">Organizações que fortalecem o ecossistema</h2>
+        </div>
+        <a href="/parceiros.php" class="btn-vitrine-ver-todos flex-shrink-0">
+          Ver perfis dos parceiros <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+      </div>
+      <!-- Linha 2: parágrafo, sem disputar espaço com o botão -->
+      <p class="section-sub mt-2 mb-0">
+        Empresas, institutos e organizações que acreditam no poder das iniciativas de impacto positivo e caminham junto com a plataforma para ampliar conexões, visibilidade e transformação real nos territórios.
+      </p>
     </div>
 
     <?php include __DIR__ . '/app/views/public/grid_parceiros.php'; ?>
+
   </div>
 </section>
 <?php endif; ?>
+<!-- ════ FIM: PARCEIROS ════ -->
+
+<!-- ════ BLOCO: CTA FINAL ════ -->
+<section class="cta-final-home py-5">
+  <div class="container">
+    <div class="cta-final-inner">
+
+      <div class="cta-final-grafismo" aria-hidden="true"></div>
+
+      <div class="text-center position-relative">
+        <span class="section-kicker section-kicker--claro mb-3 d-inline-block">
+          Próximo passo
+        </span>
+        <h2 class="cta-final-title mb-3">
+          Escolha como fazer parte do movimento
+        </h2>
+        <p class="cta-final-sub mx-auto mb-5">
+          Cada ação dentro da plataforma fortalece o ecossistema de impacto positivo no Brasil. Qual é o seu papel?
+        </p>
+
+        <div class="cta-final-cards">
+
+          <div class="cta-final-card">
+            <i class="bi bi-buildings-fill cta-final-card-icon"></i>
+            <h4>Sou parceiro</h4>
+            <p>Conecte sua organização a iniciativas transformadoras.</p>
+            <a href="/parceiros/cadastro.php" class="btn-participar">
+              Ser parceiro <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+
+          <div class="cta-final-card cta-final-card--destaque">
+            <!-- <div class="cta-final-card-badge">Mais popular</div> -->            
+            <i class="bi bi-rocket-takeoff-fill cta-final-card-icon"></i>
+            <h4>Sou empreendedor</h4>
+            <p>Cadastre seu negócio e ganhe visibilidade nacional.</p>
+            <a href="/empreendedores/register.php" class="btn-premiacao-primary">
+              Criar conta <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+
+          <div class="cta-final-card">
+            <i class="bi bi-people-fill cta-final-card-icon"></i>
+            <h4>Quero acompanhar</h4>
+            <p>Explore iniciativas e vote no Prêmio Impactos Positivos.</p>
+            <a href="vitrine_nacional.php" class="btn-participar btn-participar--sociedade">
+              Explorar vitrine <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+<!-- ════ FIM: CTA FINAL ════ -->
 
 <?php include __DIR__ . '/app/views/public/footer_public.php'; ?>

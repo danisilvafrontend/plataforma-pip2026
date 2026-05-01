@@ -1,127 +1,175 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-// Conexão com banco
 $config = require __DIR__ . '/app/config/db.php';
+
+$dsn  = sprintf('mysql:host=%s;dbname=%s;port=%s;charset=%s',
+    $config['host'], $config['dbname'], $config['port'], $config['charset']);
+$opts = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
+} catch (PDOException $e) {
+    die('Erro na conexão com o banco: ' . $e->getMessage());
+}
+
+
 require_once __DIR__ . '/negocios/blocos-cadastros/_shared.php';
+function normalizarStatusPremiacao(?string $status): string
+{
+    $status = trim((string)$status);
 
-$pdo = new PDO(
-    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
-    $config['user'],
-    $config['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+    return match ($status) {
+        'em_triagem' => 'emtriagem',
+        'classificada_fase_1' => 'classificadafase1',
+        'classificada_fase_2' => 'classificadafase2',
+        default => $status,
+    };
+}
 
-// Recebe id do negócio
+function eleitorFrontendAtual(): ?array
+{
+    if (!empty($_SESSION['user_id'])) {
+        return ['tipo' => 'empreendedor', 'id' => (int)$_SESSION['user_id']];
+    }
+
+    if (!empty($_SESSION['parceiro_id'])) {
+        return ['tipo' => 'parceiro', 'id' => (int)$_SESSION['parceiro_id']];
+    }
+
+    if (!empty($_SESSION['logado']) && ($_SESSION['usuario_tipo'] ?? '') === 'sociedade_civil' && !empty($_SESSION['usuario_id'])) {
+        return ['tipo' => 'sociedade_civil', 'id' => (int)$_SESSION['usuario_id']];
+    }
+
+    return null;
+}
+
 $negocio_id = (int)($_GET['id'] ?? 0);
 if ($negocio_id <= 0) {
     die("Negócio inválido.");
 }
 
-// Busca dados principais
 $stmt = $pdo->prepare("SELECT * FROM negocios WHERE id = ? AND publicado_vitrine = 1");
 $stmt->execute([$negocio_id]);
-$negocio = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$negocio) die("Negócio não encontrado ou não publicado.");
+$negocio = $stmt->fetch();
+if (!$negocio) {
+    die("Negócio não encontrado ou não publicado.");
+}
 
-// Busca apresentação
 $stmt = $pdo->prepare("SELECT * FROM negocio_apresentacao WHERE negocio_id = ?");
 $stmt->execute([$negocio_id]);
-$apresentacao = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$apresentacao = $stmt->fetch() ?: [];
 
-// Busca Impacto
 $stmt = $pdo->prepare("SELECT * FROM negocio_impacto WHERE negocio_id = ?");
 $stmt->execute([$negocio_id]);
-$impacto = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+$impacto = $stmt->fetch() ?: [];
 
-// Busca eixo
-$stmt = $pdo->prepare("SELECT nome as eixo_nome FROM eixos_tematicos WHERE id = ?");
+$stmt = $pdo->prepare("SELECT nome AS eixo_nome FROM eixos_tematicos WHERE id = ?");
 $stmt->execute([$negocio['eixo_principal_id']]);
-$eixo_principal = $stmt->fetch(PDO::FETCH_ASSOC);
+$eixo_principal = $stmt->fetch();
 
-// Busca ODS
 $stmt = $pdo->prepare("SELECT nome, icone_url FROM ods WHERE id = ?");
 $stmt->execute([$negocio['ods_prioritaria_id']]);
-$ods_prioritaria = $stmt->fetch(PDO::FETCH_ASSOC);
+$ods_prioritaria = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT o.nome, o.icone_url, o.n_ods FROM ods o INNER JOIN negocio_ods no ON o.id = no.ods_id WHERE no.negocio_id = ?");
+$stmt = $pdo->prepare("
+    SELECT o.nome, o.icone_url, o.n_ods
+    FROM ods o
+    INNER JOIN negocio_ods no ON o.id = no.ods_id
+    WHERE no.negocio_id = ?
+");
 $stmt->execute([$negocio_id]);
-$ods_relacionadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$ods_relacionadas = $stmt->fetchAll();
 
-// Galeria
-$galeria = gallery_from_apresentacao($apresentacao);
+$galeria = function_exists('gallery_from_apresentacao')
+    ? gallery_from_apresentacao($apresentacao)
+    : [];
 
-// Premiação ativa com voto popular em andamento
-$votacaoNegocio   = false;
-$faseVotNegocio   = null;
+$actorFrontend = eleitorFrontendAtual();
+
+$votacaoNegocio = false;
+$faseVotNegocio = null;
 $inscricaoNegocio = null;
-$jaVotouNegocio   = false;
+$jaVotouNegocio = false;
+$podeVotarNegocio = false;
 
 $stmtPrem = $pdo->query("
-    SELECT p.id AS premiacao_id, p.data_inicio_votacao, p.data_fim_votacao,
-           pf.id AS fase_id
+    SELECT
+        p.id AS premiacao_id,
+        p.nome AS premiacao_nome,
+        p.ano AS premiacao_ano,
+        pf.data_inicio AS data_inicio_votacao,
+        pf.data_fim    AS data_fim_votacao,
+        pf.id AS fase_id,
+        pf.nome AS fase_nome
     FROM premiacoes p
     INNER JOIN premiacao_fases pf
         ON pf.premiacao_id = p.id
        AND pf.permite_voto_popular = 1
        AND pf.status = 'em_andamento'
-    WHERE p.status IN ('ativa','planejada')
-    ORDER BY p.ano DESC
+    WHERE p.status IN ('ativa', 'planejada')
+    ORDER BY
+        CASE WHEN p.status = 'ativa' THEN 0 ELSE 1 END,
+        p.ano DESC,
+        p.id DESC,
+        pf.ordem_exibicao ASC,
+        pf.id ASC
     LIMIT 1
 ");
-$dadosVot = $stmtPrem->fetch(PDO::FETCH_ASSOC);
+$dadosVot = $stmtPrem->fetch();
 
 if ($dadosVot) {
     $agora = time();
-    $ini   = strtotime($dadosVot['data_inicio_votacao'] ?? '');
-    $fim   = strtotime($dadosVot['data_fim_votacao']    ?? '');
+    $ini = strtotime((string)($dadosVot['data_inicio_votacao'] ?? ''));
+    $fim = strtotime((string)($dadosVot['data_fim_votacao'] ?? ''));
 
     if ($ini && $fim && $agora >= $ini && $agora <= $fim) {
-        // Negócio está inscrito e elegível nesta premiação?
         $stmtInsc = $pdo->prepare("
-            SELECT id FROM premiacao_inscricoes
-            WHERE negocio_id   = ?
+            SELECT id, status
+            FROM premiacao_inscricoes
+            WHERE negocio_id = ?
               AND premiacao_id = ?
-              AND status       = 'elegivel'
+            ORDER BY id DESC
             LIMIT 1
         ");
         $stmtInsc->execute([$negocio['id'], $dadosVot['premiacao_id']]);
-        $inscricaoNegocio = $stmtInsc->fetch(PDO::FETCH_ASSOC);
+        $inscricaoTmp = $stmtInsc->fetch();
 
-        if ($inscricaoNegocio) {
-            $votacaoNegocio = true;
-            $faseVotNegocio = $dadosVot;
+        if ($inscricaoTmp) {
+            $inscricaoTmp['status'] = normalizarStatusPremiacao($inscricaoTmp['status']);
 
-            // Já votou?
-            $eleitorIdCheck = null;
-            $tipoEl = null;
+            if (in_array($inscricaoTmp['status'], ['elegivel', 'classificadafase1', 'classificadafase2', 'finalista', 'vencedora'], true)) {
+                $inscricaoNegocio = $inscricaoTmp;
+                $faseVotNegocio = $dadosVot;
+                $votacaoNegocio = true;
+                $podeVotarNegocio = true;
 
-            if (!empty($_SESSION['user_id'])) {
-                $tipoEl         = 'empreendedor';
-                $eleitorIdCheck = (int)$_SESSION['user_id'];
-            } elseif (!empty($_SESSION['parceiro_id'])) {
-                $tipoEl         = 'parceiro';
-                $eleitorIdCheck = (int)$_SESSION['parceiro_id'];
-            } elseif (!empty($_SESSION['logado']) && ($_SESSION['usuario_tipo'] ?? '') === 'sociedade_civil' && !empty($_SESSION['usuario_id'])) {
-                $tipoEl         = 'sociedade_civil';
-                $eleitorIdCheck = (int)$_SESSION['usuario_id'];
-            }
-
-            if ($tipoEl && $eleitorIdCheck) {
-                $stmtJaV = $pdo->prepare("
-                    SELECT COUNT(*) FROM premiacao_votos_populares
-                    WHERE fase_id      = ?
-                    AND inscricao_id = ?
-                    AND tipo_eleitor = ?
-                    AND eleitor_id   = ?
-                ");
-                $stmtJaV->execute([
-                    $dadosVot['fase_id'],
-                    $inscricaoNegocio['id'],
-                    $tipoEl,
-                    $eleitorIdCheck
-                ]);
-                $jaVotouNegocio = (int)$stmtJaV->fetchColumn() > 0;
+                if ($actorFrontend) {
+                    $stmtJaV = $pdo->prepare("
+                        SELECT COUNT(*)
+                        FROM premiacao_votos_populares
+                        WHERE fase_id = ?
+                          AND inscricao_id = ?
+                          AND tipo_eleitor = ?
+                          AND eleitor_id = ?
+                    ");
+                    $stmtJaV->execute([
+                        $dadosVot['fase_id'],
+                        $inscricaoNegocio['id'],
+                        $actorFrontend['tipo'],
+                        $actorFrontend['id']
+                    ]);
+                    $jaVotouNegocio = (int)$stmtJaV->fetchColumn() > 0;
+                }
             }
         }
     }

@@ -22,7 +22,10 @@ try {
     $params = [];
 
     $filtro_nome = $_GET['nome'] ?? '';
-    if (!empty($filtro_nome)) { $where[] = "n.nome_fantasia LIKE ?"; $params[] = "%" . $filtro_nome . "%"; }
+    if (!empty($filtro_nome)) {
+        $where[] = "n.nome_fantasia LIKE ?";
+        $params[] = "%" . $filtro_nome . "%";
+    }
 
     $filtro_empreendedor = $_GET['empreendedor'] ?? '';
     if (!empty($filtro_empreendedor)) {
@@ -31,7 +34,10 @@ try {
     }
 
     $filtro_categoria = $_GET['categoria'] ?? '';
-    if (!empty($filtro_categoria)) { $where[] = "n.categoria = ?"; $params[] = $filtro_categoria; }
+    if (!empty($filtro_categoria)) {
+        $where[] = "n.categoria = ?";
+        $params[] = $filtro_categoria;
+    }
 
     $filtro_status = $_GET['status'] ?? '';
     if ($filtro_status === 'encerrado') {
@@ -43,9 +49,31 @@ try {
     } elseif ($filtro_status === 'analise') {
         $where[] = "n.status_vitrine = 'em_analise'";
     } elseif ($filtro_status === 'aprovado') {
-    $where[] = "n.status_vitrine = 'aprovado'";
+        $where[] = "n.status_vitrine = 'aprovado'";
     } elseif ($filtro_status === 'indeferido') {
         $where[] = "n.status_vitrine = 'indeferido'";
+    }
+
+    $stmtPremAtiva = $pdo->query("
+        SELECT id
+        FROM premiacoes
+        WHERE status IN ('ativa', 'planejada')
+        ORDER BY
+            CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
+            ano DESC,
+            id DESC
+        LIMIT 1
+    ");
+    $premiacaoAtualId = (int) ($stmtPremAtiva->fetchColumn() ?: 0);
+
+    if (is_juri_ou_tecnica() && $premiacaoAtualId > 0) {
+        $where[] = "EXISTS (
+            SELECT 1
+            FROM premiacao_inscricoes pi
+            WHERE pi.negocio_id = n.id
+              AND pi.premiacao_id = ?
+        )";
+        $params[] = $premiacaoAtualId;
     }
 
     $sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_completa,
@@ -56,30 +84,39 @@ try {
             JOIN empreendedores e ON n.empreendedor_id = e.id
             LEFT JOIN scores_negocios s ON n.id = s.negocio_id ";
 
-    if (!empty($where)) { $sql .= " WHERE " . implode(" AND ", $where); }
+    if (!empty($where)) {
+        $sql .= " WHERE " . implode(" AND ", $where);
+    }
 
-    $colunas_permitidas = ['created_at' => 'n.created_at', 'etapa' => 'n.etapa_atual', 'escala' => 's.score_escala', 'investimento' => 's.score_investimento', 'impacto' => 's.score_impacto', 'geral' => 's.score_geral'];
+    $colunas_permitidas = [
+        'created_at' => 'n.created_at',
+        'etapa' => 'n.etapa_atual',
+        'escala' => 's.score_escala',
+        'investimento' => 's.score_investimento',
+        'impacto' => 's.score_impacto',
+        'geral' => 's.score_geral'
+    ];
     $direcoes_permitidas = ['ASC', 'DESC'];
     $coluna_ordem  = $_GET['ordem'] ?? 'created_at';
-    $direcao_ordem = $_GET['dir']   ?? 'DESC';
+    $direcao_ordem = $_GET['dir'] ?? 'DESC';
     $campo_sql = $colunas_permitidas[$coluna_ordem] ?? 'n.created_at';
-    $dir_sql   = in_array(strtoupper($direcao_ordem), $direcoes_permitidas) ? strtoupper($direcao_ordem) : 'DESC';
+    $dir_sql = in_array(strtoupper($direcao_ordem), $direcoes_permitidas) ? strtoupper($direcao_ordem) : 'DESC';
     $sql .= " ORDER BY {$campo_sql} {$dir_sql}";
 
-    // Paginação
     $por_pagina = 50;
     $pagina_atual = max(1, (int)($_GET['pagina'] ?? 1));
     $offset = ($pagina_atual - 1) * $por_pagina;
 
-    // Total de registros para calcular páginas
     $sqlCount = "SELECT COUNT(*) FROM negocios n JOIN empreendedores e ON n.empreendedor_id = e.id LEFT JOIN scores_negocios s ON n.id = s.negocio_id";
-    if (!empty($where)) { $sqlCount .= " WHERE " . implode(" AND ", $where); }
+    if (!empty($where)) {
+        $sqlCount .= " WHERE " . implode(" AND ", $where);
+    }
+
     $stmtCount = $pdo->prepare($sqlCount);
     $stmtCount->execute($params);
     $total_registros = (int)$stmtCount->fetchColumn();
     $total_paginas = (int)ceil($total_registros / $por_pagina);
 
-    // Query com LIMIT
     $sql .= " LIMIT {$por_pagina} OFFSET {$offset}";
 
     $stmt = $pdo->prepare($sql);
@@ -90,7 +127,7 @@ try {
         $get = $_GET;
         $dir_atual = $get['dir'] ?? 'DESC';
         $col_atual = $get['ordem'] ?? 'created_at';
-        $get['dir']   = ($col_atual === $coluna && $dir_atual === 'DESC') ? 'ASC' : 'DESC';
+        $get['dir'] = ($col_atual === $coluna && $dir_atual === 'DESC') ? 'ASC' : 'DESC';
         $get['ordem'] = $coluna;
         return '?' . http_build_query($get);
     }
@@ -160,12 +197,14 @@ include __DIR__ . '/../app/views/admin/header.php';
     <small style="color:#6c8070; font-size:.82rem;">Acompanhe o andamento de todos os negócios inscritos na plataforma</small>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    <?php if (can_see_admin_shortcuts()): ?>
     <a href="/admin/recalcular_scores.php" class="hd-btn outline">
       <i class="bi bi-arrow-repeat"></i> Recalcular Scores
     </a>
     <a href="/admin/enviar_email_negocios_pendentes.php" class="hd-btn outline">
       <i class="bi bi-envelope-exclamation"></i> Notificar Pendentes
     </a>
+    <?php endif; ?>
     <a href="relatorios_negocios.php" class="hd-btn primary">
       <i class="bi bi-bar-chart-fill"></i> Ver Relatórios
     </a>
@@ -179,6 +218,7 @@ include __DIR__ . '/../app/views/admin/header.php';
      Mini KPIs
 ═══════════════════════════════════ -->
 <!-- Mini KPIs -->
+ <?php if (can_see_admin_shortcuts()): ?>
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg-3">
     <div class="neg-kpi-card">
@@ -206,6 +246,7 @@ include __DIR__ . '/../app/views/admin/header.php';
   </div>
 </div>
 
+    <?php endif; ?>
 <!-- ══════════════════════════════════
      Filtros
 ═══════════════════════════════════ -->
@@ -348,18 +389,30 @@ include __DIR__ . '/../app/views/admin/header.php';
               </td>
               <td class="text-center">
                 <div class="d-flex gap-1 justify-content-center">
-                  <a href="/admin/visualizar_negocio.php?id=<?= $n['id'] ?>" class="act-btn edit" title="Ver detalhes">
+                  <a href="/admin/visualizar_negocio.php?id=<?= (int)$n['id'] ?>" class="act-btn edit" title="Ver detalhes">
                     <i class="bi bi-eye"></i>
                   </a>
-                  <a href="/admin/recalcular_score.php?id=<?= $n['id'] ?>" class="act-btn" title="Recalcular Score"
-                     style="background:rgba(151,163,39,.12);color:#5c6318;">
-                    <i class="bi bi-arrow-repeat"></i>
-                  </a>
-                  <button type="button" class="act-btn" title="Enviar Notificação"
-                          style="background:rgba(149,188,204,.18);color:#3a6f82;"
-                          onclick="abrirModalNotificacao(<?= (int)$n['id'] ?>, '<?= htmlspecialchars(addslashes((string)$n['nome_fantasia'])) ?>')">
-                    <i class="bi bi-bell"></i>
-                  </button>
+
+                  <?php if (is_juri_ou_tecnica()): ?>
+                    <a href="/premiacao/votar.php?id=<?= (int)$n['id'] ?>" class="act-btn"
+                      title="Votar"
+                      style="background:rgba(25,135,84,.12);color:#198754;">
+                      <i class="bi bi-check2-square"></i>
+                    </a>
+                  <?php endif; ?>
+
+                  <?php if (can_see_admin_shortcuts()): ?>
+                    <a href="/admin/recalcular_score.php?id=<?= (int)$n['id'] ?>" class="act-btn" title="Recalcular Score"
+                      style="background:rgba(151,163,39,.12);color:#5c6318;">
+                      <i class="bi bi-arrow-repeat"></i>
+                    </a>
+
+                    <button type="button" class="act-btn" title="Enviar Notificação"
+                            style="background:rgba(149,188,204,.18);color:#3a6f82;"
+                            onclick="abrirModalNotificacao(<?= (int)$n['id'] ?>, '<?= htmlspecialchars(addslashes((string)$n['nome_fantasia'])) ?>')">
+                      <i class="bi bi-bell"></i>
+                    </button>
+                  <?php endif; ?>
                 </div>
               </td>
             </tr>

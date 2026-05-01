@@ -1,36 +1,65 @@
 <?php
-// /public_html/negocios/confirmacao.php
+declare(strict_types=1);
+
 session_start();
 
-// Autenticação
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /login.php");
+if (empty($_SESSION['user_id'])) {
+    header('Location: /login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
     exit;
 }
 
-// Config DB
-$config = require __DIR__ . '/../app/config/db.php';
+$appBase = dirname(__DIR__);
+$config = require $appBase . '/app/config/db.php';
+
 try {
     $pdo = new PDO(
         "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
         $config['user'],
         $config['pass'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]
     );
 } catch (PDOException $e) {
     error_log($e->getMessage());
     die("Erro ao conectar ao banco de dados.");
 }
 
-// Helpers compartilhados
 require_once __DIR__ . '/blocos-cadastros/_shared.php';
 
-if (file_exists('./blocos_cadastros/bloco_etapa1.php')) {
-    echo '<!-- bloco_etapa1 OK -->';
-} else {
-    echo '<!-- ERRO: bloco_etapa1 NÃO encontrado -->';
+function premiacaoEdicoesComInscricoesAbertas(PDO $pdo): array
+{
+    $sql = "
+        SELECT 
+            p.id,
+            p.nome,
+            p.slug,
+            p.ano,
+            p.regulamento_url,
+            pf.id AS fase_id,
+            pf.nome AS fase_nome,
+            pf.data_inicio,
+            pf.data_fim
+        FROM premiacoes p
+        INNER JOIN premiacao_fases pf 
+            ON pf.premiacao_id = p.id
+        WHERE pf.tipo_fase = 'inscricoes'
+          AND pf.status <> 'rascunho'
+          AND NOW() BETWEEN pf.data_inicio AND pf.data_fim
+        ORDER BY pf.data_inicio ASC, p.id ASC
+    ";
+
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function premiacaoEdicaoInscricaoAtual(PDO $pdo): ?array
+{
+    $edicoes = premiacaoEdicoesComInscricoesAbertas($pdo);
+    return $edicoes[0] ?? null;
+}
 
 // Recebe id do negócio e valida
 $negocio_id = (int)($_GET['id'] ?? 0);
@@ -48,16 +77,12 @@ if (!$negocio) {
     die("Negócio não encontrado ou você não tem permissão.");
 }
 
-/* -------------------------
-   Carregamento de dados
-   ------------------------- */
-
-// Etapa 1: dados gerais já em $negocio
+/* ------------------------- Carregamento de dados ------------------------- */
 
 // Etapa 2: fundadores
 $stmt = $pdo->prepare("
-    SELECT * FROM negocio_fundadores 
-    WHERE negocio_id = ? 
+    SELECT * FROM negocio_fundadores
+    WHERE negocio_id = ?
     ORDER BY tipo = 'principal' DESC, id ASC
 ");
 $stmt->execute([$negocio_id]);
@@ -65,16 +90,16 @@ $fundadores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $fundador_principal = null;
 $cofundadores = [];
 foreach ($fundadores as $f) {
-    if (($f['tipo'] ?? '') === 'principal') $fundador_principal = $f;
-    else $cofundadores[] = $f;
+    if (($f['tipo'] ?? '') === 'principal') {
+        $fundador_principal = $f;
+    } else {
+        $cofundadores[] = $f;
+    }
 }
 
-// Etapa 3: eixo e subáreas
+// Etapa 3
 $stmt = $pdo->prepare("
-    SELECT 
-        et.id,
-        et.nome AS eixo_nome,
-        et.icone_url
+    SELECT et.id, et.nome AS eixo_nome, et.icone_url
     FROM negocios n
     LEFT JOIN eixos_tematicos et ON et.id = n.eixo_principal_id
     WHERE n.id = ?
@@ -83,47 +108,45 @@ $stmt->execute([$negocio_id]);
 $eixo_principal = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->prepare("
-    SELECT s.nome 
-    FROM subareas s 
-    INNER JOIN negocio_subareas ns ON s.id = ns.subarea_id 
-    WHERE ns.negocio_id = ? 
+    SELECT s.nome
+    FROM subareas s
+    INNER JOIN negocio_subareas ns ON s.id = ns.subarea_id
+    WHERE ns.negocio_id = ?
     ORDER BY s.nome
 ");
 $stmt->execute([$negocio_id]);
 $subareas_lista = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Etapa 4: ODS
+// Etapa 4
 $stmt = $pdo->prepare("
-    SELECT icone_url, n_ods, nome 
-    FROM ods 
+    SELECT icone_url, n_ods, nome
+    FROM ods
     WHERE id = (SELECT ods_prioritaria_id FROM negocios WHERE id = ?)
 ");
 $stmt->execute([$negocio_id]);
 $ods_prioritaria = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $stmt = $pdo->prepare("
-    SELECT o.icone_url, n_ods, nome
-    FROM ods o 
-    INNER JOIN negocio_ods no ON o.id = no.ods_id 
-    WHERE no.negocio_id = ? 
+    SELECT o.icone_url, o.n_ods, o.nome
+    FROM ods o
+    INNER JOIN negocio_ods no ON o.id = no.ods_id
+    WHERE no.negocio_id = ?
     ORDER BY o.id
 ");
 $stmt->execute([$negocio_id]);
 $ods_relacionadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Etapa 5: apresentação (galeria, vídeos, textos)
+// Etapa 5
 $stmt = $pdo->prepare("SELECT * FROM negocio_apresentacao WHERE negocio_id = ?");
 $stmt->execute([$negocio_id]);
 $apresentacao = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 $galeria = gallery_from_apresentacao($apresentacao);
 $links = links_from_apresentacao($apresentacao);
 
-// Etapa 6: impacto / visão (exemplo de tabelas já existentes)
+// Etapas adicionais
 $impacto = $pdo->query("SELECT * FROM negocio_impacto WHERE negocio_id = $negocio_id")->fetch(PDO::FETCH_ASSOC);
-$visao   = $pdo->query("SELECT * FROM negocio_visao WHERE negocio_id = $negocio_id")->fetch(PDO::FETCH_ASSOC);
+$visao = $pdo->query("SELECT * FROM negocio_visao WHERE negocio_id = $negocio_id")->fetch(PDO::FETCH_ASSOC);
 
-// Etapa 7 e 8: dados adicionais — carregamento seguro com fallback
-// Ajuste os nomes das tabelas/colunas conforme seu schema real
 try {
     $mercado = pdo_fetch_one($pdo, "SELECT * FROM negocio_mercado WHERE negocio_id = ?", [$negocio_id]) ?: [];
 } catch (Throwable $e) {
@@ -147,16 +170,11 @@ try {
 } catch (Throwable $e) {
     $documentos = [];
 }
-// Busca docs da etapa 9
-$stmt = $pdo->prepare("
-    SELECT * FROM negocios_documentos nd
-    WHERE nd.negocio_id = ?
-");
 
+$stmt = $pdo->prepare("SELECT * FROM negocios_documentos nd WHERE nd.negocio_id = ?");
 $stmt->execute([$negocio_id]);
 $docs = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Empreendedor responsável (dono da conta vinculada ao negócio)
 $empreendedorResponsavel = pdo_fetch_one($pdo, "
     SELECT e.*
     FROM empreendedores e
@@ -164,9 +182,6 @@ $empreendedorResponsavel = pdo_fetch_one($pdo, "
     WHERE n.id = ?
     LIMIT 1
 ", [$negocio_id]) ?: [];
-/* -------------------------
-   Partials (8 blocos)
-   ------------------------- */
 
 $base_partials = __DIR__ . '/blocos-cadastros';
 $partials = [
@@ -182,18 +197,8 @@ $partials = [
     'etapa9' => $base_partials . '/bloco_etapa9.php'
 ];
 
-// Premiação vigente
-$stmtPremiacao = $pdo->query("
-    SELECT id, nome, ano, status
-    FROM premiacoes
-    WHERE status IN ('ativa', 'planejada')
-    ORDER BY 
-        CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
-        ano DESC,
-        id DESC
-    LIMIT 1
-");
-$premiacaoVigente = $stmtPremiacao->fetch(PDO::FETCH_ASSOC);
+// Premiação vigente baseada em fase de inscrições aberta
+$premiacaoVigente = premiacaoEdicaoInscricaoAtual($pdo);
 
 // Inscrição já existente para este negócio na premiação vigente
 $inscricaoPremiacao = null;

@@ -27,10 +27,28 @@ function is_admin(): bool {
     $r = current_user_role();
     return $r === 'admin' || $r === 'superadmin';
 }
+function is_juri(): bool {
+    return current_user_role() === 'juri';
+}
 
+function is_tecnica(): bool {
+    return current_user_role() === 'tecnica';
+}
+
+function is_juri_ou_tecnica(): bool {
+    return in_array(current_user_role(), ['juri', 'tecnica'], true);
+}
+
+function can_see_admin_shortcuts(): bool {
+    return is_admin();
+}
+
+function can_vote_admin(): bool {
+    return in_array(current_user_role(), ['admin', 'superadmin', 'juri', 'tecnica'], true);
+}
 // Checa se usuário está autenticado e tem uma role permitida.
 // Não inicia a sessão aqui (já iniciada no topo).
-function require_admin_login(array $allowedRoles = ['superadmin', 'admin', 'juri']): void {
+function require_admin_login(array $allowedRoles = ['superadmin', 'admin', 'juri', 'tecnica']): void {
     if (empty($_SESSION['user_id'])) {
         // não autenticado
         header('Location: /admin-login.php');

@@ -1,78 +1,155 @@
 <?php
-// /public_html/empreendedores/meus-negocios.php
 declare(strict_types=1);
+
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /login.php");
+if (empty($_SESSION['user_id'])) {
+    header('Location: /login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
     exit;
 }
 
-$pageTitle = 'Meus Negócios — Impactos Positivos';
+$appBase = dirname(__DIR__);
+$config = require $appBase . '/app/config/db.php';
 
-$config = require __DIR__ . '/../app/config/db.php';
-$pdo = new PDO(
-    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
-    $config['user'],
-    $config['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+$dsn = sprintf(
+    'mysql:host=%s;dbname=%s;port=%s;charset=%s',
+    $config['host'],
+    $config['dbname'],
+    $config['port'],
+    $config['charset']
 );
+
+try {
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+} catch (PDOException $e) {
+    error_log($e->getMessage());
+    die('Erro ao conectar ao banco de dados.');
+}
+
+function h(?string $value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
 
 function labelStatusPremiacao(?string $status): string
 {
     return match ($status) {
-        'rascunho'            => 'Rascunho',
-        'enviada'             => 'Inscrito — Em análise',   // ← ADICIONAR
-        'emtriagem'           => 'Em triagem',              // ← ADICIONAR
-        'elegivel'            => 'Elegível',
-        'inelegivel'          => 'Inelegível',
-        'classificadafase1'   => 'Classificada Fase 1',     // ← checar nome exato no ENUM
-        'classificadafase2'   => 'Classificada Fase 2',
-        'finalista'           => 'Finalista',
-        'vencedora'           => 'Vencedora',
-        'eliminada'           => 'Eliminada',
-        default               => 'Não inscrito',
+        'rascunho' => 'Rascunho',
+        'enviada' => 'Inscrito — Em análise',
+        'emtriagem' => 'Em triagem',
+        'elegivel' => 'Elegível',
+        'inelegivel' => 'Inelegível',
+        'classificadafase1' => 'Classificado Fase 1',
+        'classificadafase2' => 'Classificado Fase 2',
+        'finalista' => 'Finalista',
+        'vencedora' => 'Vencedora',
+        'eliminada' => 'Eliminada',
+        default => 'Não inscrito',
     };
 }
 
 function badgePremiacao(?string $status): array
 {
     return match ($status) {
-        'enviada'           => ['bg' => '#e3f2fd', 'color' => '#1565c0'],   // já existe ✅
-        'emtriagem'         => ['bg' => '#fff8e1', 'color' => '#f57f17'],   // já existe ✅
-        'elegivel'          => ['bg' => '#e8f5e9', 'color' => '#2e7d32'],
-        'inelegivel'        => ['bg' => '#fdecea', 'color' => '#c62828'],
+        'enviada' => ['bg' => '#e3f2fd', 'color' => '#1565c0'],
+        'emtriagem' => ['bg' => '#fff8e1', 'color' => '#f57f17'],
+        'elegivel' => ['bg' => '#e8f5e9', 'color' => '#2e7d32'],
+        'inelegivel' => ['bg' => '#fdecea', 'color' => '#c62828'],
         'classificadafase1' => ['bg' => '#e0f7fa', 'color' => '#006064'],
         'classificadafase2' => ['bg' => '#e0f2f1', 'color' => '#00695c'],
-        'finalista'         => ['bg' => '#ede7f6', 'color' => '#5e35b1'],
-        'vencedora'         => ['bg' => '#fff3cd', 'color' => '#856404'],
-        'eliminada'         => ['bg' => '#fdecea', 'color' => '#c62828'],
-        'rascunho'          => ['bg' => '#f5f5f5', 'color' => '#757575'],
-        default             => ['bg' => '#f5f5f5', 'color' => '#757575'],
+        'finalista' => ['bg' => '#ede7f6', 'color' => '#5e35b1'],
+        'vencedora' => ['bg' => '#fff3cd', 'color' => '#856404'],
+        'eliminada' => ['bg' => '#fdecea', 'color' => '#c62828'],
+        'rascunho' => ['bg' => '#f5f5f5', 'color' => '#757575'],
+        default => ['bg' => '#f5f5f5', 'color' => '#757575'],
     };
 }
 
-$stmtPremiacaoAtiva = $pdo->query("
-    SELECT id, nome, ano, status
-    FROM premiacoes
-    WHERE status IN ('ativa', 'planejada')
-    ORDER BY 
-        CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
-        ano DESC,
-        id DESC
-    LIMIT 1
-");
-$premiacaoAtiva = $stmtPremiacaoAtiva->fetch(PDO::FETCH_ASSOC);
+function premiacaoEdicoesComInscricoesAbertas(PDO $pdo): array
+{
+    $sql = "
+        SELECT 
+            p.id,
+            p.nome,
+            p.slug,
+            p.ano,
+            p.regulamento_url,
+            pf.id AS fase_id,
+            pf.nome AS fase_nome,
+            pf.data_inicio,
+            pf.data_fim
+        FROM premiacoes p
+        INNER JOIN premiacao_fases pf 
+            ON pf.premiacao_id = p.id
+        WHERE pf.tipo_fase = 'inscricoes'
+          AND pf.status <> 'rascunho'
+          AND NOW() BETWEEN pf.data_inicio AND pf.data_fim
+        ORDER BY pf.data_inicio ASC, p.id ASC
+    ";
+
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function premiacaoEdicaoInscricaoAtual(PDO $pdo): ?array
+{
+    $edicoes = premiacaoEdicoesComInscricoesAbertas($pdo);
+    return $edicoes[0] ?? null;
+}
+
+function faseClassificatoriaEncerrada(PDO $pdo, int $premiacaoId): bool
+{
+    $stmt = $pdo->prepare("
+        SELECT id
+        FROM premiacao_fases
+        WHERE premiacao_id = ?
+          AND tipo_fase = 'classificatoria'
+          AND status IN ('encerrada', 'apurada')
+        ORDER BY data_fim DESC, id DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$premiacaoId]);
+    return (bool)$stmt->fetch();
+}
+
+function statusBloqueiaNovaInscricaoMesmaJornada(?string $status): bool
+{
+    return in_array((string)$status, [
+        'enviada',
+        'emtriagem',
+        'elegivel',
+        'classificadafase1',
+        'classificadafase2',
+        'finalista',
+        'vencedora',
+    ], true);
+}
+
+function statusEliminatorioOuFimDeJornada(?string $status): bool
+{
+    return in_array((string)$status, [
+        'inelegivel',
+        'eliminada',
+    ], true);
+}
+
+$premiacaoAtiva = premiacaoEdicaoInscricaoAtual($pdo);
 $premiacaoIdAtiva = (int)($premiacaoAtiva['id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'excluir_negocio') {
     try {
         $negocioId = (int)($_POST['negocio_id'] ?? 0);
 
-        // Confirma que pertence ao empreendedor e NÃO está completo
         $stmtCheck = $pdo->prepare("
-            SELECT id FROM negocios
-            WHERE id = ? AND empreendedor_id = ? AND (inscricao_completa IS NULL OR inscricao_completa = 0)
+            SELECT id
+            FROM negocios
+            WHERE id = ?
+              AND empreendedor_id = ?
+              AND (inscricao_completa IS NULL OR inscricao_completa = 0)
             LIMIT 1
         ");
         $stmtCheck->execute([$negocioId, $_SESSION['user_id']]);
@@ -81,7 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'excluir
             throw new Exception('Negócio não encontrado ou não pode ser excluído.');
         }
 
-        // Remove registros relacionados antes de excluir o negócio
         foreach ([
             "DELETE FROM negocio_apresentacao WHERE negocio_id = ?",
             "DELETE FROM negocio_fundadores WHERE negocio_id = ?",
@@ -96,7 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'excluir
             $pdo->prepare($sqlDel)->execute([$negocioId]);
         }
 
-        $pdo->prepare("DELETE FROM negocios WHERE id = ? AND empreendedor_id = ?")->execute([$negocioId, $_SESSION['user_id']]);
+        $pdo->prepare("DELETE FROM negocios WHERE id = ? AND empreendedor_id = ?")
+            ->execute([$negocioId, $_SESSION['user_id']]);
 
         $_SESSION['success_message'] = 'Negócio excluído com sucesso.';
         header('Location: /empreendedores/meus-negocios.php');
@@ -111,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'excluir
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_inscricao_premiacao') {
     try {
         if ($premiacaoIdAtiva <= 0) {
-            throw new Exception('Nenhuma edição da premiação disponível no momento.');
+            throw new Exception('No momento não há nenhuma edição da premiação com inscrições abertas.');
         }
 
         $negocioId = (int)($_POST['negocio_id'] ?? 0);
@@ -136,36 +213,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_
             throw new Exception('Este negócio ainda não está apto para participar da premiação.');
         }
 
-        if ($desejaParticipar === 1) {
-            if ($aceiteRegulamento !== 1) {
-                throw new Exception('Você precisa aceitar o regulamento da Premiação para participar.');
-            }
-            if ($aceiteVeracidade !== 1) {
-                throw new Exception('Você precisa confirmar a veracidade das informações para participar.');
-            }
-        }
-
-        $stmtExiste = $pdo->prepare("
+        $stmtExisteAtual = $pdo->prepare("
             SELECT id, status
             FROM premiacao_inscricoes
             WHERE premiacao_id = ? AND negocio_id = ?
             LIMIT 1
         ");
-        $stmtExiste->execute([$premiacaoIdAtiva, $negocioId]);
-        $inscricaoExistente = $stmtExiste->fetch(PDO::FETCH_ASSOC);
+        $stmtExisteAtual->execute([$premiacaoIdAtiva, $negocioId]);
+        $inscricaoAtual = $stmtExisteAtual->fetch(PDO::FETCH_ASSOC);
 
-        $statusSalvar = $desejaParticipar ? 'elegivel' : 'rascunho';
+        if ($inscricaoAtual && statusBloqueiaNovaInscricaoMesmaJornada($inscricaoAtual['status'] ?? null)) {
+            throw new Exception('Este negócio já possui inscrição ativa nesta edição da premiação.');
+        }
+
+        if ($desejaParticipar === 1) {
+            if ($aceiteRegulamento !== 1) {
+                throw new Exception('Você precisa aceitar o regulamento da Premiação para participar.');
+            }
+
+            if ($aceiteVeracidade !== 1) {
+                throw new Exception('Você precisa confirmar a veracidade das informações para participar.');
+            }
+        }
+
+        $statusSalvar = $desejaParticipar ? 'enviada' : 'rascunho';
         $enviadoEm = $desejaParticipar ? date('Y-m-d H:i:s') : null;
 
-        if ($inscricaoExistente) {
-            if (!in_array($inscricaoExistente['status'], ['rascunho', 'enviada'], true)) {
+        if ($inscricaoAtual) {
+            if (!in_array($inscricaoAtual['status'], ['rascunho', 'enviada', 'inelegivel', 'eliminada'], true)) {
                 throw new Exception('Esta inscrição já está em andamento e não pode ser alterada nesta tela.');
             }
 
             $stmtUpdate = $pdo->prepare("
                 UPDATE premiacao_inscricoes
-                SET
-                    categoria = ?,
+                SET categoria = ?,
                     deseja_participar = ?,
                     aceite_regulamento = ?,
                     aceite_veracidade = ?,
@@ -181,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_
                 $aceiteVeracidade,
                 $statusSalvar,
                 $enviadoEm,
-                $inscricaoExistente['id']
+                $inscricaoAtual['id']
             ]);
         } else {
             $stmtInsert = $pdo->prepare("
@@ -223,7 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'salvar_
 }
 
 $stmt = $pdo->prepare("
-    SELECT 
+    SELECT
         n.id,
         n.nome_fantasia,
         n.categoria,
@@ -234,36 +315,117 @@ $stmt = $pdo->prepare("
         n.publicado_vitrine,
         a.logo_negocio,
         a.imagem_destaque,
-        pi.id AS premiacao_inscricao_id,
-        pi.status AS premiacao_status,
-        pi.aceite_regulamento,
-        pi.aceite_veracidade,
-        pi.deseja_participar,
-        pi.enviado_em
+
+        pia.id AS premiacao_atual_inscricao_id,
+        pia.status AS premiacao_atual_status,
+        pia.aceite_regulamento AS premiacao_atual_aceite_regulamento,
+        pia.aceite_veracidade AS premiacao_atual_aceite_veracidade,
+        pia.deseja_participar AS premiacao_atual_deseja_participar,
+        pia.enviado_em AS premiacao_atual_enviado_em,
+
+        pih.id AS premiacao_historico_inscricao_id,
+        pih.status AS premiacao_historico_status,
+        pih.enviado_em AS premiacao_historico_enviado_em,
+        ph.id AS premiacao_historico_id,
+        ph.nome AS premiacao_historico_nome,
+        ph.ano AS premiacao_historico_ano
+
     FROM negocios n
-    LEFT JOIN negocio_apresentacao a ON a.negocio_id = n.id
-    LEFT JOIN premiacao_inscricoes pi
-        ON pi.negocio_id = n.id
-       AND pi.premiacao_id = ?
-    WHERE n.empreendedor_id = ?
+    LEFT JOIN negocio_apresentacao a
+        ON a.negocio_id = n.id
+
+    LEFT JOIN premiacao_inscricoes pia
+        ON pia.negocio_id = n.id
+       AND pia.premiacao_id = :premiacao_atual_id
+
+    LEFT JOIN premiacao_inscricoes pih
+        ON pih.id = (
+            SELECT pi2.id
+            FROM premiacao_inscricoes pi2
+            WHERE pi2.negocio_id = n.id
+            ORDER BY pi2.created_at DESC, pi2.id DESC
+            LIMIT 1
+        )
+
+    LEFT JOIN premiacoes ph
+        ON ph.id = pih.premiacao_id
+
+    WHERE n.empreendedor_id = :empreendedor_id
     ORDER BY n.created_at DESC
 ");
-$stmt->execute([$premiacaoIdAtiva, $_SESSION['user_id']]);
+$stmt->execute([
+    ':premiacao_atual_id' => $premiacaoIdAtiva > 0 ? $premiacaoIdAtiva : 0,
+    ':empreendedor_id' => $_SESSION['user_id'],
+]);
 $negocios = $stmt->fetchAll();
 
+foreach ($negocios as &$n) {
+    $statusHistorico = $n['premiacao_historico_status'] ?? null;
+    $statusAtual = $n['premiacao_atual_status'] ?? null;
+    $historicoPremiacaoId = (int)($n['premiacao_historico_id'] ?? 0);
+
+    $podeInscreverNaEdicaoAtual = false;
+    $motivoBloqueioPremiacao = '';
+
+    if ($premiacaoIdAtiva <= 0) {
+        $motivoBloqueioPremiacao = 'Não há inscrições abertas no momento.';
+    } elseif ((int)$n['inscricao_completa'] !== 1 || (int)$n['publicado_vitrine'] !== 1) {
+        $motivoBloqueioPremiacao = 'Negócio ainda não apto para premiação.';
+    } elseif (!empty($n['premiacao_atual_inscricao_id']) && statusBloqueiaNovaInscricaoMesmaJornada($statusAtual)) {
+        $motivoBloqueioPremiacao = 'Já inscrito na edição atual.';
+    } else {
+        $podeInscreverNaEdicaoAtual = true;
+
+        if ($historicoPremiacaoId > 0 && !empty($statusHistorico)) {
+            if (statusBloqueiaNovaInscricaoMesmaJornada($statusHistorico)) {
+                if ($statusHistorico === 'classificadafase1' && faseClassificatoriaEncerrada($pdo, $historicoPremiacaoId)) {
+                    $podeInscreverNaEdicaoAtual = false;
+                    $motivoBloqueioPremiacao = 'Negócio segue em jornada ativa na premiação anterior.';
+                } elseif (in_array($statusHistorico, ['classificadafase2', 'finalista', 'vencedora', 'elegivel', 'emtriagem', 'enviada'], true)) {
+                    $podeInscreverNaEdicaoAtual = false;
+                    $motivoBloqueioPremiacao = 'Negócio segue em avaliação na premiação anterior.';
+                }
+            }
+
+            if (statusEliminatorioOuFimDeJornada($statusHistorico)) {
+                $podeInscreverNaEdicaoAtual = true;
+                $motivoBloqueioPremiacao = '';
+            }
+        }
+    }
+
+    $n['pode_inscrever_na_premiacao_atual'] = $podeInscreverNaEdicaoAtual ? 1 : 0;
+    $n['motivo_bloqueio_premiacao'] = $motivoBloqueioPremiacao;
+    $n['premiacao_exibicao_nome'] = $n['premiacao_historico_nome'] ?? ($premiacaoAtiva['nome'] ?? null);
+    $n['premiacao_exibicao_ano'] = $n['premiacao_historico_ano'] ?? ($premiacaoAtiva['ano'] ?? null);
+    $n['premiacao_exibicao_status'] = $statusHistorico ?: $statusAtual;
+}
+unset($n);
+
 $etapas = [
-    1 => 'Dados do Negócio',       2 => 'Fundadores',
-    3 => 'Eixo Temático',          4 => 'Conexão com os ODS',
-    5 => 'Dados Financeiros',      6 => 'Avaliação de Impacto',
-    7 => 'Visão de Futuro',        8 => 'Apresentação do Negócio',
-    9 => 'Documentação',           10 => 'Revisão e Confirmação'
+    1 => 'Dados do Negócio',
+    2 => 'Fundadores',
+    3 => 'Eixo Temático',
+    4 => 'Conexão com os ODS',
+    5 => 'Dados Financeiros',
+    6 => 'Avaliação de Impacto',
+    7 => 'Visão de Futuro',
+    8 => 'Apresentação do Negócio',
+    9 => 'Documentação',
+    10 => 'Revisão e Confirmação'
 ];
+
 $arquivosEtapas = [
-    1 => 'etapa1_dados_negocio.php', 2 => 'etapa2_fundadores.php',
-    3 => 'etapa3_eixo_tematico.php', 4 => 'etapa4_ods.php',
-    5 => 'etapa5_financeiro.php',  6 => 'etapa6_impacto.php',
-    7 => 'etapa7_visao.php',       8 => 'etapa8_apresentacao.php',
-    9 => 'etapa9_documentacao.php',  10 => 'confirmacao.php'
+    1 => 'etapa1_dados_negocio.php',
+    2 => 'etapa2_fundadores.php',
+    3 => 'etapa3_eixo_tematico.php',
+    4 => 'etapa4_ods.php',
+    5 => 'etapa5_financeiro.php',
+    6 => 'etapa6_impacto.php',
+    7 => 'etapa7_visao.php',
+    8 => 'etapa8_apresentacao.php',
+    9 => 'etapa9_documentacao.php',
+    10 => 'confirmacao.php'
 ];
 
 include __DIR__ . '/../app/views/empreendedor/header.php';
@@ -413,44 +575,88 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <?php endif; ?>
 
             <!-- Bloco premiação -->
-            <?php if ($premiacaoAtiva): ?>
-              <div class="mb-3 p-3 rounded" style="background:#f7f9f5; border:1px solid #e6ece1;">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
-                  <div class="small fw-semibold" style="color:#1E3425;">
-                    <i class="bi bi-trophy me-1"></i> Premiação
-                  </div>
-                  <span class="small" style="color:#6c8070;">
-                    <?= htmlspecialchars($premiacaoAtiva['nome']) ?>
-                  </span>
-                </div>
+<?php if ($premiacaoAtiva || !empty($n['premiacao_exibicao_nome'])): ?>
+  <?php
+    $nomePremiacaoExibicao = $n['premiacao_exibicao_nome'] ?? ($premiacaoAtiva['nome'] ?? 'Premiação');
+    $anoPremiacaoExibicao  = $n['premiacao_exibicao_ano'] ?? null;
+    $statusPremiacaoExibicao = $n['premiacao_exibicao_status'] ?? null;
+    $premiacaoBadgeExibicao = badgePremiacao($statusPremiacaoExibicao);
 
-                <?php if (!$podeParticipar): ?>
-                  <div class="small text-muted">
-                    Disponível após cadastro completo e publicação na vitrine.
-                  </div>
+    $podeParticiparAtual = (int)($n['pode_inscrever_na_premiacao_atual'] ?? 0) === 1;
+    $motivoBloqueioPremiacao = trim((string)($n['motivo_bloqueio_premiacao'] ?? ''));
 
-                <?php elseif (!empty($statusPremiacao) && $statusPremiacao !== 'rascunho'): ?>
-                  <span class="emp-negocio-vitrine-badge"
-                        style="position:static; display:inline-flex; background:<?= $premiacaoBadge['bg'] ?>; color:<?= $premiacaoBadge['color'] ?>;">
-                    <i class="bi bi-award me-1"></i><?= htmlspecialchars(labelStatusPremiacao($statusPremiacao)) ?>
-                  </span>
+    $enviadoEmExibicao = $n['premiacao_historico_enviado_em']
+      ?? $n['premiacao_atual_enviado_em']
+      ?? null;
+  ?>
+  <div class="mb-3 p-3 rounded" style="background:#f7f9f5; border:1px solid #e6ece1;">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+      <div class="small fw-semibold" style="color:#1E3425;">
+        <i class="bi bi-trophy me-1"></i> Premiação
+      </div>
+      <span class="small" style="color:#6c8070;">
+        <?= htmlspecialchars($nomePremiacaoExibicao) ?>
+        <?= !empty($anoPremiacaoExibicao) ? ' ' . htmlspecialchars((string)$anoPremiacaoExibicao) : '' ?>
+      </span>
+    </div>
 
-                  <?php if (!empty($n['enviado_em'])): ?>
-                    <div class="small text-muted mt-2">
-                      Enviado em <?= date('d/m/Y H:i', strtotime($n['enviado_em'])) ?>
-                    </div>
-                  <?php endif; ?>
+    <?php if (!$podeParticipar && empty($statusPremiacaoExibicao)): ?>
+      <div class="small text-muted">
+        Disponível após cadastro completo e publicação na vitrine.
+      </div>
 
-                <?php else: ?>
-                  <button
-                    type="button"
-                    class="btn-emp-primary w-100 mt-2"
-                    onclick="abrirModalPremiacao(<?= (int)$n['id'] ?>, <?= (int)($n['deseja_participar'] ?? 0) ?>, <?= (int)($n['aceite_regulamento'] ?? 0) ?>, <?= (int)($n['aceite_veracidade'] ?? 0) ?>)">
-                    <i class="bi bi-trophy me-1"></i> Quero participar da Premiação
-                  </button>
-                <?php endif; ?>
-              </div>
-            <?php endif; ?>
+    <?php elseif (!empty($statusPremiacaoExibicao) && $statusPremiacaoExibicao !== 'rascunho'): ?>
+      <div class="d-flex flex-column align-items-start">
+        <span class="emp-negocio-vitrine-badge"
+              style="position:static; display:inline-flex; background:<?= htmlspecialchars($premiacaoBadgeExibicao['bg']) ?>; color:<?= htmlspecialchars($premiacaoBadgeExibicao['color']) ?>;">
+          <i class="bi bi-award me-1"></i><?= htmlspecialchars(labelStatusPremiacao($statusPremiacaoExibicao)) ?>
+        </span>
+
+        <?php if (!empty($enviadoEmExibicao)): ?>
+          <div class="small text-muted mt-2">
+            Enviado em <?= date('d/m/Y H:i', strtotime($enviadoEmExibicao)) ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($podeParticiparAtual && $premiacaoAtiva): ?>
+          <div class="small mt-2" style="color:#6c8070;">
+            Este negócio pode se inscrever na próxima edição.
+          </div>
+
+          <button
+            type="button"
+            class="btn-emp-primary w-100 mt-2"
+            onclick="abrirModalPremiacao(
+              <?= (int)$n['id'] ?>,
+              <?= (int)($n['premiacao_atual_deseja_participar'] ?? 0) ?>,
+              <?= (int)($n['premiacao_atual_aceite_regulamento'] ?? 0) ?>,
+              <?= (int)($n['premiacao_atual_aceite_veracidade'] ?? 0) ?>
+            )">
+            <i class="bi bi-trophy me-1"></i> Quero participar da Premiação
+          </button>
+        <?php endif; ?>
+      </div>
+
+    <?php elseif ($podeParticiparAtual && $premiacaoAtiva): ?>
+      <button
+        type="button"
+        class="btn-emp-primary w-100 mt-2"
+        onclick="abrirModalPremiacao(
+          <?= (int)$n['id'] ?>,
+          <?= (int)($n['premiacao_atual_deseja_participar'] ?? 0) ?>,
+          <?= (int)($n['premiacao_atual_aceite_regulamento'] ?? 0) ?>,
+          <?= (int)($n['premiacao_atual_aceite_veracidade'] ?? 0) ?>
+        )">
+        <i class="bi bi-trophy me-1"></i> Quero participar da Premiação
+      </button>
+
+    <?php else: ?>
+      <div class="small text-muted">
+        <?= htmlspecialchars($motivoBloqueioPremiacao !== '' ? $motivoBloqueioPremiacao : 'Este negócio não pode participar da premiação neste momento.') ?>
+      </div>
+    <?php endif; ?>
+  </div>
+<?php endif; ?>
 
             <!-- Ações -->
             <div class="emp-negocio-acoes">

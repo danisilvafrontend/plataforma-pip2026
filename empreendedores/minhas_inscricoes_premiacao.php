@@ -1,33 +1,64 @@
 <?php
-// /public_html/empreendedores/minhas_inscricoes_premiacao.php
 declare(strict_types=1);
+
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: /login.php");
+if (empty($_SESSION['user_id'])) {
+    header('Location: /login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
     exit;
 }
 
-$pageTitle = 'Minhas Inscrições na Premiação — Impactos Positivos';
+$appBase = dirname(__DIR__);
+$config = require $appBase . '/app/config/db.php';
 
-$config = require __DIR__ . '/../app/config/db.php';
-$pdo = new PDO(
-    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
-    $config['user'],
-    $config['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+$dsn = sprintf(
+    'mysql:host=%s;dbname=%s;port=%s;charset=%s',
+    $config['host'],
+    $config['dbname'],
+    $config['port'],
+    $config['charset']
 );
+
+try {
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
+} catch (PDOException $e) {
+    error_log($e->getMessage());
+    die('Erro ao conectar ao banco de dados.');
+}
+
+function h(?string $value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function normalizarStatusPremiacao(?string $status): ?string
+{
+    $status = trim((string)$status);
+
+    return match ($status) {
+        'em_triagem' => 'emtriagem',
+        'classificada_fase_1' => 'classificadafase1',
+        'classificada_fase_2' => 'classificadafase2',
+        default => $status !== '' ? $status : null,
+    };
+}
 
 function labelStatusPremiacao(?string $status): string
 {
+    $status = normalizarStatusPremiacao($status);
+
     return match ($status) {
         'rascunho' => 'Rascunho',
         'enviada' => 'Inscrição enviada',
-        'em_triagem' => 'Em triagem',
+        'emtriagem' => 'Em triagem',
         'elegivel' => 'Elegível',
         'inelegivel' => 'Inelegível',
-        'classificada_fase_1' => 'Classificada Fase 1',
-        'classificada_fase_2' => 'Classificada Fase 2',
+        'classificadafase1' => 'Classificada Fase 1',
+        'classificadafase2' => 'Classificada Fase 2',
         'finalista' => 'Finalista',
         'vencedora' => 'Vencedora',
         'eliminada' => 'Eliminada',
@@ -37,13 +68,15 @@ function labelStatusPremiacao(?string $status): string
 
 function badgePremiacao(?string $status): array
 {
+    $status = normalizarStatusPremiacao($status);
+
     return match ($status) {
         'enviada' => ['bg' => '#e3f2fd', 'color' => '#1565c0', 'icon' => 'bi-send-check'],
-        'em_triagem' => ['bg' => '#fff8e1', 'color' => '#f57f17', 'icon' => 'bi-hourglass-split'],
+        'emtriagem' => ['bg' => '#fff8e1', 'color' => '#f57f17', 'icon' => 'bi-hourglass-split'],
         'elegivel' => ['bg' => '#e8f5e9', 'color' => '#2e7d32', 'icon' => 'bi-check-circle-fill'],
         'inelegivel' => ['bg' => '#fdecea', 'color' => '#c62828', 'icon' => 'bi-x-circle-fill'],
-        'classificada_fase_1' => ['bg' => '#e0f7fa', 'color' => '#006064', 'icon' => 'bi-1-circle-fill'],
-        'classificada_fase_2' => ['bg' => '#e0f2f1', 'color' => '#00695c', 'icon' => 'bi-2-circle-fill'],
+        'classificadafase1' => ['bg' => '#e0f7fa', 'color' => '#006064', 'icon' => 'bi-1-circle-fill'],
+        'classificadafase2' => ['bg' => '#e0f2f1', 'color' => '#00695c', 'icon' => 'bi-2-circle-fill'],
         'finalista' => ['bg' => '#ede7f6', 'color' => '#5e35b1', 'icon' => 'bi-award-fill'],
         'vencedora' => ['bg' => '#fff3cd', 'color' => '#856404', 'icon' => 'bi-trophy-fill'],
         'eliminada' => ['bg' => '#fdecea', 'color' => '#c62828', 'icon' => 'bi-slash-circle-fill'],
@@ -52,8 +85,22 @@ function badgePremiacao(?string $status): array
     };
 }
 
+function dataHoraBr(?string $value): string
+{
+    if (empty($value) || $value === '0000-00-00' || $value === '0000-00-00 00:00:00') {
+        return '—';
+    }
+
+    $ts = strtotime($value);
+    if (!$ts) {
+        return '—';
+    }
+
+    return date('d/m/Y H:i', $ts);
+}
+
 $stmt = $pdo->prepare("
-    SELECT 
+    SELECT
         pi.id,
         pi.premiacao_id,
         pi.negocio_id,
@@ -70,13 +117,12 @@ $stmt = $pdo->prepare("
         p.status AS premiacao_status,
         n.nome_fantasia,
         n.status_vitrine,
-        n.publicado_vitrine,
-        a.logo_negocio,
-        a.imagem_destaque
+        n.publicado_vitrine
     FROM premiacao_inscricoes pi
-    INNER JOIN premiacoes p ON p.id = pi.premiacao_id
-    INNER JOIN negocios n ON n.id = pi.negocio_id
-    LEFT JOIN negocio_apresentacao a ON a.negocio_id = n.id
+    INNER JOIN premiacoes p
+        ON p.id = pi.premiacao_id
+    INNER JOIN negocios n
+        ON n.id = pi.negocio_id
     WHERE pi.empreendedor_id = ?
     ORDER BY p.ano DESC, pi.created_at DESC, pi.id DESC
 ");
@@ -86,122 +132,118 @@ $inscricoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
-<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
-  <div>
-    <h1 class="emp-page-title mb-1"><i class="bi bi-trophy me-2"></i>Minhas Inscrições na Premiação</h1>
-    <p class="emp-page-subtitle mb-0">Acompanhe o andamento dos negócios inscritos nas edições da premiação.</p>
-  </div>
-  <a href="/empreendedores/meus-negocios.php" class="btn-emp-outline">
-    <i class="bi bi-briefcase me-1"></i> Voltar para Meus Negócios
-  </a>
-</div>
-
-<?php if (empty($inscricoes)): ?>
-
-  <div class="emp-card text-center py-5">
-    <i class="bi bi-trophy" style="font-size:3rem; color:#c8d4c0;"></i>
-    <h5 class="mt-3 mb-1" style="color:#1E3425;">Nenhuma inscrição encontrada</h5>
-    <p class="text-muted small mb-4">
-      Você ainda não possui negócios inscritos em nenhuma edição da premiação.
+<div class="container py-4">
+  <div class="premiacoes-page-header">
+    <h1 class="premiacoes-page-title">Minhas inscrições na premiação</h1>
+    <p class="premiacoes-page-subtitle">
+      Acompanhe o andamento dos negócios inscritos nas edições da premiação.
     </p>
-    <a href="/empreendedores/meus-negocios.php" class="btn-emp-primary">
-      <i class="bi bi-arrow-left me-1"></i> Ir para Meus Negócios
-    </a>
   </div>
 
-<?php else: ?>
+  <?php if (empty($inscricoes)): ?>
+    <div class="premiacoes-empty">
+      <div class="premiacoes-empty-icon">
+        <i class="bi bi-trophy"></i>
+      </div>
+      <div class="premiacoes-empty-title">Nenhuma inscrição encontrada</div>
+      <div class="premiacoes-empty-text">
+        Você ainda não possui negócios inscritos em nenhuma edição da premiação.
+      </div>
+      <a href="/empreendedores/meus-negocios.php" class="btn-emp-primary">
+        <i class="bi bi-briefcase me-1"></i> Ir para Meus Negócios
+      </a>
+    </div>
+  <?php else: ?>
+    <div class="premiacoes-list-head">
+      <div>Negócio</div>
+      <div>Premiação</div>
+      <div>Status</div>
+      <div>Envio</div>
+      <div>Detalhes</div>
+    </div>
 
-  <div class="row g-4">
-    <?php foreach ($inscricoes as $item): ?>
-      <?php $badge = badgePremiacao($item['status'] ?? null); ?>
-
-      <div class="col-12 col-md-6 col-xl-4">
-        <div class="emp-negocio-card">
-
-          <div class="emp-negocio-capa">
-            <?php if (!empty($item['imagem_destaque'])): ?>
-              <img src="<?= htmlspecialchars($item['imagem_destaque']) ?>" alt="Capa do negócio">
-            <?php elseif (!empty($item['logo_negocio'])): ?>
-              <img src="<?= htmlspecialchars($item['logo_negocio']) ?>"
-                   alt="Logo do negócio"
-                   style="object-fit:contain; padding:1rem; background:#f0f4ed;">
-            <?php else: ?>
-              <div class="emp-negocio-capa-placeholder">
-                <i class="bi bi-trophy"></i>
+    <div class="premiacoes-list">
+      <?php foreach ($inscricoes as $item): ?>
+        <?php
+          $statusNormalizado = normalizarStatusPremiacao($item['status'] ?? null);
+          $badge = badgePremiacao($statusNormalizado);
+        ?>
+        <div class="premiacao-row-card">
+          <div class="premiacao-row-grid">
+            <div>
+              <div class="premiacao-col-label">Negócio</div>
+              <div class="premiacao-negocio-nome">
+                <?= h($item['nome_fantasia']) ?>
               </div>
-            <?php endif; ?>
+              <div class="premiacao-meta">
+                <strong>Categoria:</strong> <?= h($item['categoria'] ?: '—') ?><br>
+                <strong>ID da inscrição:</strong> #<?= (int)$item['id'] ?>
+              </div>
+            </div>
 
-            <span class="emp-negocio-vitrine-badge"
-                  style="background:<?= $badge['bg'] ?>; color:<?= $badge['color'] ?>;">
-              <i class="bi <?= $badge['icon'] ?> me-1"></i><?= htmlspecialchars(labelStatusPremiacao($item['status'] ?? null)) ?>
-            </span>
-          </div>
+            <div>
+              <div class="premiacao-col-label">Premiação</div>
+              <div class="premiacao-edicao">
+                <?= h($item['premiacao_nome']) ?>
+                <?= !empty($item['premiacao_ano']) ? ' ' . h((string)$item['premiacao_ano']) : '' ?>
+              </div>
+              <div class="premiacao-meta">
+                <strong>Edição:</strong> <?= h((string)($item['premiacao_ano'] ?: '—')) ?>
+              </div>
+            </div>
 
-          <div class="emp-negocio-body">
-            <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
-              <h5 class="emp-negocio-nome"><?= htmlspecialchars($item['nome_fantasia']) ?></h5>
-              <span class="emp-badge-ativo flex-shrink-0">
-                <?= (int)$item['premiacao_ano'] ?>
+            <div>
+              <div class="premiacao-col-label">Status</div>
+              <span class="premiacao-badge"
+                    style="background: <?= h($badge['bg']) ?>; color: <?= h($badge['color']) ?>;">
+                <i class="bi <?= h($badge['icon']) ?>"></i>
+                <?= h(labelStatusPremiacao($statusNormalizado)) ?>
               </span>
             </div>
 
-            <p class="emp-negocio-categoria mb-2">
-              <i class="bi bi-tag me-1"></i><?= htmlspecialchars($item['categoria'] ?? '—') ?>
-            </p>
-
-            <div class="small mb-2" style="color:#1E3425;">
-              <strong>Edição:</strong> <?= htmlspecialchars($item['premiacao_nome']) ?>
-            </div>
-
-            <div class="small mb-2" style="color:#6c8070;">
-              <strong>Status da edição:</strong> <?= htmlspecialchars($item['premiacao_status']) ?>
-            </div>
-
-            <?php if (!empty($item['enviado_em'])): ?>
-              <div class="small mb-2 text-muted">
-                <strong>Enviado em:</strong> <?= date('d/m/Y H:i', strtotime($item['enviado_em'])) ?>
-              </div>
-            <?php endif; ?>
-
-            <div class="small mb-3 text-muted">
-              <strong>Aceites:</strong>
-              <?= (int)$item['aceite_regulamento'] === 1 ? 'Regulamento ok' : 'Regulamento pendente' ?> ·
-              <?= (int)$item['aceite_veracidade'] === 1 ? 'Veracidade ok' : 'Veracidade pendente' ?>
-            </div>
-
-            <?php if (!empty($item['observacoes_admin'])): ?>
-              <div class="p-3 rounded mb-3" style="background:#f7f9f5; border:1px solid #e6ece1;">
-                <div class="small fw-semibold mb-1" style="color:#1E3425;">
-                  <i class="bi bi-chat-left-text me-1"></i> Observações da equipe
+            <div>
+              <div class="premiacao-col-label">Envio</div>
+              <div class="premiacao-info-stack">
+                <div class="premiacao-meta">
+                  <strong>Enviado em:</strong><br>
+                  <?= h(dataHoraBr($item['enviado_em'])) ?>
                 </div>
-                <div class="small text-muted">
-                  <?= nl2br(htmlspecialchars($item['observacoes_admin'])) ?>
+                <div class="premiacao-meta">
+                  <strong>Registro:</strong><br>
+                  <?= h(dataHoraBr($item['created_at'])) ?>
                 </div>
               </div>
-            <?php endif; ?>
+            </div>
 
-            <div class="emp-negocio-acoes">
-              <a href="/negocios/confirmacao.php?id=<?= (int)$item['negocio_id'] ?>" class="btn-emp-outline flex-1">
-                <i class="bi bi-card-checklist me-1"></i> Ver Negócio
-              </a>
-
-              <?php if ((int)$item['publicado_vitrine'] === 1): ?>
-                <a href="/negocio.php?id=<?= (int)$item['negocio_id'] ?>" target="_blank" class="btn-emp-primary flex-1">
-                  <i class="bi bi-eye me-1"></i> Ver na Vitrine
-                </a>
-              <?php else: ?>
-                <a href="/empreendedores/meus-negocios.php" class="btn-emp-primary flex-1">
-                  <i class="bi bi-pencil-square me-1"></i> Gerenciar
-                </a>
-              <?php endif; ?>
+            <div>
+              <div class="premiacao-col-label">Detalhes</div>
+              <div class="premiacao-info-stack">
+                <div class="premiacao-meta">
+                  <strong>Regulamento:</strong>
+                  <?= (int)$item['aceite_regulamento'] === 1 ? 'Aceito' : 'Não aceito' ?>
+                </div>
+                <div class="premiacao-meta">
+                  <strong>Veracidade:</strong>
+                  <?= (int)$item['aceite_veracidade'] === 1 ? 'Confirmada' : 'Não confirmada' ?>
+                </div>
+                <div class="premiacao-meta">
+                  <strong>Participação:</strong>
+                  <?= (int)$item['deseja_participar'] === 1 ? 'Confirmada' : 'Rascunho' ?>
+                </div>
+              </div>
             </div>
           </div>
 
+          <?php if (!empty($item['observacoes_admin'])): ?>
+            <div class="premiacao-observacao">
+              <strong>Observações da equipe:</strong>
+              <?= nl2br(h($item['observacoes_admin'])) ?>
+            </div>
+          <?php endif; ?>
         </div>
-      </div>
-    <?php endforeach; ?>
-  </div>
-
-<?php endif; ?>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+</div>
 
 <?php include __DIR__ . '/../app/views/empreendedor/footer.php'; ?>

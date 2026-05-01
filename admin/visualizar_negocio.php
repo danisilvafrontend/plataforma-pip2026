@@ -159,17 +159,27 @@ include __DIR__ . '/../app/views/admin/header.php';
         </div>
     </div>
 
-    <nav class="admin-negocio-nav"> 
-        <a href="#empreendedor">Responsável</a>
+    <nav class="admin-negocio-nav">
+        <?php if (!is_juri_ou_tecnica()): ?>
+            <a href="#empreendedor">Responsável</a>
+        <?php endif; ?>
+
         <a href="#etapa-1">Etapa 1</a>
-        <a href="#etapa-2">Etapa 2</a>
+
+        <?php if (!is_juri_ou_tecnica()): ?>
+            <a href="#etapa-2">Etapa 2</a>
+        <?php endif; ?>
+
         <a href="#etapa-3">Etapa 3</a>
         <a href="#etapa-4">Etapa 4</a>
         <a href="#etapa-5">Etapa 5</a>
         <a href="#etapa-6">Etapa 6</a>
         <a href="#etapa-7">Etapa 7</a>
         <a href="#etapa-8">Etapa 8</a>
+
+        <?php if (!is_juri_ou_tecnica()): ?>
         <a href="#etapa-9">Etapa 9</a>
+        <?php endif; ?>
     </nav>
 
     <?php if (isset($_SESSION['erro'])): ?>
@@ -189,16 +199,32 @@ include __DIR__ . '/../app/views/admin/header.php';
     <?php endif; ?>
 
     <div class="admin-negocio-content mt-4">
-        <section id="empreendedor" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco-empreendedor.php'; ?></section>
-        <section id="etapa-1" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa1.php'; ?></section>
-        <section id="etapa-2" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa2.php'; ?></section>
+        <?php if (!is_juri_ou_tecnica()): ?>
+            <section id="empreendedor" class="admin-etapa-wrap">
+                <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco-empreendedor.php'; ?>
+            </section>
+        <?php endif; ?>
+
+        <section id="etapa-1" class="admin-etapa-wrap">
+            <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa1.php'; ?>
+        </section>
+
+        <?php if (!is_juri_ou_tecnica()): ?>
+            <section id="etapa-2" class="admin-etapa-wrap">
+                <?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa2.php'; ?>
+            </section>
+        <?php endif; ?>
+
         <section id="etapa-3" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa3.php'; ?></section>
         <section id="etapa-4" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa4.php'; ?></section>
         <section id="etapa-5" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa5.php'; ?></section>
         <section id="etapa-6" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa6.php'; ?></section>
         <section id="etapa-7" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa7.php'; ?></section>
         <section id="etapa-8" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa8.php'; ?></section>
+
+        <?php if (!is_juri_ou_tecnica()): ?>
         <section id="etapa-9" class="admin-etapa-wrap"><?php include __DIR__ . '/../negocios/blocos-cadastros/bloco_etapa9.php'; ?></section>
+        <?php endif; ?>
     </div>
 
     <?php if (($negocio['status_vitrine'] ?? '') === 'em_analise'): ?>

@@ -1,30 +1,28 @@
 <?php
 declare(strict_types=1);
+
 session_start();
 
-ini_set('display_errors', '1');
-error_reporting(E_ALL);
+require_once __DIR__ . '/../app/helpers/auth.php';
+require_admin_login();
 
 $appBase = dirname(__DIR__) . '/app';
-$config = require $appBase . '/config/db.php';
+$config  = require $appBase . '/config/db.php';
 
-$dsn = sprintf(
-    'mysql:host=%s;dbname=%s;port=%s;charset=%s',
-    $config['host'],
-    $config['dbname'],
-    $config['port'],
-    $config['charset']
-);
+$dsn  = sprintf('mysql:host=%s;dbname=%s;port=%s;charset=%s',
+    $config['host'], $config['dbname'], $config['port'], $config['charset']);
+$opts = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
 
 try {
-    $pdo = new PDO($dsn, $config['user'], $config['pass'], [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false,
-    ]);
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
 } catch (PDOException $e) {
-    die('Erro ao conectar ao banco: ' . $e->getMessage());
+    die('Erro na conexão com o banco: ' . $e->getMessage());
 }
+
 
 $pageTitle = 'Premiação - Períodos';
 $mensagem = '';
@@ -155,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stmtEdicao = $pdo->prepare("
-                SELECT id, nome, ano, data_inicio_inscricoes, data_fim_inscricoes, data_inicio_votacao, data_fim_votacao
+                SELECT id, nome, ano, slug, status
                 FROM premiacoes
                 WHERE id = ?
                 LIMIT 1
@@ -174,23 +172,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('A data/hora de fim não pode ser menor que a data/hora de início.');
             }
 
-            if ($tipoFase === 'inscricoes') {
-                if (!empty($edicao['data_inicio_inscricoes']) && $inicioObj < new DateTime($edicao['data_inicio_inscricoes'])) {
-                    throw new Exception('A fase de inscrições não pode começar antes do início das inscrições da edição.');
-                }
+            $stmtFasesMesmaEdicao = $pdo->prepare("
+                SELECT id, nome, ordem_exibicao, data_inicio, data_fim
+                FROM premiacao_fases
+                WHERE premiacao_id = ?
+                  AND id <> ?
+                ORDER BY ordem_exibicao ASC, data_inicio ASC, id ASC
+            ");
+            $stmtFasesMesmaEdicao->execute([$premiacaoId, $faseId]);
+            $fasesMesmaEdicao = $stmtFasesMesmaEdicao->fetchAll();
 
-                if (!empty($edicao['data_fim_inscricoes']) && $fimObj > new DateTime($edicao['data_fim_inscricoes'])) {
-                    throw new Exception('A fase de inscrições não pode terminar após o fim das inscrições da edição.');
+            foreach ($fasesMesmaEdicao as $faseExistente) {
+                $mesmaOrdem = (int)$faseExistente['ordem_exibicao'] === $ordemExibicao;
+                if ($mesmaOrdem) {
+                    throw new Exception('Já existe outra fase com esta ordem de exibição nesta edição.');
                 }
             }
 
-            if (in_array($tipoFase, ['classificatoria', 'final', 'resultado'], true)) {
-                if (!empty($edicao['data_inicio_votacao']) && $inicioObj < new DateTime($edicao['data_inicio_votacao'])) {
-                    throw new Exception('Esta fase não pode começar antes do início da votação da edição.');
-                }
+            if ($tipoFase === 'inscricoes') {
+                $sqlConflito = "
+                    SELECT pf.id, pf.nome, p.nome AS premiacao_nome
+                    FROM premiacao_fases pf
+                    INNER JOIN premiacoes p ON p.id = pf.premiacao_id
+                    WHERE pf.tipo_fase = 'inscricoes'
+                      AND pf.premiacao_id <> ?
+                      AND pf.id <> ?
+                      AND pf.status <> 'rascunho'
+                      AND (
+                            (? BETWEEN pf.data_inicio AND pf.data_fim)
+                         OR (? BETWEEN pf.data_inicio AND pf.data_fim)
+                         OR (pf.data_inicio BETWEEN ? AND ?)
+                         OR (pf.data_fim BETWEEN ? AND ?)
+                      )
+                    LIMIT 1
+                ";
 
-                if (!empty($edicao['data_fim_votacao']) && $fimObj > new DateTime($edicao['data_fim_votacao'])) {
-                    throw new Exception('Esta fase não pode terminar após o fim da votação da edição.');
+                $stmtConflito = $pdo->prepare($sqlConflito);
+                $stmtConflito->execute([
+                    $premiacaoId,
+                    $faseId,
+                    $inicioObj->format('Y-m-d H:i:s'),
+                    $fimObj->format('Y-m-d H:i:s'),
+                    $inicioObj->format('Y-m-d H:i:s'),
+                    $fimObj->format('Y-m-d H:i:s'),
+                    $inicioObj->format('Y-m-d H:i:s'),
+                    $fimObj->format('Y-m-d H:i:s'),
+                ]);
+
+                $conflito = $stmtConflito->fetch();
+                if ($conflito) {
+                    throw new Exception(
+                        'Já existe uma fase de inscrições em conflito com este período: ' .
+                        $conflito['premiacao_nome'] . ' / ' . $conflito['nome']
+                    );
                 }
             }
 
@@ -219,28 +253,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($faseId > 0) {
                 $stmt = $pdo->prepare("
                     UPDATE premiacao_fases
-                    SET
-                        premiacao_id = ?,
-                        tipo_fase = ?,
-                        rodada = ?,
-                        ordem_exibicao = ?,
-                        nome = ?,
-                        slug = ?,
-                        descricao = ?,
-                        data_inicio = ?,
-                        data_fim = ?,
-                        permite_voto_popular = ?,
-                        permite_avaliacao_tecnica = ?,
-                        permite_juri_final = ?,
-                        qtd_classificados_popular = ?,
-                        qtd_classificados_tecnica = ?,
-                        qtd_classificados_final = ?,
-                        criterio_desempate = ?,
-                        status = ?,
-                        updated_at = NOW()
+                    SET premiacao_id = ?, tipo_fase = ?, rodada = ?, ordem_exibicao = ?, nome = ?, slug = ?, descricao = ?,
+                        data_inicio = ?, data_fim = ?, permite_voto_popular = ?, permite_avaliacao_tecnica = ?,
+                        permite_juri_final = ?, qtd_classificados_popular = ?, qtd_classificados_tecnica = ?,
+                        qtd_classificados_final = ?, criterio_desempate = ?, status = ?, updated_at = NOW()
                     WHERE id = ?
                 ");
-
                 $stmt->execute([
                     $premiacaoId,
                     $tipoFase,
@@ -266,28 +284,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $stmt = $pdo->prepare("
                     INSERT INTO premiacao_fases (
-                        premiacao_id,
-                        tipo_fase,
-                        rodada,
-                        ordem_exibicao,
-                        nome,
-                        slug,
-                        descricao,
-                        data_inicio,
-                        data_fim,
-                        permite_voto_popular,
-                        permite_avaliacao_tecnica,
-                        permite_juri_final,
-                        qtd_classificados_popular,
-                        qtd_classificados_tecnica,
-                        qtd_classificados_final,
-                        criterio_desempate,
-                        status,
-                        created_at,
-                        updated_at
+                        premiacao_id, tipo_fase, rodada, ordem_exibicao, nome, slug, descricao,
+                        data_inicio, data_fim, permite_voto_popular, permite_avaliacao_tecnica,
+                        permite_juri_final, qtd_classificados_popular, qtd_classificados_tecnica,
+                        qtd_classificados_final, criterio_desempate, status, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 ");
-
                 $stmt->execute([
                     $premiacaoId,
                     $tipoFase,
@@ -344,7 +346,7 @@ if (isset($_GET['ok']) && $_GET['ok'] !== '') {
 }
 
 $stmtPremiacoes = $pdo->query("
-    SELECT id, nome, ano, slug, status, data_inicio_inscricoes, data_fim_inscricoes, data_inicio_votacao, data_fim_votacao
+    SELECT id, nome, ano, slug, status
     FROM premiacoes
     ORDER BY ano DESC, id DESC
 ");
@@ -410,290 +412,261 @@ if ($edicaoSelecionada > 0) {
 require_once $appBase . '/views/admin/header.php';
 ?>
 
-<div class="container-fluid py-4">
-    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-            <h4 class="fw-bold mb-0" style="color:#1E3425;">Premiação - Períodos</h4>
-            <small style="color:#6c8070;">Gerencie as rodadas e regras da edição selecionada.</small>
+            <h1 class="h3 mb-1">Premiação - Períodos</h1>
+            <p class="text-muted mb-0">Gerencie o calendário operacional de cada edição por fases.</p>
         </div>
     </div>
 
-    <?php if ($mensagem !== ''): ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <?= h($mensagem) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        </div>
+    <?php if ($mensagem): ?>
+        <div class="alert alert-success"><?= h($mensagem) ?></div>
     <?php endif; ?>
 
-    <?php if ($erro !== ''): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <?= h($erro) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        </div>
+    <?php if ($erro): ?>
+        <div class="alert alert-danger"><?= h($erro) ?></div>
     <?php endif; ?>
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">Selecionar edição</h5>
-        </div>
+    <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
-            <form method="get" class="row g-2 align-items-end">
-                <div class="col-12 col-md-6">
-                    <label for="premiacao_id" class="form-label">Edição da premiação</label>
-                    <select name="premiacao_id" id="premiacao_id" class="form-select" onchange="this.form.submit()">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label">Edição</label>
+                    <select name="premiacao_id" class="form-select" onchange="this.form.submit()">
                         <option value="">Selecione</option>
-                        <?php foreach ($premiacoes as $p): ?>
-                            <option value="<?= (int)$p['id'] ?>" <?= (int)$p['id'] === (int)$edicaoSelecionada ? 'selected' : '' ?>>
-                                <?= h($p['nome']) ?> - <?= (int)$p['ano'] ?> - <?= h($p['status']) ?>
+                        <?php foreach ($premiacoes as $premiacao): ?>
+                            <option value="<?= (int)$premiacao['id'] ?>" <?= (int)$premiacao['id'] === $edicaoSelecionada ? 'selected' : '' ?>>
+                                <?= h($premiacao['nome']) ?> · <?= (int)$premiacao['ano'] ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
             </form>
-
-            <?php if ($premiacaoAtual): ?>
-                <div class="row mt-3 g-2">
-                    <div class="col-md-3">
-                        <div class="border rounded p-3 bg-light h-100">
-                            <small class="text-muted d-block">Inscrições</small>
-                            <strong><?= dataBr($premiacaoAtual['data_inicio_inscricoes']) ?></strong><br>
-                            <span>até <?= dataBr($premiacaoAtual['data_fim_inscricoes']) ?></span>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="border rounded p-3 bg-light h-100">
-                            <small class="text-muted d-block">Votação</small>
-                            <strong><?= dataBr($premiacaoAtual['data_inicio_votacao']) ?></strong><br>
-                            <span>até <?= dataBr($premiacaoAtual['data_fim_votacao']) ?></span>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-12 col-xl-5">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0"><?= (int)$faseEdicao['id'] > 0 ? 'Editar fase' : 'Nova fase' ?></h5>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        <input type="hidden" name="acao" value="salvar_fase">
-                        <input type="hidden" name="fase_id" value="<?= (int)$faseEdicao['id'] ?>">
+    <?php if ($edicaoSelecionada > 0): ?>
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white">
+                <strong><?= (int)$faseEdicao['id'] > 0 ? 'Editar fase' : 'Nova fase' ?></strong>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" name="acao" value="salvar_fase">
+                    <input type="hidden" name="fase_id" value="<?= (int)$faseEdicao['id'] ?>">
+                    <input type="hidden" name="premiacao_id" value="<?= (int)$edicaoSelecionada ?>">
 
-                        <div class="mb-3">
-                            <label class="form-label">Edição</label>
-                            <select name="premiacao_id" class="form-select" required>
-                                <option value="">Selecione</option>
-                                <?php foreach ($premiacoes as $p): ?>
-                                    <option value="<?= (int)$p['id'] ?>" <?= (int)$p['id'] === (int)$faseEdicao['premiacao_id'] ? 'selected' : '' ?>>
-                                        <?= h($p['nome']) ?> - <?= (int)$p['ano'] ?>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Tipo de fase</label>
+                            <select name="tipo_fase" class="form-select" required>
+                                <?php
+                                $tipos = [
+                                    'inscricoes' => 'Inscrições',
+                                    'triagem_documental' => 'Triagem documental',
+                                    'classificatoria' => 'Classificatória',
+                                    'final' => 'Fase final',
+                                    'resultado' => 'Resultado',
+                                ];
+                                foreach ($tipos as $valor => $label):
+                                ?>
+                                    <option value="<?= h($valor) ?>" <?= ($faseEdicao['tipo_fase'] ?? '') === $valor ? 'selected' : '' ?>>
+                                        <?= h($label) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
 
-                        <div class="row g-2">
-                            <div class="col-md-7">
-                                <label class="form-label">Tipo da fase</label>
-                                <select name="tipo_fase" class="form-select" required>
-                                    <option value="">Selecione</option>
-                                    <option value="inscricoes" <?= ($faseEdicao['tipo_fase'] ?? '') === 'inscricoes' ? 'selected' : '' ?>>Inscrições</option>
-                                    <option value="triagem_documental" <?= ($faseEdicao['tipo_fase'] ?? '') === 'triagem_documental' ? 'selected' : '' ?>>Triagem documental</option>
-                                    <option value="classificatoria" <?= ($faseEdicao['tipo_fase'] ?? '') === 'classificatoria' ? 'selected' : '' ?>>Classificatória</option>
-                                    <option value="final" <?= ($faseEdicao['tipo_fase'] ?? '') === 'final' ? 'selected' : '' ?>>Fase final</option>
-                                    <option value="resultado" <?= ($faseEdicao['tipo_fase'] ?? '') === 'resultado' ? 'selected' : '' ?>>Resultado</option>
-                                </select>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label">Rodada</label>
-                                <input type="number" name="rodada" class="form-control" min="0" value="<?= h((string)($faseEdicao['rodada'] ?? '')) ?>" placeholder="0, 1, 2, 3">
-                            </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Rodada</label>
+                            <input type="number" name="rodada" class="form-control" min="0"
+                                   value="<?= h((string)($faseEdicao['rodada'] ?? '')) ?>">
                         </div>
 
-                        <div class="row g-2 mt-1">
-                            <div class="col-md-8">
-                                <label class="form-label">Nome da fase</label>
-                                <input type="text" name="nome" class="form-control" required value="<?= h($faseEdicao['nome']) ?>">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Ordem</label>
-                                <input type="number" name="ordem_exibicao" class="form-control" min="0" value="<?= h((string)($faseEdicao['ordem_exibicao'] ?? 0)) ?>">
-                            </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Ordem</label>
+                            <input type="number" name="ordem_exibicao" class="form-control" min="1" required
+                                   value="<?= h((string)($faseEdicao['ordem_exibicao'] ?? 0)) ?>">
                         </div>
 
-                        <div class="mb-3 mt-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <?php
+                                foreach (['rascunho', 'agendada', 'em_andamento', 'encerrada', 'apurada'] as $statusFase):
+                                ?>
+                                    <option value="<?= h($statusFase) ?>" <?= ($faseEdicao['status'] ?? 'rascunho') === $statusFase ? 'selected' : '' ?>>
+                                        <?= h(labelStatus($statusFase)) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label">Nome</label>
+                            <input type="text" name="nome" class="form-control" required
+                                   value="<?= h($faseEdicao['nome'] ?? '') ?>">
+                        </div>
+
+                        <div class="col-md-4">
                             <label class="form-label">Slug</label>
-                            <input type="text" name="slug" class="form-control" required value="<?= h($faseEdicao['slug']) ?>">
+                            <input type="text" name="slug" class="form-control" required
+                                   value="<?= h($faseEdicao['slug'] ?? '') ?>">
                         </div>
 
-                        <div class="mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Data/hora início</label>
+                            <input type="datetime-local" name="data_inicio" class="form-control" required
+                                   value="<?= h(formatDatetimeLocal($faseEdicao['data_inicio'] ?? '')) ?>">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Data/hora fim</label>
+                            <input type="datetime-local" name="data_fim" class="form-control" required
+                                   value="<?= h(formatDatetimeLocal($faseEdicao['data_fim'] ?? '')) ?>">
+                        </div>
+
+                        <div class="col-12">
                             <label class="form-label">Descrição</label>
-                            <textarea name="descricao" class="form-control" rows="3"><?= h($faseEdicao['descricao']) ?></textarea>
+                            <textarea name="descricao" class="form-control" rows="3"><?= h($faseEdicao['descricao'] ?? '') ?></textarea>
                         </div>
 
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label">Data/hora de início</label>
-                                <input type="datetime-local" name="data_inicio" class="form-control" required value="<?= formatDatetimeLocal($faseEdicao['data_inicio']) ?>">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Data/hora de fim</label>
-                                <input type="datetime-local" name="data_fim" class="form-control" required value="<?= formatDatetimeLocal($faseEdicao['data_fim']) ?>">
-                            </div>
-                        </div>
-
-                        <div class="mt-3">
-                            <label class="form-label d-block">Permissões da fase</label>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="permite_voto_popular" id="permite_voto_popular" value="1" <?= (int)($faseEdicao['permite_voto_popular'] ?? 0) === 1 ? 'checked' : '' ?>>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="permite_voto_popular" id="permite_voto_popular"
+                                       <?= (int)($faseEdicao['permite_voto_popular'] ?? 0) === 1 ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="permite_voto_popular">Permite voto popular</label>
                             </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="permite_avaliacao_tecnica" id="permite_avaliacao_tecnica" value="1" <?= (int)($faseEdicao['permite_avaliacao_tecnica'] ?? 0) === 1 ? 'checked' : '' ?>>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="permite_avaliacao_tecnica" id="permite_avaliacao_tecnica"
+                                       <?= (int)($faseEdicao['permite_avaliacao_tecnica'] ?? 0) === 1 ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="permite_avaliacao_tecnica">Permite avaliação técnica</label>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="permite_juri_final" id="permite_juri_final" value="1" <?= (int)($faseEdicao['permite_juri_final'] ?? 0) === 1 ? 'checked' : '' ?>>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" name="permite_juri_final" id="permite_juri_final"
+                                       <?= (int)($faseEdicao['permite_juri_final'] ?? 0) === 1 ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="permite_juri_final">Permite júri final</label>
                             </div>
                         </div>
 
-                        <div class="row g-2 mt-1">
-                            <div class="col-md-4">
-                                <label class="form-label">Qtd. popular</label>
-                                <input type="number" name="qtd_classificados_popular" class="form-control" min="0" value="<?= h((string)($faseEdicao['qtd_classificados_popular'] ?? 0)) ?>">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Qtd. técnica</label>
-                                <input type="number" name="qtd_classificados_tecnica" class="form-control" min="0" value="<?= h((string)($faseEdicao['qtd_classificados_tecnica'] ?? 0)) ?>">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Qtd. final</label>
-                                <input type="number" name="qtd_classificados_final" class="form-control" min="0" value="<?= h((string)($faseEdicao['qtd_classificados_final'] ?? 0)) ?>">
-                            </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Qtd. classificados popular</label>
+                            <input type="number" name="qtd_classificados_popular" class="form-control" min="0"
+                                   value="<?= h((string)($faseEdicao['qtd_classificados_popular'] ?? 0)) ?>">
                         </div>
 
-                        <div class="mt-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Qtd. classificados técnica</label>
+                            <input type="number" name="qtd_classificados_tecnica" class="form-control" min="0"
+                                   value="<?= h((string)($faseEdicao['qtd_classificados_tecnica'] ?? 0)) ?>">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Qtd. classificados final</label>
+                            <input type="number" name="qtd_classificados_final" class="form-control" min="0"
+                                   value="<?= h((string)($faseEdicao['qtd_classificados_final'] ?? 0)) ?>">
+                        </div>
+
+                        <div class="col-12">
                             <label class="form-label">Critério de desempate</label>
-                            <select name="criterio_desempate" class="form-select">
-                                <option value="">Selecione</option>
-                                <option value="nota_tecnica" <?= ($faseEdicao['criterio_desempate'] ?? '') === 'nota_tecnica' ? 'selected' : '' ?>>Maior nota técnica</option>
-                                <option value="voto_popular" <?= ($faseEdicao['criterio_desempate'] ?? '') === 'voto_popular' ? 'selected' : '' ?>>Maior voto popular</option>
-                                <option value="data_inscricao" <?= ($faseEdicao['criterio_desempate'] ?? '') === 'data_inscricao' ? 'selected' : '' ?>>Inscrição mais antiga</option>
-                                <option value="decisao_admin" <?= ($faseEdicao['criterio_desempate'] ?? '') === 'decisao_admin' ? 'selected' : '' ?>>Decisão administrativa</option>
-                            </select>
+                            <input type="text" name="criterio_desempate" class="form-control"
+                                   value="<?= h($faseEdicao['criterio_desempate'] ?? '') ?>">
                         </div>
+                    </div>
 
-                        <div class="mt-3">
-                            <label class="form-label">Status base</label>
-                            <select name="status" class="form-select">
-                                <option value="rascunho" <?= ($faseEdicao['status'] ?? '') === 'rascunho' ? 'selected' : '' ?>>Rascunho</option>
-                                <option value="agendada" <?= ($faseEdicao['status'] ?? '') === 'agendada' ? 'selected' : '' ?>>Agendada</option>
-                                <option value="em_andamento" <?= ($faseEdicao['status'] ?? '') === 'em_andamento' ? 'selected' : '' ?>>Em andamento</option>
-                                <option value="encerrada" <?= ($faseEdicao['status'] ?? '') === 'encerrada' ? 'selected' : '' ?>>Encerrada</option>
-                                <option value="apurada" <?= ($faseEdicao['status'] ?? '') === 'apurada' ? 'selected' : '' ?>>Apurada</option>
-                            </select>
-                        </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-dark">
+                            <?= (int)$faseEdicao['id'] > 0 ? 'Salvar alterações' : 'Cadastrar fase' ?>
+                        </button>
 
-                        <div class="d-flex gap-2 mt-4">
-                            <button type="submit" class="btn btn-primary">
-                                <?= (int)$faseEdicao['id'] > 0 ? 'Salvar alterações' : 'Cadastrar fase' ?>
-                            </button>
-
-                            <?php if ((int)$faseEdicao['id'] > 0): ?>
-                                <a href="premiacao_periodos.php?premiacao_id=<?= (int)$faseEdicao['premiacao_id'] ?>" class="btn btn-outline-secondary">
-                                    Cancelar edição
-                                </a>
-                            <?php endif; ?>
-                        </div>
-                    </form>
-                </div>
+                        <?php if ((int)$faseEdicao['id'] > 0): ?>
+                            <a href="premiacao_periodos.php?premiacao_id=<?= (int)$edicaoSelecionada ?>" class="btn btn-outline-secondary">Cancelar edição</a>
+                        <?php endif; ?>
+                    </div>
+                </form>
             </div>
         </div>
 
-        <div class="col-12 col-xl-7">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Fases cadastradas</h5>
-                </div>
-                <div class="card-body">
-                    <?php if (!$premiacaoAtual): ?>
-                        <div class="alert alert-light border mb-0">Cadastre uma edição da premiação antes de configurar as fases.</div>
-                    <?php elseif (empty($fases)): ?>
-                        <div class="alert alert-light border mb-0">Nenhuma fase cadastrada para esta edição.</div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Fase</th>
-                                        <th>Período</th>
-                                        <th>Regras</th>
-                                        <th>Status</th>
-                                        <th class="text-end">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($fases as $fase): ?>
-                                        <?php $statusAuto = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], $fase['status']); ?>
-                                        <tr>
-                                            <td>
-                                                <div class="fw-semibold"><?= h($fase['nome']) ?></div>
-                                                <div class="text-muted small">
-                                                    <?= h(labelTipoFase((string)$fase['tipo_fase'])) ?>
-                                                    <?php if (!empty($fase['rodada'])): ?> · Rodada <?= (int)$fase['rodada'] ?><?php endif; ?>
-                                                    · <?= h($fase['slug']) ?>
-                                                </div>
-                                                <?php if (!empty($fase['descricao'])): ?>
-                                                    <div class="text-muted small mt-1"><?= nl2br(h($fase['descricao'])) ?></div>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <div><strong>Início:</strong> <?= dataBr($fase['data_inicio']) ?></div>
-                                                <div><strong>Fim:</strong> <?= dataBr($fase['data_fim']) ?></div>
-                                            </td>
-                                            <td class="small">
-                                                Ordem: <?= (int)$fase['ordem_exibicao'] ?><br>
-                                                Popular: <?= (int)$fase['qtd_classificados_popular'] ?><br>
-                                                Técnica: <?= (int)$fase['qtd_classificados_tecnica'] ?><br>
-                                                Final: <?= (int)$fase['qtd_classificados_final'] ?><br>
-                                                Desempate: <?= h((string)($fase['criterio_desempate'] ?: '—')) ?><br>
-                                                <?= (int)$fase['permite_voto_popular'] === 1 ? 'Voto popular' : 'Sem voto popular' ?> /
-                                                <?= (int)$fase['permite_avaliacao_tecnica'] === 1 ? 'Avaliação técnica' : 'Sem avaliação técnica' ?> /
-                                                <?= (int)$fase['permite_juri_final'] === 1 ? 'Júri final' : 'Sem júri' ?>
-                                            </td>
-                                            <td>
-                                                <div><?= h(labelStatus($statusAuto)) ?></div>
-                                                <div class="text-muted small">Salvo: <?= h((string)$fase['status']) ?></div>
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="d-flex justify-content-end gap-2 flex-wrap">
-                                                    <a href="premiacao_periodos.php?premiacao_id=<?= (int)$fase['premiacao_id'] ?>&editar=<?= (int)$fase['id'] ?>" class="btn btn-sm btn-outline-primary">
-                                                        Editar
-                                                    </a>
-
-                                                    <form method="post" class="d-inline">
-                                                        <input type="hidden" name="acao" value="recalcular_status">
-                                                        <input type="hidden" name="fase_id" value="<?= (int)$fase['id'] ?>">
-                                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                                            Recalcular status
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white">
+                <strong>Fases cadastradas</strong>
+            </div>
+            <div class="card-body">
+                <?php if (empty($fases)): ?>
+                    <p class="text-muted mb-0">Nenhuma fase cadastrada para esta edição.</p>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Fase</th>
+                                    <th>Período</th>
+                                    <th>Regras</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($fases as $fase): ?>
+                                <?php $statusAuto = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], $fase['status']); ?>
+                                <tr>
+                                    <td>
+                                        <strong><?= h($fase['nome']) ?></strong><br>
+                                        <small class="text-muted">
+                                            <?= h(labelTipoFase((string)$fase['tipo_fase'])) ?>
+                                            · Rodada <?= (int)($fase['rodada'] ?? 0) ?>
+                                            · <?= h($fase['slug']) ?>
+                                        </small>
+                                        <?php if (!empty($fase['descricao'])): ?>
+                                            <div class="small text-muted mt-1"><?= nl2br(h($fase['descricao'])) ?></div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <strong>Início:</strong> <?= h(dataBr($fase['data_inicio'])) ?><br>
+                                        <strong>Fim:</strong> <?= h(dataBr($fase['data_fim'])) ?>
+                                    </td>
+                                    <td>
+                                        <div><strong>Ordem:</strong> <?= (int)$fase['ordem_exibicao'] ?></div>
+                                        <div><strong>Popular:</strong> <?= (int)$fase['qtd_classificados_popular'] ?></div>
+                                        <div><strong>Técnica:</strong> <?= (int)$fase['qtd_classificados_tecnica'] ?></div>
+                                        <div><strong>Final:</strong> <?= (int)$fase['qtd_classificados_final'] ?></div>
+                                        <div><strong>Desempate:</strong> <?= h((string)($fase['criterio_desempate'] ?: '—')) ?></div>
+                                        <div class="small text-muted mt-1">
+                                            <?= (int)$fase['permite_voto_popular'] === 1 ? 'Voto popular' : 'Sem voto popular' ?>
+                                            /
+                                            <?= (int)$fase['permite_avaliacao_tecnica'] === 1 ? 'Avaliação técnica' : 'Sem avaliação técnica' ?>
+                                            /
+                                            <?= (int)$fase['permite_juri_final'] === 1 ? 'Júri final' : 'Sem júri' ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge text-bg-secondary"><?= h(labelStatus($statusAuto)) ?></span><br>
+                                        <small class="text-muted">Salvo: <?= h((string)$fase['status']) ?></small>
+                                    </td>
+                                    <td class="d-flex gap-2 flex-wrap">
+                                        <a href="premiacao_periodos.php?premiacao_id=<?= (int)$edicaoSelecionada ?>&editar=<?= (int)$fase['id'] ?>" class="btn btn-sm btn-outline-primary">Editar</a>
+                                        <form method="post" class="d-inline">
+                                            <input type="hidden" name="acao" value="recalcular_status">
+                                            <input type="hidden" name="fase_id" value="<?= (int)$fase['id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-dark">Recalcular status</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
-    </div>
+    <?php endif; ?>
 </div>
 
 <?php require_once $appBase . '/views/admin/footer.php'; ?>

@@ -1694,3 +1694,17 @@ body { background: var(--c-surface); font-family: var(--font-sans); color: var(-
 .kpi-card.prem-vp .kpi-valor { font-size: 28px; font-weight: 800; line-height: 1; }
 .kpi-card.prem-vp .kpi-label { font-size: 12px; color: #6c7a6e; font-weight: 500; }
 .kpi-card.prem-vp .kpi-sub   { font-size: 11px; color: #9aab9d; }
+
+/* PREMIAÇÃO — INSCRIÇÕES */
+.premiacao-inscricoes-table td .form-select,
+.premiacao-inscricoes-table td .form-control {
+  min-width: 220px;
+}
+
+.premiacao-inscricoes-table textarea.form-control {
+  resize: vertical;
+}
+
+.premiacao-inscricoes-table .hd-btn.primary {
+  justify-content: center;
+}

@@ -1,21 +1,72 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// Conexão com banco
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 $config = require __DIR__ . '/app/config/db.php';
-$pdo = new PDO(
-    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
-    $config['user'],
-    $config['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+
+$dsn  = sprintf('mysql:host=%s;dbname=%s;port=%s;charset=%s',
+    $config['host'], $config['dbname'], $config['port'], $config['charset']);
+$opts = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
+} catch (PDOException $e) {
+    die('Erro na conexão com o banco: ' . $e->getMessage());
+}
+
+function normalizarStatusPremiacao(?string $status): string
+{
+    $status = trim((string)$status);
+
+    return match ($status) {
+        'em_triagem' => 'emtriagem',
+        'classificada_fase_1' => 'classificadafase1',
+        'classificada_fase_2' => 'classificadafase2',
+        default => $status,
+    };
+}
+
+function eleitorFrontendAtual(): ?array
+{
+    if (!empty($_SESSION['user_id'])) {
+        return ['tipo' => 'empreendedor', 'id' => (int)$_SESSION['user_id']];
+    }
+
+    if (!empty($_SESSION['parceiro_id'])) {
+        return ['tipo' => 'parceiro', 'id' => (int)$_SESSION['parceiro_id']];
+    }
+
+    if (!empty($_SESSION['logado']) && ($_SESSION['usuario_tipo'] ?? '') === 'sociedade_civil' && !empty($_SESSION['usuario_id'])) {
+        return ['tipo' => 'sociedade_civil', 'id' => (int)$_SESSION['usuario_id']];
+    }
+
+    return null;
+}
+
+$actorFrontend = eleitorFrontendAtual();
 
 // Base da query
 $sql = "
-    SELECT n.id, n.nome_fantasia, n.categoria, n.municipio, n.estado,
-       a.frase_negocio, a.logo_negocio, a.imagem_destaque,
-       o.icone_url,
-       e.nome AS eixo_tematico_nome
+    SELECT
+        n.id,
+        n.nome_fantasia,
+        n.categoria,
+        n.municipio,
+        n.estado,
+        a.frase_negocio,
+        a.logo_negocio,
+        a.imagem_destaque,
+        o.icone_url,
+        e.nome AS eixo_tematico_nome
     FROM negocios n
     LEFT JOIN negocio_apresentacao a ON a.negocio_id = n.id
     LEFT JOIN ods o ON o.id = n.ods_prioritaria_id
@@ -24,8 +75,7 @@ $sql = "
 ";
 $params = [];
 
-
-// Aplica filtros se existirem
+// Filtros
 if (!empty($_GET['categoria'])) {
     $sql .= " AND n.categoria = :categoria";
     $params[':categoria'] = $_GET['categoria'];
@@ -50,30 +100,29 @@ if (!empty($_GET['ods'])) {
 $sql .= " ORDER BY n.nome_fantasia";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-$negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+$negocios = $stmt->fetchAll();
 
 // Categorias
 $categorias = $pdo->query("
-    SELECT DISTINCT categoria 
-    FROM negocios 
-    WHERE publicado_vitrine = 1 
+    SELECT DISTINCT categoria
+    FROM negocios
+    WHERE publicado_vitrine = 1
     ORDER BY categoria
 ")->fetchAll(PDO::FETCH_COLUMN);
 
 // Estados
 $estados = $pdo->query("
-    SELECT DISTINCT estado 
-    FROM negocios 
-    WHERE publicado_vitrine = 1 
+    SELECT DISTINCT estado
+    FROM negocios
+    WHERE publicado_vitrine = 1
     ORDER BY estado
 ")->fetchAll(PDO::FETCH_COLUMN);
 
 // Municípios
 $municipios = $pdo->query("
-    SELECT DISTINCT municipio 
-    FROM negocios 
-    WHERE publicado_vitrine = 1 
+    SELECT DISTINCT municipio
+    FROM negocios
+    WHERE publicado_vitrine = 1
     ORDER BY municipio
 ")->fetchAll(PDO::FETCH_COLUMN);
 
@@ -84,16 +133,110 @@ $ods = $pdo->query("
     INNER JOIN ods o ON o.id = n.ods_prioritaria_id
     WHERE n.publicado_vitrine = 1
     ORDER BY o.id
-")->fetchAll(PDO::FETCH_ASSOC);
+")->fetchAll();
 
-// Eixos Temáticos
+// Eixos
 $eixos = $pdo->query("
     SELECT DISTINCT et.id, et.nome
     FROM negocios n
     INNER JOIN eixos_tematicos et ON et.id = n.eixo_principal_id
     WHERE n.publicado_vitrine = 1
     ORDER BY et.nome
-")->fetchAll(PDO::FETCH_ASSOC);
+")->fetchAll();
+
+// Fase de voto popular ativa
+$faseVotoAtiva = null;
+$stmtFase = $pdo->query("
+    SELECT
+        p.id AS premiacao_id,
+        p.nome AS premiacao_nome,
+        p.ano AS premiacao_ano,
+        pf.data_inicio AS data_inicio_votacao,
+        pf.data_fim    AS data_fim_votacao,
+        pf.id AS fase_id,
+        pf.nome AS fase_nome
+    FROM premiacoes p
+    INNER JOIN premiacao_fases pf
+        ON pf.premiacao_id = p.id
+       AND pf.permite_voto_popular = 1
+       AND pf.status = 'em_andamento'
+    WHERE p.status IN ('ativa', 'planejada')
+    ORDER BY
+        CASE WHEN p.status = 'ativa' THEN 0 ELSE 1 END,
+        p.ano DESC,
+        p.id DESC,
+        pf.ordem_exibicao ASC,
+        pf.id ASC
+    LIMIT 1
+");
+$faseTmp = $stmtFase->fetch();
+
+if ($faseTmp) {
+    $agora = time();
+    $ini = strtotime((string)($faseTmp['data_inicio_votacao'] ?? ''));
+    $fim = strtotime((string)($faseTmp['data_fim_votacao'] ?? ''));
+
+    if ($ini && $fim && $agora >= $ini && $agora <= $fim) {
+        $faseVotoAtiva = $faseTmp;
+    }
+}
+
+$mapVotacao = [];
+
+if ($faseVotoAtiva && !empty($negocios)) {
+    $idsNegocios = array_map(static fn($n) => (int)$n['id'], $negocios);
+    $placeholders = implode(',', array_fill(0, count($idsNegocios), '?'));
+
+    $stmtInsc = $pdo->prepare("
+        SELECT id, negocio_id, status
+        FROM premiacao_inscricoes
+        WHERE premiacao_id = ?
+          AND negocio_id IN ($placeholders)
+    ");
+    $stmtInsc->execute(array_merge([(int)$faseVotoAtiva['premiacao_id']], $idsNegocios));
+
+    foreach ($stmtInsc->fetchAll() as $insc) {
+        $statusNorm = normalizarStatusPremiacao($insc['status']);
+
+        if (in_array($statusNorm, ['elegivel', 'classificadafase1', 'classificadafase2', 'finalista', 'vencedora'], true)) {
+            $mapVotacao[(int)$insc['negocio_id']] = [
+                'inscricao_id' => (int)$insc['id'],
+                'status' => $statusNorm,
+                'votacao_ativa' => true,
+                'ja_votou' => false,
+                'premiacao_nome' => $faseVotoAtiva['premiacao_nome'],
+                'premiacao_ano' => (int)$faseVotoAtiva['premiacao_ano'],
+                'fase_id' => (int)$faseVotoAtiva['fase_id'],
+            ];
+        }
+    }
+
+    if ($actorFrontend && !empty($mapVotacao)) {
+        $idsInscricoes = array_column($mapVotacao, 'inscricao_id');
+        $placeholdersInsc = implode(',', array_fill(0, count($idsInscricoes), '?'));
+
+        $stmtJaV = $pdo->prepare("
+            SELECT inscricao_id
+            FROM premiacao_votos_populares
+            WHERE fase_id = ?
+              AND tipo_eleitor = ?
+              AND eleitor_id = ?
+              AND inscricao_id IN ($placeholdersInsc)
+        ");
+        $stmtJaV->execute(array_merge([
+            (int)$faseVotoAtiva['fase_id'],
+            $actorFrontend['tipo'],
+            $actorFrontend['id']
+        ], $idsInscricoes));
+
+        $jaVotados = array_map('intval', $stmtJaV->fetchAll(PDO::FETCH_COLUMN));
+
+        foreach ($mapVotacao as &$item) {
+            $item['ja_votou'] = in_array((int)$item['inscricao_id'], $jaVotados, true);
+        }
+        unset($item);
+    }
+}
 ?>
 
 <?php include __DIR__ . '/app/views/public/header_public.php'; ?>

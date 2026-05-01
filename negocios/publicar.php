@@ -1,22 +1,69 @@
 <?php
-// /public_html/negocios/publicar.php
+declare(strict_types=1);
+
 session_start();
 
-$config = require __DIR__ . '/../app/config/db.php';
-$pdo = new PDO(
-    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
-    $config['user'],
-    $config['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+if (empty($_SESSION['user_id'])) {
+    header('Location: /login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
 
-// Helpers de e-mail 
+$appBase = dirname(__DIR__) . '/app';
+$config  = require $appBase . '/config/db.php';
+
+$dsn  = sprintf('mysql:host=%s;dbname=%s;port=%s;charset=%s',
+    $config['host'], $config['dbname'], $config['port'], $config['charset']);
+$opts = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+try {
+    $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
+} catch (PDOException $e) {
+    die('Erro na conexão com o banco: ' . $e->getMessage());
+}
+
+
+// Helpers de e-mail
 require_once __DIR__ . '/../app/helpers/mail.php';
 require_once __DIR__ . '/../app/helpers/email_template.php';
 
-$negocioId = (int)($_GET['negocio_id'] ?? $_POST['negocio_id'] ?? $_GET['id'] ?? $_POST['id'] ?? 0);
+function premiacaoEdicoesComInscricoesAbertas(PDO $pdo): array
+{
+    $sql = "
+        SELECT 
+            p.id,
+            p.nome,
+            p.slug,
+            p.ano,
+            p.regulamento_url,
+            pf.id AS fase_id,
+            pf.nome AS fase_nome,
+            pf.data_inicio,
+            pf.data_fim
+        FROM premiacoes p
+        INNER JOIN premiacao_fases pf 
+            ON pf.premiacao_id = p.id
+        WHERE pf.tipo_fase = 'inscricoes'
+          AND pf.status <> 'rascunho'
+          AND NOW() BETWEEN pf.data_inicio AND pf.data_fim
+        ORDER BY pf.data_inicio ASC, p.id ASC
+    ";
 
-$empreendedorId = $_SESSION['user_id'];
+    $stmt = $pdo->query($sql);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+function premiacaoEdicaoInscricaoAtual(PDO $pdo): ?array
+{
+    $edicoes = premiacaoEdicoesComInscricoesAbertas($pdo);
+    return $edicoes[0] ?? null;
+}
+
+$negocioId = (int)($_GET['negocio_id'] ?? $_POST['negocio_id'] ?? $_GET['id'] ?? $_POST['id'] ?? 0);
+$empreendedorId = (int)$_SESSION['user_id'];
 
 if ($negocioId === 0) {
     header("Location: /empreendedores/meus-negocios.php");
@@ -27,9 +74,10 @@ $colDono = 'empreendedor_id';
 
 // Verifica se negócio existe e pertence ao user
 $stmt = $pdo->prepare("
-    SELECT id, nome_fantasia, categoria, status_vitrine, etapa_atual, inscricao_completa 
-    FROM negocios 
-    WHERE id = ? AND {$colDono} = ? LIMIT 1
+    SELECT id, nome_fantasia, categoria, status_vitrine, etapa_atual, inscricao_completa
+    FROM negocios
+    WHERE id = ? AND {$colDono} = ?
+    LIMIT 1
 ");
 $stmt->execute([$negocioId, $empreendedorId]);
 $negocio = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -40,10 +88,11 @@ if (!$negocio) {
 
 // Verifica se docs foram enviadas (obrigatório para aprovação)
 $stmt = $pdo->prepare("
-    SELECT COUNT(*) FROM negocios_documentos 
-    WHERE negocio_id = ? 
-    AND certidao_trabalhista_path IS NOT NULL 
-    AND certidao_ambiental_path IS NOT NULL
+    SELECT COUNT(*)
+    FROM negocios_documentos
+    WHERE negocio_id = ?
+      AND certidao_trabalhista_path IS NOT NULL
+      AND certidao_ambiental_path IS NOT NULL
 ");
 $stmt->execute([$negocioId]);
 $docsOk = $stmt->fetchColumn() > 0;
@@ -53,11 +102,11 @@ if (!$docsOk) {
     header("Location: /negocios/confirmacao.php?id=" . $negocioId);
     exit;
 }
-$acao = $_POST['acao'] ?? '';
 
-$premiacaoDesejaParticipar  = ($acao === 'publicar_com_premiacao') ? 1 : 0;
+$acao = $_POST['acao'] ?? '';
+$premiacaoDesejaParticipar = ($acao === 'publicar_com_premiacao') ? 1 : 0;
 $premiacaoAceiteRegulamento = isset($_POST['aceite_regulamento']) ? 1 : 0;
-$premiacaoAceiteVeracidade  = isset($_POST['aceite_veracidade'])  ? 1 : 0;
+$premiacaoAceiteVeracidade = isset($_POST['aceite_veracidade']) ? 1 : 0;
 
 if ($acao === 'remover') {
     $stmt = $pdo->prepare("UPDATE negocios SET publicado_vitrine = 0, status_operacional = 'encerrado' WHERE id = ?");
@@ -76,34 +125,27 @@ try {
     $pdo->beginTransaction();
 
     // 1) Marca como enviado para análise
-       $stmt = $pdo->prepare("
-        UPDATE negocios 
+    $stmt = $pdo->prepare("
+        UPDATE negocios
         SET status_vitrine = 'em_analise',
             etapa_atual = 11,
             inscricao_completa = 1,
             updated_at = NOW()
         WHERE id = ? AND {$colDono} = ?
     ");
-
     $stmt->execute([$negocioId, $empreendedorId]);
 
-    // 1.1) Se houver premiação vigente e o empreendedor desejar participar,
-    // salva ou atualiza a inscrição do negócio na premiação
-    $stmtPremiacao = $pdo->query("
-        SELECT id, nome, ano, status
-        FROM premiacoes
-        WHERE status IN ('ativa', 'planejada')
-        ORDER BY 
-            CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
-            ano DESC,
-            id DESC
-        LIMIT 1
-    ");
-    $premiacaoVigente = $stmtPremiacao->fetch(PDO::FETCH_ASSOC);
-
-    if (!empty($premiacaoVigente['id']) && $premiacaoDesejaParticipar === 1) {
+    // 1.1) Se desejar participar da premiação, inscreve somente na edição
+    // que estiver com fase de inscrições aberta agora
+    if ($premiacaoDesejaParticipar === 1) {
         if ($premiacaoAceiteRegulamento !== 1 || $premiacaoAceiteVeracidade !== 1) {
             throw new Exception('Para participar da premiação, é obrigatório aceitar o regulamento e declarar a veracidade das informações.');
+        }
+
+        $premiacaoVigente = premiacaoEdicaoInscricaoAtual($pdo);
+
+        if (empty($premiacaoVigente['id'])) {
+            throw new Exception('No momento não há nenhuma edição da premiação com inscrições abertas.');
         }
 
         $stmtPremiacaoUpsert = $pdo->prepare("
@@ -130,7 +172,6 @@ try {
                 enviado_em = NOW(),
                 updated_at = NOW()
         ");
-
         $stmtPremiacaoUpsert->execute([
             (int)$premiacaoVigente['id'],
             $negocioId,

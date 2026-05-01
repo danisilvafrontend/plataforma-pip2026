@@ -198,22 +198,23 @@ try {
 <!-- ══════════════════════════════════
      Atalhos rápidos
 ═══════════════════════════════════ -->
-<div class="card section-card mb-4">
-  <div class="card-header d-flex align-items-center gap-2">
-    <i class="bi bi-lightning-charge-fill" style="color:#CDDE00;"></i>
-    <h5>Acesso rápido</h5>
-  </div>
-  <div class="card-body">
-    <div class="d-flex flex-wrap gap-2">
-      <a href="/admin/administradores.php" class="shortcut-btn"><i class="bi bi-shield-lock me-1"></i>Administradores</a>
-      <a href="/admin/empreendedores.php" class="shortcut-btn"><i class="bi bi-people me-1"></i>Empreendedores</a>
-      <a href="/admin/parceiros.php"       class="shortcut-btn"><i class="bi bi-handshake me-1"></i>Parceiros</a>
-      <a href="/admin/usuarios.php"        class="shortcut-btn"><i class="bi bi-person me-1"></i>Usuários</a>
-      <a href="/admin/negocios.php"        class="shortcut-btn"><i class="bi bi-briefcase me-1"></i>Negócios</a>
+<?php if (can_see_admin_shortcuts()): ?>
+  <div class="card section-card mb-4">
+    <div class="card-header d-flex align-items-center gap-2">
+      <i class="bi bi-lightning-charge-fill" style="color:#CDDE00;"></i>
+      <h5>Acesso rápido</h5>
+    </div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2">
+        <a href="/admin/administradores.php" class="shortcut-btn"><i class="bi bi-shield-lock me-1"></i>Administradores</a>
+        <a href="/admin/empreendedores.php" class="shortcut-btn"><i class="bi bi-people me-1"></i>Empreendedores</a>
+        <a href="/admin/parceiros.php"       class="shortcut-btn"><i class="bi bi-handshake me-1"></i>Parceiros</a>
+        <a href="/admin/usuarios.php"        class="shortcut-btn"><i class="bi bi-person me-1"></i>Usuários</a>
+        <a href="/admin/negocios.php"        class="shortcut-btn"><i class="bi bi-briefcase me-1"></i>Negócios</a>
+      </div>
     </div>
   </div>
-</div>
-
+<?php endif; ?>
 <!-- ══════════════════════════════════
      Visão geral + Últimos logins
 ═══════════════════════════════════ -->
