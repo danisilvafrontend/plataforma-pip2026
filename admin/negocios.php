@@ -163,6 +163,40 @@ try {
         $faseAtiva = $stmtFaseRole->fetchColumn() ?: null;
     }
 
+    // ── Votos já dados pelo usuário logado nesta fase ─────────────────────
+    // Mapa: inscricao_id => true  (para verificar no loop da tabela)
+    $votosJaDados = [];
+    if ($faseAtiva) {
+        require_once __DIR__ . '/../app/helpers/premiacao_auth.php';
+        $actor = premiacao_current_actor();
+        if ($actor) {
+            $currentUserId = (int)$actor['id'];
+            $inscIds = array_values($inscricoesPorNegocio);
+
+            if (!empty($inscIds)) {
+                $phVotos   = implode(',', array_fill(0, count($inscIds), '?'));
+                $tabelaVotos = is_tecnica()
+                    ? 'premiacao_votos_tecnicos'
+                    : 'premiacao_votos_juri';
+
+                $stmtVotos = $pdo->prepare("
+                    SELECT inscricao_id
+                    FROM {$tabelaVotos}
+                    WHERE fase_id      = ?
+                      AND user_id      = ?
+                      AND inscricao_id IN ({$phVotos})
+                ");
+                $stmtVotos->execute(array_merge(
+                    [(int)$faseAtiva, $currentUserId],
+                    $inscIds
+                ));
+                foreach ($stmtVotos->fetchAll(PDO::FETCH_COLUMN) as $vid) {
+                    $votosJaDados[(int)$vid] = true;
+                }
+            }
+        }
+    }
+
     function linkOrdenacao($coluna) {
         $get = $_GET;
         $dir_atual = $get['dir'] ?? 'DESC';
@@ -367,6 +401,7 @@ include __DIR__ . '/../app/views/admin/header.php';
             <?php
               $nid         = (int)$n['id'];
               $inscricaoId = $inscricoesPorNegocio[$nid] ?? null;
+              $jaVotou     = $inscricaoId && isset($votosJaDados[$inscricaoId]);
               $redirectUrl = urlencode('/admin/negocios.php?' . http_build_query($_GET));
             ?>
             <tr>
@@ -434,26 +469,49 @@ include __DIR__ . '/../app/views/admin/header.php';
                   </a>
 
                   <?php if (is_tecnica() && $inscricaoId && $faseAtiva): ?>
-                    <!-- FORM POST para o endpoint correto de voto técnico -->
-                    <form method="POST" action="/premiacao/votar_tecnico.php" style="display:inline;">
-                      <input type="hidden" name="inscricao_id" value="<?= $inscricaoId ?>">
-                      <input type="hidden" name="fase_id"      value="<?= (int)$faseAtiva ?>">
-                      <input type="hidden" name="redirect"     value="/admin/negocios.php?<?= htmlspecialchars(http_build_query($_GET)) ?>">
-                      <button type="submit"
+                    <?php if ($jaVotou): ?>
+                      <!-- Já votou: botão desabilitado com ícone de confirmação -->
+                      <button type="button"
                               class="act-btn"
-                              title="Avaliar como Técnico"
-                              style="background:rgba(25,135,84,.12);color:#198754;">
-                        <i class="bi bi-clipboard2-check"></i>
+                              title="Voto já registrado"
+                              disabled
+                              style="background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
+                        <i class="bi bi-check-circle-fill"></i>
                       </button>
-                    </form>
+                    <?php else: ?>
+                      <!-- Ainda não votou: botão ativo -->
+                      <form method="POST" action="/premiacao/votar_tecnico.php" style="display:inline;">
+                        <input type="hidden" name="inscricao_id" value="<?= $inscricaoId ?>">
+                        <input type="hidden" name="fase_id"      value="<?= (int)$faseAtiva ?>">
+                        <input type="hidden" name="redirect"     value="/admin/negocios.php?<?= htmlspecialchars(http_build_query($_GET)) ?>">
+                        <button type="submit"
+                                class="act-btn"
+                                title="Votar como Técnico"
+                                style="background:rgba(25,135,84,.12);color:#198754;">
+                          <i class="bi bi-clipboard2-check"></i>
+                        </button>
+                      </form>
+                    <?php endif; ?>
 
                   <?php elseif (is_juri() && $inscricaoId && $faseAtiva): ?>
-                    <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= $redirectUrl ?>"
-                       class="act-btn"
-                       title="Avaliar como Júri"
-                       style="background:rgba(102,51,153,.12);color:#6633cc;">
-                      <i class="bi bi-star-half"></i>
-                    </a>
+                    <?php if ($jaVotou): ?>
+                      <!-- Já votou: botão desabilitado com ícone de confirmação -->
+                      <button type="button"
+                              class="act-btn"
+                              title="Voto já registrado"
+                              disabled
+                              style="background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
+                        <i class="bi bi-award-fill"></i>
+                      </button>
+                    <?php else: ?>
+                      <!-- Ainda não votou: botão ativo -->
+                      <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= $redirectUrl ?>"
+                         class="act-btn"
+                         title="Votar como Júri"
+                         style="background:rgba(102,51,153,.12);color:#6633cc;">
+                        <i class="bi bi-star-half"></i>
+                      </a>
+                    <?php endif; ?>
                   <?php endif; ?>
 
                   <?php if (can_see_admin_shortcuts()): ?>
