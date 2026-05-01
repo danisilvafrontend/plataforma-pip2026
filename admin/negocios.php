@@ -54,6 +54,7 @@ try {
         $where[] = "n.status_vitrine = 'indeferido'";
     }
 
+    // Premiação ativa (para filtrar lista de júri/técnica)
     $stmtPremAtiva = $pdo->query("
         SELECT id
         FROM premiacoes
@@ -89,23 +90,23 @@ try {
     }
 
     $colunas_permitidas = [
-        'created_at' => 'n.created_at',
-        'etapa' => 'n.etapa_atual',
-        'escala' => 's.score_escala',
-        'investimento' => 's.score_investimento',
-        'impacto' => 's.score_impacto',
-        'geral' => 's.score_geral'
+        'created_at'    => 'n.created_at',
+        'etapa'         => 'n.etapa_atual',
+        'escala'        => 's.score_escala',
+        'investimento'  => 's.score_investimento',
+        'impacto'       => 's.score_impacto',
+        'geral'         => 's.score_geral'
     ];
     $direcoes_permitidas = ['ASC', 'DESC'];
     $coluna_ordem  = $_GET['ordem'] ?? 'created_at';
-    $direcao_ordem = $_GET['dir'] ?? 'DESC';
+    $direcao_ordem = $_GET['dir']   ?? 'DESC';
     $campo_sql = $colunas_permitidas[$coluna_ordem] ?? 'n.created_at';
-    $dir_sql = in_array(strtoupper($direcao_ordem), $direcoes_permitidas) ? strtoupper($direcao_ordem) : 'DESC';
+    $dir_sql   = in_array(strtoupper($direcao_ordem), $direcoes_permitidas) ? strtoupper($direcao_ordem) : 'DESC';
     $sql .= " ORDER BY {$campo_sql} {$dir_sql}";
 
-    $por_pagina = 50;
+    $por_pagina   = 50;
     $pagina_atual = max(1, (int)($_GET['pagina'] ?? 1));
-    $offset = ($pagina_atual - 1) * $por_pagina;
+    $offset       = ($pagina_atual - 1) * $por_pagina;
 
     $sqlCount = "SELECT COUNT(*) FROM negocios n JOIN empreendedores e ON n.empreendedor_id = e.id LEFT JOIN scores_negocios s ON n.id = s.negocio_id";
     if (!empty($where)) {
@@ -115,7 +116,7 @@ try {
     $stmtCount = $pdo->prepare($sqlCount);
     $stmtCount->execute($params);
     $total_registros = (int)$stmtCount->fetchColumn();
-    $total_paginas = (int)ceil($total_registros / $por_pagina);
+    $total_paginas   = (int)ceil($total_registros / $por_pagina);
 
     $sql .= " LIMIT {$por_pagina} OFFSET {$offset}";
 
@@ -123,17 +124,77 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // ── Busca inscrições da premiação ativa para o bloco de votação ──────────────
+    // Mapeia negocio_id => inscricao_id para montar os links de voto com inscricao_id
+    $inscricoesPorNegocio = [];
+    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
+        $negIds = array_column($negocios, 'id');
+        if (!empty($negIds)) {
+            $placeholders = implode(',', array_fill(0, count($negIds), '?'));
+            $stmtInsc = $pdo->prepare("
+                SELECT negocio_id, id AS inscricao_id, categoria
+                FROM premiacao_inscricoes
+                WHERE premiacao_id = ?
+                  AND negocio_id IN ({$placeholders})
+                  AND status = 'elegivel'
+            ");
+            $stmtInsc->execute(array_merge([$premiacaoAtualId], $negIds));
+            foreach ($stmtInsc->fetchAll() as $row) {
+                $inscricoesPorNegocio[(int)$row['negocio_id']] = (int)$row['inscricao_id'];
+            }
+        }
+    }
+
+    // ── Busca fase ativa de voto técnico / júri ───────────────────────────────
+    $faseAtiva = null;
+    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
+        $stmtFase = $pdo->prepare("
+            SELECT id FROM premiacao_fases
+            WHERE premiacao_id = ?
+              AND status = 'em_andamento'
+              AND (
+                  (? = 1 AND permite_avaliacao_tecnica = 1)
+                  OR
+                  (? = 0 AND permite_avaliacao_juri = 1)
+              )
+            ORDER BY rodada ASC
+            LIMIT 1
+        ");
+        $ehTecnica = is_tecnica() ? 1 : 0;
+        $ehJuri    = is_juri()    ? 1 : 0; // usado na segunda cláusula OR
+        // simplificando: busca pela role correta
+        if (is_tecnica()) {
+            $stmtFaseRole = $pdo->prepare("
+                SELECT id FROM premiacao_fases
+                WHERE premiacao_id = ?
+                  AND status = 'em_andamento'
+                  AND permite_avaliacao_tecnica = 1
+                ORDER BY rodada ASC LIMIT 1
+            ");
+        } else {
+            $stmtFaseRole = $pdo->prepare("
+                SELECT id FROM premiacao_fases
+                WHERE premiacao_id = ?
+                  AND status = 'em_andamento'
+                  AND permite_avaliacao_juri = 1
+                ORDER BY rodada ASC LIMIT 1
+            ");
+        }
+        $stmtFaseRole->execute([$premiacaoAtualId]);
+        $faseAtiva = $stmtFaseRole->fetchColumn() ?: null;
+    }
+
     function linkOrdenacao($coluna) {
         $get = $_GET;
         $dir_atual = $get['dir'] ?? 'DESC';
         $col_atual = $get['ordem'] ?? 'created_at';
-        $get['dir'] = ($col_atual === $coluna && $dir_atual === 'DESC') ? 'ASC' : 'DESC';
+        $get['dir']   = ($col_atual === $coluna && $dir_atual === 'DESC') ? 'ASC' : 'DESC';
         $get['ordem'] = $coluna;
         return '?' . http_build_query($get);
     }
 
     function iconeOrdenacao($coluna) {
-        $dir_atual = $_GET['dir'] ?? 'DESC';
+        $dir_atual = $_GET['dir']   ?? 'DESC';
         $col_atual = $_GET['ordem'] ?? 'created_at';
         if ($col_atual === $coluna) {
             return $dir_atual === 'ASC' ? '▲' : '▼';
@@ -161,10 +222,10 @@ $totalConcluidos = $totais['concluidos'] ?? 0;
 $totalAndamento  = $totais['andamento']  ?? 0;
 
 $etapas = [
-    'dados_gerais' => 'Dados Gerais', 'contatos'   => 'Contatos',
-    'endereco'     => 'Endereço',     'midias'      => 'Mídias',
-    'pitch'        => 'Pitch',        'impacto'     => 'Impacto',
-    'demografia'   => 'Demografia',   'finalizado'  => 'Finalizado'
+    'dados_gerais' => 'Dados Gerais', 'contatos'  => 'Contatos',
+    'endereco'     => 'Endereço',     'midias'    => 'Mídias',
+    'pitch'        => 'Pitch',        'impacto'   => 'Impacto',
+    'demografia'   => 'Demografia',   'finalizado' => 'Finalizado'
 ];
 
 include __DIR__ . '/../app/views/admin/header.php';
@@ -188,9 +249,7 @@ include __DIR__ . '/../app/views/admin/header.php';
   <?php unset($_SESSION['erro']); ?>
 <?php endif; ?>
 
-<!-- ══════════════════════════════════
-     Cabeçalho
-═══════════════════════════════════ -->
+<!-- Cabeçalho -->
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
   <div>
     <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios Cadastrados</h4>
@@ -214,11 +273,8 @@ include __DIR__ . '/../app/views/admin/header.php';
   </div>
 </div>
 
-<!-- ══════════════════════════════════
-     Mini KPIs
-═══════════════════════════════════ -->
 <!-- Mini KPIs -->
- <?php if (can_see_admin_shortcuts()): ?>
+<?php if (can_see_admin_shortcuts()): ?>
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg-3">
     <div class="neg-kpi-card">
@@ -245,11 +301,9 @@ include __DIR__ . '/../app/views/admin/header.php';
     </div>
   </div>
 </div>
+<?php endif; ?>
 
-    <?php endif; ?>
-<!-- ══════════════════════════════════
-     Filtros
-═══════════════════════════════════ -->
+<!-- Filtros -->
 <div class="filter-card card p-3 mb-4">
   <form method="GET" class="row g-2 align-items-end">
     <div class="col-12 col-sm-6 col-lg-3">
@@ -283,11 +337,11 @@ include __DIR__ . '/../app/views/admin/header.php';
       <label class="form-label">Status</label>
       <select name="status" class="form-select">
         <option value="">Todos</option>
-        <option value="concluido" <?= $filtro_status === 'concluido' ? 'selected' : '' ?>>Concluído</option>
-        <option value="andamento" <?= $filtro_status === 'andamento' ? 'selected' : '' ?>>Em Andamento</option>
-        <option value="encerrado" <?= $filtro_status === 'encerrado' ? 'selected' : '' ?>>Encerrado</option>
-        <option value="analise"   <?= $filtro_status === 'analise'   ? 'selected' : '' ?>>Em Análise</option>
-        <option value="aprovado"  <?= $filtro_status === 'aprovado'  ? 'selected' : '' ?>>Aprovado</option>
+        <option value="concluido"  <?= $filtro_status === 'concluido'  ? 'selected' : '' ?>>Concluído</option>
+        <option value="andamento"  <?= $filtro_status === 'andamento'  ? 'selected' : '' ?>>Em Andamento</option>
+        <option value="encerrado"  <?= $filtro_status === 'encerrado'  ? 'selected' : '' ?>>Encerrado</option>
+        <option value="analise"    <?= $filtro_status === 'analise'    ? 'selected' : '' ?>>Em Análise</option>
+        <option value="aprovado"   <?= $filtro_status === 'aprovado'   ? 'selected' : '' ?>>Aprovado</option>
         <option value="indeferido" <?= $filtro_status === 'indeferido' ? 'selected' : '' ?>>Indeferido</option>
       </select>
     </div>
@@ -302,9 +356,7 @@ include __DIR__ . '/../app/views/admin/header.php';
   </form>
 </div>
 
-<!-- ══════════════════════════════════
-     Tabela
-═══════════════════════════════════ -->
+<!-- Tabela -->
 <div class="card section-card mb-4">
   <div class="table-responsive">
     <table class="emp-table neg-table">
@@ -333,6 +385,10 @@ include __DIR__ . '/../app/views/admin/header.php';
           </tr>
         <?php else: ?>
           <?php foreach ($negocios as $n): ?>
+            <?php
+              $nid        = (int)$n['id'];
+              $inscricaoId = $inscricoesPorNegocio[$nid] ?? null;
+            ?>
             <tr>
               <td style="color:#9aab9d; font-size:.78rem; font-family:monospace;">
                 #<?= htmlspecialchars((string)$n['id']) ?>
@@ -387,32 +443,48 @@ include __DIR__ . '/../app/views/admin/header.php';
                   <span class="emp-badge" style="background:#fff3cd;color:#856404;">Em andamento</span>
                 <?php endif; ?>
               </td>
+
+              <!-- Ações -->
               <td class="text-center">
                 <div class="d-flex gap-1 justify-content-center">
-                  <a href="/admin/visualizar_negocio.php?id=<?= (int)$n['id'] ?>" class="act-btn edit" title="Ver detalhes">
+
+                  <!-- Ver detalhes: disponível para todos -->
+                  <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>" class="act-btn edit" title="Ver detalhes">
                     <i class="bi bi-eye"></i>
                   </a>
 
-                  <?php if (is_juri_ou_tecnica()): ?>
-                    <a href="/premiacao/votar.php?id=<?= (int)$n['id'] ?>" class="act-btn"
-                      title="Votar"
-                      style="background:rgba(25,135,84,.12);color:#198754;">
-                      <i class="bi bi-check2-square"></i>
+                  <?php if (is_tecnica() && $inscricaoId && $faseAtiva): ?>
+                    <!-- Botão de voto técnico -->
+                    <a href="/admin/premiacao_voto_tecnico.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= urlencode('/admin/negocios.php?' . http_build_query($_GET)) ?>"
+                       class="act-btn"
+                       title="Votar como Técnico"
+                       style="background:rgba(25,135,84,.12);color:#198754;">
+                      <i class="bi bi-clipboard2-check"></i>
+                    </a>
+
+                  <?php elseif (is_juri() && $inscricaoId && $faseAtiva): ?>
+                    <!-- Botão de voto júri -->
+                    <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= urlencode('/admin/negocios.php?' . http_build_query($_GET)) ?>"
+                       class="act-btn"
+                       title="Votar como Júri"
+                       style="background:rgba(102,51,153,.12);color:#6633cc;">
+                      <i class="bi bi-star-half"></i>
                     </a>
                   <?php endif; ?>
 
                   <?php if (can_see_admin_shortcuts()): ?>
-                    <a href="/admin/recalcular_score.php?id=<?= (int)$n['id'] ?>" class="act-btn" title="Recalcular Score"
+                    <a href="/admin/recalcular_score.php?id=<?= $nid ?>" class="act-btn" title="Recalcular Score"
                       style="background:rgba(151,163,39,.12);color:#5c6318;">
                       <i class="bi bi-arrow-repeat"></i>
                     </a>
 
                     <button type="button" class="act-btn" title="Enviar Notificação"
                             style="background:rgba(149,188,204,.18);color:#3a6f82;"
-                            onclick="abrirModalNotificacao(<?= (int)$n['id'] ?>, '<?= htmlspecialchars(addslashes((string)$n['nome_fantasia'])) ?>')">
+                            onclick="abrirModalNotificacao(<?= $nid ?>, '<?= htmlspecialchars(addslashes((string)$n['nome_fantasia'])) ?>')">
                       <i class="bi bi-bell"></i>
                     </button>
                   <?php endif; ?>
+
                 </div>
               </td>
             </tr>
@@ -425,36 +497,27 @@ include __DIR__ . '/../app/views/admin/header.php';
 
 <?php if ($total_paginas > 1): ?>
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mt-3 mb-4">
-
     <div class="text-muted small">
         Exibindo <strong><?= number_format(min($offset + 1, $total_registros)) ?></strong>
         a <strong><?= number_format(min($offset + $por_pagina, $total_registros)) ?></strong>
         de <strong><?= number_format($total_registros) ?></strong> negócios
     </div>
-
     <nav>
         <ul class="pagination pagination-sm mb-0">
-
             <?php
-            // Monta a query string preservando todos os filtros ativos
             $get_base = $_GET;
             unset($get_base['pagina']);
-            $qs = http_build_query($get_base);
+            $qs     = http_build_query($get_base);
             $qs_sep = $qs ? $qs . '&' : '';
             ?>
-
-            <!-- Anterior -->
             <li class="page-item <?= $pagina_atual <= 1 ? 'disabled' : '' ?>">
                 <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $pagina_atual - 1 ?>">
                     <i class="bi bi-chevron-left"></i>
                 </a>
             </li>
-
             <?php
-            // Mostra no máximo 7 páginas ao redor da atual
             $inicio = max(1, $pagina_atual - 3);
             $fim    = min($total_paginas, $pagina_atual + 3);
-
             if ($inicio > 1): ?>
                 <li class="page-item">
                     <a class="page-link" href="?<?= $qs_sep ?>pagina=1">1</a>
@@ -463,13 +526,11 @@ include __DIR__ . '/../app/views/admin/header.php';
                     <li class="page-item disabled"><span class="page-link">…</span></li>
                 <?php endif; ?>
             <?php endif; ?>
-
             <?php for ($p = $inicio; $p <= $fim; $p++): ?>
                 <li class="page-item <?= $p === $pagina_atual ? 'active' : '' ?>">
                     <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $p ?>"><?= $p ?></a>
                 </li>
             <?php endfor; ?>
-
             <?php if ($fim < $total_paginas): ?>
                 <?php if ($fim < $total_paginas - 1): ?>
                     <li class="page-item disabled"><span class="page-link">…</span></li>
@@ -478,14 +539,11 @@ include __DIR__ . '/../app/views/admin/header.php';
                     <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $total_paginas ?>"><?= $total_paginas ?></a>
                 </li>
             <?php endif; ?>
-
-            <!-- Próximo -->
             <li class="page-item <?= $pagina_atual >= $total_paginas ? 'disabled' : '' ?>">
                 <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $pagina_atual + 1 ?>">
                     <i class="bi bi-chevron-right"></i>
                 </a>
             </li>
-
         </ul>
     </nav>
   </div>
@@ -497,7 +555,6 @@ include __DIR__ . '/../app/views/admin/header.php';
     <div class="modal-content" style="border-radius:14px; border:none;">
       <form action="/admin/processar_notificacao_negocio.php" method="POST">
         <input type="hidden" name="negocio_id" id="notif_negocio_id">
-
         <div class="modal-header" style="border-bottom:1px solid #f0f4ed;">
           <h5 class="modal-title" style="color:#1E3425;">
             <i class="bi bi-bell me-2" style="color:#CDDE00;"></i>
@@ -505,7 +562,6 @@ include __DIR__ . '/../app/views/admin/header.php';
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-
         <div class="modal-body">
           <div class="p-3 rounded mb-3" style="background:#f7f9f5; border:1px solid #e6ece1;">
             <div class="small fw-semibold mb-1" style="color:#1E3425;">
@@ -513,7 +569,6 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
             <div class="fw-bold" id="notif_nome_negocio" style="color:#1E3425;"></div>
           </div>
-
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:.88rem;">Mensagem adicional
               <span class="text-muted fw-normal">(opcional)</span>
@@ -523,7 +578,6 @@ include __DIR__ . '/../app/views/admin/header.php';
             <div class="form-text">Será inserida no corpo do e-mail padrão.</div>
           </div>
         </div>
-
         <div class="modal-footer" style="border-top:1px solid #f0f4ed;">
           <button type="button" class="btn-emp-outline" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="hd-btn primary">
