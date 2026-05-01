@@ -33,17 +33,17 @@ function dataBr(?string $dt): string
     return date('d/m/Y H:i', strtotime($dt));
 }
 
-// ── Filtros ───────────────────────────────────────────────────────────────────
+// ── Filtros ────────────────────────────────────────────────────────────────────────────────
 $filtroAno       = (int)  ($_GET['ano']          ?? 0);
 $filtroPremiacao = (int)  ($_GET['premiacao_id'] ?? 0);
 $filtroFase      = (int)  ($_GET['fase_id']      ?? 0);
 $filtroCategoria = (int)  ($_GET['categoria_id'] ?? 0);
 $filtroTecnico   = (int)  ($_GET['user_id']      ?? 0);
 
-// ── Anos ──────────────────────────────────────────────────────────────────────
+// ── Anos ──────────────────────────────────────────────────────────────────────────────────
 $anos = $pdo->query("SELECT DISTINCT ano FROM premiacoes ORDER BY ano DESC")->fetchAll(PDO::FETCH_COLUMN);
 
-// ── Premiações ────────────────────────────────────────────────────────────────
+// ── Premiações ────────────────────────────────────────────────────────────────────────────
 if ($filtroAno > 0) {
     $stmtPrem = $pdo->prepare("SELECT id, nome FROM premiacoes WHERE ano = ? ORDER BY id DESC");
     $stmtPrem->execute([$filtroAno]);
@@ -52,7 +52,7 @@ if ($filtroAno > 0) {
 }
 $premiacoes = $stmtPrem->fetchAll();
 
-// ── Fases com avaliação técnica habilitada ─────────────────────────────────────
+// ── Fases com avaliação técnica habilitada ───────────────────────────────────────────────
 if ($filtroPremiacao > 0) {
     $stmtF = $pdo->prepare("
         SELECT id, nome FROM premiacao_fases
@@ -71,7 +71,7 @@ if ($filtroPremiacao > 0) {
     ")->fetchAll();
 }
 
-// ── Categorias ────────────────────────────────────────────────────────────────
+// ── Categorias ────────────────────────────────────────────────────────────────────────────
 if ($filtroPremiacao > 0) {
     $stmtC = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id = ? ORDER BY ordem");
     $stmtC->execute([$filtroPremiacao]);
@@ -85,7 +85,7 @@ if ($filtroPremiacao > 0) {
     ")->fetchAll();
 }
 
-// ── Técnicos (role = 'tecnico') ───────────────────────────────────────────────
+// ── Técnicos (role = 'tecnico') ───────────────────────────────────────────────────────────────
 $tecnicos = $pdo->query("
     SELECT id, nome FROM users
     WHERE role = 'tecnico' AND status = 'ativo'
@@ -94,7 +94,7 @@ $tecnicos = $pdo->query("
 
 $totalTecnicos = count($tecnicos);
 
-// ── WHERE base ────────────────────────────────────────────────────────────────
+// ── WHERE base ────────────────────────────────────────────────────────────────────────────────
 $where  = ['1=1'];
 $params = [];
 if ($filtroAno > 0)       { $where[] = 'p.ano = ?';            $params[] = $filtroAno; }
@@ -104,7 +104,7 @@ if ($filtroCategoria > 0) { $where[] = 'psa.categoria_id = ?'; $params[] = $filt
 if ($filtroTecnico > 0)   { $where[] = 'psa.selecionado_por_user_id = ?'; $params[] = $filtroTecnico; }
 $whereSql = implode(' AND ', $where);
 
-// ── KPIs ──────────────────────────────────────────────────────────────────────
+// ── KPIs ──────────────────────────────────────────────────────────────────────────────────
 $kpiRow = $pdo->prepare("
     SELECT
         COUNT(*)                                   AS total_selecoes,
@@ -119,13 +119,13 @@ $kpiRow = $pdo->prepare("
 $kpiRow->execute($params);
 $kpi = $kpiRow->fetch();
 
-$totalSelecoes       = (int)($kpi['total_selecoes']          ?? 0);
-$tecnicosAvaliaram   = (int)($kpi['tecnicos_que_avaliaram']  ?? 0);
+$totalSelecoes        = (int)($kpi['total_selecoes']         ?? 0);
+$tecnicosAvaliaram    = (int)($kpi['tecnicos_que_avaliaram'] ?? 0);
 $negociosSelecionados = (int)($kpi['negocios_selecionados']  ?? 0);
-$categoriasComSel    = (int)($kpi['categorias_com_selecao']  ?? 0);
-$pctParticipacao     = $totalTecnicos > 0 ? round(($tecnicosAvaliaram / $totalTecnicos) * 100) : 0;
+$categoriasComSel     = (int)($kpi['categorias_com_selecao'] ?? 0);
+$pctParticipacao      = $totalTecnicos > 0 ? round(($tecnicosAvaliaram / $totalTecnicos) * 100) : 0;
 
-// ── Ranking: negócios mais selecionados pela bancada técnica ──────────────────
+// ── Ranking: negócios mais selecionados pela bancada técnica ─────────────────────────────────
 $stmtRank = $pdo->prepare("
     SELECT
         n.nome_fantasia,
@@ -155,8 +155,7 @@ $stmtRank = $pdo->prepare("
 $stmtRank->execute($params);
 $ranking = $stmtRank->fetchAll();
 
-// ── Painel: técnico × categorias disponíveis ─────────────────────────────────
-// Para cada técnico ativo, mostra quantas seleções fez por categoria
+// ── Painel: técnico × categorias disponíveis ──────────────────────────────────────────────────
 $categorias_painel = $pdo->query("
     SELECT pc.id, pc.nome
     FROM premiacao_categorias pc
@@ -168,9 +167,8 @@ foreach ($categorias_painel as $c) {
     $todasCategorias[$c['id']] = $c['nome'];
 }
 
-// Quantas seleções cada técnico fez por categoria (filtros aplicados)
 $painelParams = [];
-$painelWhere  = ['psa.tipo_selecao = \'tecnica\''];
+$painelWhere  = ["psa.tipo_selecao = 'tecnica'"];
 if ($filtroAno > 0)       { $painelWhere[] = 'p.ano = ?';            $painelParams[] = $filtroAno; }
 if ($filtroPremiacao > 0) { $painelWhere[] = 'psa.premiacao_id = ?'; $painelParams[] = $filtroPremiacao; }
 if ($filtroFase > 0)      { $painelWhere[] = 'psa.fase_id = ?';      $painelParams[] = $filtroFase; }
@@ -217,7 +215,7 @@ foreach ($painelRaw as $row) {
     }
 }
 
-// ── Log detalhado ─────────────────────────────────────────────────────────────
+// ── Log detalhado ────────────────────────────────────────────────────────────────────────────────
 $stmtLog = $pdo->prepare("
     SELECT
         psa.id,
@@ -248,12 +246,20 @@ $stmtLog = $pdo->prepare("
 $stmtLog->execute($params);
 $log = $stmtLog->fetchAll();
 
-// ── Contexto da regra para a fase selecionada ─────────────────────────────────
+// ── Contexto da regra para a fase selecionada ───────────────────────────────────────────────
+// Colunas corretas da tabela premiacao_fases:
+//   qtd_classificados_tecnica  (era max_classificados_tecnica)
+//   qtd_classificados_popular  (era max_classificados_popular)
+//   qtd_classificados_final    (era max_classificados_total)
 $regraFase = null;
 if ($filtroFase > 0) {
     $stmtRegra = $pdo->prepare("
-        SELECT tipo_fase, max_classificados_tecnica, max_classificados_popular, max_classificados_total
-        FROM premiacao_fases WHERE id = ?
+        SELECT tipo_fase,
+               qtd_classificados_tecnica,
+               qtd_classificados_popular,
+               qtd_classificados_final
+        FROM premiacao_fases
+        WHERE id = ?
     ");
     $stmtRegra->execute([$filtroFase]);
     $regraFase = $stmtRegra->fetch() ?: null;
@@ -298,10 +304,10 @@ require_once $appBase . '/views/admin/header.php';
     <!-- Alerta da regra da fase selecionada -->
     <?php if ($regraFase): ?>
         <?php
-            $topTec  = (int)($regraFase['max_classificados_tecnica']  ?? 10);
-            $topPop  = (int)($regraFase['max_classificados_popular']  ?? 10);
-            $topTotal= (int)($regraFase['max_classificados_total']    ?? 20);
-            $tipoF   = $regraFase['tipo_fase'] ?? '';
+            $topTec   = (int)($regraFase['qtd_classificados_tecnica'] ?? 10);
+            $topPop   = (int)($regraFase['qtd_classificados_popular'] ?? 10);
+            $topTotal = (int)($regraFase['qtd_classificados_final']   ?? 20);
+            $tipoF    = $regraFase['tipo_fase'] ?? '';
         ?>
         <div class="regra-alert">
             <i class="bi bi-info-circle-fill fs-5"></i>
@@ -559,14 +565,12 @@ require_once $appBase . '/views/admin/header.php';
                                         </div>
                                     </div>
 
-                                    <!-- Barra de adesão proporcional -->
                                     <div class="rank-bar-wrap ms-5">
                                         <div class="rank-bar-fill"
                                             style="width:<?= min(100, (float)$row['pct_adesao']) ?>%">
                                         </div>
                                     </div>
 
-                                    <!-- Scores (critério de desempate) -->
                                     <?php if ($row['score_geral'] || $row['score_impacto']): ?>
                                         <div class="ms-5 mt-1 d-flex gap-1 flex-wrap">
                                             <?php if ($row['score_geral']): ?>
