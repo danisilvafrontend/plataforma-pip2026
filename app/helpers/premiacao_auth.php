@@ -8,8 +8,8 @@ if (session_status() === PHP_SESSION_NONE) {
 /**
  * Retorna informações do usuário atualmente logado, com suporte a:
  * - Admin/Superadmin
- * - Técnico (bancada técnica)
- * - Jurado (fase final)
+ * - Técnico (bancada técnica)  — role = 'tecnico' ou 'tecnica'
+ * - Jurado (fase final)        — role = 'juri'
  * - Empreendedor (votação popular)
  * - Parceiro (votação popular)
  * - Sociedade Civil (votação popular)
@@ -18,70 +18,58 @@ if (session_status() === PHP_SESSION_NONE) {
  */
 function premiacao_current_actor(): ?array
 {
-    // ── NÍVEL 1: Admin/Superadmin ─────────────────────────────────────────────
-    // Acesso total ao sistema
-    $rolesAdmin = ['admin', 'superadmin'];
-    if (
-        !empty($_SESSION['user_id']) &&
-        !empty($_SESSION['user_role']) &&
-        in_array($_SESSION['user_role'], $rolesAdmin, true)
-    ) {
-        return [
-            'contexto' => 'admin',
-            'tipo'     => 'admin_user',
-            'id'       => (int)$_SESSION['user_id'],
-            'role'     => (string)$_SESSION['user_role'],
-        ];
+    // Normaliza a role uma única vez
+    $role = isset($_SESSION['user_role']) ? strtolower(trim((string)$_SESSION['user_role'])) : '';
+    $uid  = !empty($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+
+    if ($uid <= 0 && empty($_SESSION['parceiro_id']) && empty($_SESSION['usuario_id'])) {
+        return null;
     }
 
-    // ── NÍVEL 2: Técnico (Bancada Técnica) ─────────────────────────────────────
-    // Avalia inscrições com notas técnicas
-    // Vota apenas nas inscrições classificadas de cada fase
-    // Fase 1: 10 inscrições por categoria
-    // Fase 2: 3 inscrições por categoria
-    // Fase Final: 1 inscrição por categoria
-    if (
-        !empty($_SESSION['user_id']) &&
-        $_SESSION['user_role'] === 'tecnico'
-    ) {
+    // ── Técnico (Bancada Técnica) ─────────────────────────────────────────────
+    // Role pode ser 'tecnico' ou 'tecnica' (variações históricas do sistema)
+    if ($uid > 0 && in_array($role, ['tecnico', 'tecnica'], true)) {
         return [
             'contexto' => 'backend',
             'tipo'     => 'tecnico',
-            'id'       => (int)$_SESSION['user_id'],
+            'id'       => $uid,
             'role'     => 'tecnico',
         ];
     }
 
-    // ── NÍVEL 3: Jurado (Fase Final) ───────────────────────────────────────────
-    // Vota na inscrição vencedora por categoria na fase final
-    // Vota apenas UMA VEZ por categoria
-    if (
-        !empty($_SESSION['user_id']) &&
-        $_SESSION['user_role'] === 'juri'
-    ) {
+    // ── Jurado (Fase Final) ───────────────────────────────────────────────────
+    if ($uid > 0 && $role === 'juri') {
         return [
             'contexto' => 'backend',
             'tipo'     => 'juri',
-            'id'       => (int)$_SESSION['user_id'],
+            'id'       => $uid,
             'role'     => 'juri',
         ];
     }
 
-    // ── NÍVEL 4: Votação Popular (Frontend) ────────────────────────────────────
-    // Qualquer usuário logado pode votar
+    // ── Admin / Superadmin ────────────────────────────────────────────────────
+    if ($uid > 0 && in_array($role, ['admin', 'superadmin'], true)) {
+        return [
+            'contexto' => 'admin',
+            'tipo'     => 'admin_user',
+            'id'       => $uid,
+            'role'     => $role,
+        ];
+    }
 
-    // 4.1: Empreendedor (user_id sem role ou role=user)
-    // Pode votar em qualquer inscrição elegível de qualquer fase
-    if (!empty($_SESSION['user_id'])) {
+    // ── Votação Popular (Frontend) ────────────────────────────────────────────
+
+    // Empreendedor (user_id presente, role não classificada acima)
+    if ($uid > 0) {
         return [
             'contexto' => 'frontend',
             'tipo'     => 'empreendedor',
-            'id'       => (int)$_SESSION['user_id'],
+            'id'       => $uid,
             'role'     => 'popular',
         ];
     }
 
-    // 4.2: Parceiro logado
+    // Parceiro logado
     if (!empty($_SESSION['parceiro_id'])) {
         return [
             'contexto' => 'frontend',
@@ -91,7 +79,7 @@ function premiacao_current_actor(): ?array
         ];
     }
 
-    // 4.3: Sociedade civil logada
+    // Sociedade civil logada
     if (
         !empty($_SESSION['logado']) &&
         ($_SESSION['usuario_tipo'] ?? '') === 'sociedade_civil' &&
@@ -105,58 +93,47 @@ function premiacao_current_actor(): ?array
         ];
     }
 
-    // Nenhum contexto encontrado
     return null;
 }
 
 /**
  * Verifica se o usuário atual é admin
- *
- * @return bool
  */
 function premiacao_is_admin(): bool
 {
     $actor = premiacao_current_actor();
-    return $actor && $actor['contexto'] === 'admin';
+    return $actor !== null && $actor['contexto'] === 'admin';
 }
 
 /**
  * Verifica se o usuário atual é técnico
- *
- * @return bool
  */
 function premiacao_is_tecnico(): bool
 {
     $actor = premiacao_current_actor();
-    return $actor && $actor['tipo'] === 'tecnico';
+    return $actor !== null && $actor['tipo'] === 'tecnico';
 }
 
 /**
  * Verifica se o usuário atual é jurado
- *
- * @return bool
  */
 function premiacao_is_juri(): bool
 {
     $actor = premiacao_current_actor();
-    return $actor && $actor['tipo'] === 'juri';
+    return $actor !== null && $actor['tipo'] === 'juri';
 }
 
 /**
- * Verifica se o usuário atual pode votar (votação popular)
- *
- * @return bool
+ * Verifica se o usuário atual pode votar na votação popular
  */
 function premiacao_can_vote_popular(): bool
 {
     $actor = premiacao_current_actor();
-    return $actor && $actor['contexto'] === 'frontend' && $actor['role'] === 'popular';
+    return $actor !== null && $actor['contexto'] === 'frontend' && $actor['role'] === 'popular';
 }
 
 /**
  * Verifica se o usuário atual pode votar tecnicamente
- *
- * @return bool
  */
 function premiacao_can_vote_tecnico(): bool
 {
@@ -165,8 +142,6 @@ function premiacao_can_vote_tecnico(): bool
 
 /**
  * Verifica se o usuário atual pode votar como jurado
- *
- * @return bool
  */
 function premiacao_can_vote_juri(): bool
 {
@@ -175,9 +150,6 @@ function premiacao_can_vote_juri(): bool
 
 /**
  * Exige que o usuário seja admin
- * Se não for, exibe mensagem de erro e encerra
- *
- * @return void
  */
 function premiacao_require_admin(): void
 {
@@ -189,9 +161,6 @@ function premiacao_require_admin(): void
 
 /**
  * Exige que o usuário seja técnico
- * Se não for, exibe mensagem de erro e encerra
- *
- * @return void
  */
 function premiacao_require_tecnico(): void
 {
@@ -203,9 +172,6 @@ function premiacao_require_tecnico(): void
 
 /**
  * Exige que o usuário seja jurado
- * Se não for, exibe mensagem de erro e encerra
- *
- * @return void
  */
 function premiacao_require_juri(): void
 {
@@ -216,11 +182,7 @@ function premiacao_require_juri(): void
 }
 
 /**
- * Exige que o usuário esteja logado
- * Se não estiver, redireciona para login
- *
- * @param string $redirectTo URL para redirecionar após login
- * @return void
+ * Exige que o usuário esteja logado; redireciona para login se não estiver
  */
 function premiacao_require_login(string $redirectTo = ''): void
 {
