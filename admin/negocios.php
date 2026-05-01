@@ -124,7 +124,7 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Inscrições da premiação ativa: mapa negocio_id => inscricao_id ────────────
+    // ── Inscrições da premiação ativa: mapa negocio_id => inscricao_id ────
     $inscricoesPorNegocio = [];
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
         $negIds = array_column($negocios, 'id');
@@ -144,7 +144,7 @@ try {
         }
     }
 
-    // ── Fase ativa por role ───────────────────────────────────────────────
+    // ── Fase ativa por role ──────────────────────────────────────
     $faseAtiva = null;
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
         if (is_tecnica()) {
@@ -163,8 +163,7 @@ try {
         $faseAtiva = $stmtFaseRole->fetchColumn() ?: null;
     }
 
-    // ── Votos já dados pelo usuário logado nesta fase ─────────────────────
-    // Mapa: inscricao_id => true  (para verificar no loop da tabela)
+    // ── Votos já dados pelo usuário logado nesta fase ────────────────
     $votosJaDados = [];
     if ($faseAtiva) {
         require_once __DIR__ . '/../app/helpers/premiacao_auth.php';
@@ -174,7 +173,7 @@ try {
             $inscIds = array_values($inscricoesPorNegocio);
 
             if (!empty($inscIds)) {
-                $phVotos   = implode(',', array_fill(0, count($inscIds), '?'));
+                $phVotos     = implode(',', array_fill(0, count($inscIds), '?'));
                 $tabelaVotos = is_tecnica()
                     ? 'premiacao_votos_tecnicos'
                     : 'premiacao_votos_juri';
@@ -261,6 +260,12 @@ include __DIR__ . '/../app/views/admin/header.php';
   </div>
   <?php unset($_SESSION['erro']); ?>
 <?php endif; ?>
+
+<!-- Toast de feedback (voto técnico AJAX) -->
+<div id="voto-toast-wrap" aria-live="polite" style="
+  position:fixed; top:1.25rem; right:1.25rem; z-index:9999;
+  display:flex; flex-direction:column; gap:.5rem; pointer-events:none;
+"></div>
 
 <!-- Cabeçalho -->
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
@@ -463,48 +468,36 @@ include __DIR__ . '/../app/views/admin/header.php';
               <td class="text-center">
                 <div class="d-flex gap-1 justify-content-center">
 
-                  <!-- Ver detalhes: disponível para todos -->
+                  <!-- Ver detalhes -->
                   <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>" class="act-btn edit" title="Ver detalhes">
                     <i class="bi bi-eye"></i>
                   </a>
 
                   <?php if (is_tecnica() && $inscricaoId && $faseAtiva): ?>
                     <?php if ($jaVotou): ?>
-                      <!-- Já votou: botão desabilitado com ícone de confirmação -->
-                      <button type="button"
-                              class="act-btn"
-                              title="Voto já registrado"
-                              disabled
+                      <button type="button" class="act-btn" title="Voto já registrado" disabled
                               style="background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
                         <i class="bi bi-check-circle-fill"></i>
                       </button>
                     <?php else: ?>
-                      <!-- Ainda não votou: botão ativo -->
-                      <form method="POST" action="/premiacao/votar_tecnico.php" style="display:inline;">
-                        <input type="hidden" name="inscricao_id" value="<?= $inscricaoId ?>">
-                        <input type="hidden" name="fase_id"      value="<?= (int)$faseAtiva ?>">
-                        <input type="hidden" name="redirect"     value="/admin/negocios.php?<?= htmlspecialchars(http_build_query($_GET)) ?>">
-                        <button type="submit"
-                                class="act-btn"
-                                title="Votar como Técnico"
-                                style="background:rgba(25,135,84,.12);color:#198754;">
-                          <i class="bi bi-clipboard2-check"></i>
-                        </button>
-                      </form>
+                      <!-- botão AJAX — data-inscricao / data-fase passados via atributos -->
+                      <button type="button"
+                              class="act-btn btn-votar-tecnico"
+                              title="Votar como Técnico"
+                              data-inscricao="<?= $inscricaoId ?>"
+                              data-fase="<?= (int)$faseAtiva ?>"
+                              style="background:rgba(25,135,84,.12);color:#198754;">
+                        <i class="bi bi-clipboard2-check"></i>
+                      </button>
                     <?php endif; ?>
 
                   <?php elseif (is_juri() && $inscricaoId && $faseAtiva): ?>
                     <?php if ($jaVotou): ?>
-                      <!-- Já votou: botão desabilitado com ícone de confirmação -->
-                      <button type="button"
-                              class="act-btn"
-                              title="Voto já registrado"
-                              disabled
+                      <button type="button" class="act-btn" title="Voto já registrado" disabled
                               style="background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
                         <i class="bi bi-award-fill"></i>
                       </button>
                     <?php else: ?>
-                      <!-- Ainda não votou: botão ativo -->
                       <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= $redirectUrl ?>"
                          class="act-btn"
                          title="Votar como Júri"
@@ -631,11 +624,103 @@ include __DIR__ . '/../app/views/admin/header.php';
   </div>
 </div>
 
+<style>
+/* Toast de voto */
+.voto-toast {
+  pointer-events:auto;
+  min-width:280px; max-width:380px;
+  padding:.75rem 1rem;
+  border-radius:10px;
+  font-size:.875rem;
+  font-weight:500;
+  line-height:1.4;
+  display:flex;
+  align-items:flex-start;
+  gap:.6rem;
+  box-shadow:0 4px 18px rgba(0,0,0,.13);
+  animation: toastIn .22s cubic-bezier(.16,1,.3,1) both;
+}
+.voto-toast.saindo {
+  animation: toastOut .2s ease-in forwards;
+}
+.voto-toast i { flex-shrink:0; font-size:1rem; margin-top:.05rem; }
+.voto-toast.ok  { background:#f0faf3; color:#1a6b38; border:1px solid #b6e0c4; }
+.voto-toast.err { background:#fff4f4; color:#9b1c2a; border:1px solid #f5c0c5; }
+@keyframes toastIn  { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+@keyframes toastOut { from{opacity:1;transform:none} to{opacity:0;transform:translateY(-6px)} }
+</style>
+
 <script>
 function abrirModalNotificacao(id, nome) {
     document.getElementById('notif_negocio_id').value = id;
     document.getElementById('notif_nome_negocio').textContent = nome;
     new bootstrap.Modal(document.getElementById('modalNotificacao')).show();
 }
+
+// ── Toast helper ─────────────────────────────────────────
+function mostrarToastVoto(tipo, msg) {
+    const wrap = document.getElementById('voto-toast-wrap');
+    const t = document.createElement('div');
+    t.className = 'voto-toast ' + tipo;
+    const icone = tipo === 'ok'
+        ? '<i class="bi bi-check-circle-fill"></i>'
+        : '<i class="bi bi-exclamation-circle-fill"></i>';
+    t.innerHTML = icone + '<span>' + msg + '</span>';
+    wrap.appendChild(t);
+    const dur = tipo === 'err' ? 7000 : 4000;   // erros ficam mais tempo
+    setTimeout(() => {
+        t.classList.add('saindo');
+        t.addEventListener('animationend', () => t.remove(), { once: true });
+    }, dur);
+}
+
+// ── Voto técnico via AJAX (delegation) ──────────────────────
+document.addEventListener('click', async function(e) {
+    const btn = e.target.closest('.btn-votar-tecnico');
+    if (!btn) return;
+
+    e.preventDefault();
+    btn.disabled = true;
+    btn.style.opacity = '.55';
+    btn.querySelector('i').className = 'bi bi-hourglass-split';
+
+    const inscricaoId = btn.dataset.inscricao;
+    const faseId      = btn.dataset.fase;
+
+    const body = new URLSearchParams();
+    body.append('inscricao_id', inscricaoId);
+    body.append('fase_id',      faseId);
+
+    try {
+        const res  = await fetch('/premiacao/votar_tecnico.php', {
+            method:  'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body:    body,
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+            // Sucesso: transforma o botão no estado "já votou"
+            btn.classList.remove('btn-votar-tecnico');
+            btn.removeAttribute('data-inscricao');
+            btn.removeAttribute('data-fase');
+            btn.title = 'Voto já registrado';
+            btn.style.cssText = 'background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;';
+            btn.querySelector('i').className = 'bi bi-check-circle-fill';
+            mostrarToastVoto('ok', 'Voto registrado com sucesso!');
+        } else {
+            // Erro do servidor (limite, duplicado, fase encerrada etc.)
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.querySelector('i').className = 'bi bi-clipboard2-check';
+            mostrarToastVoto('err', data.erro || 'Não foi possível registrar o voto.');
+        }
+    } catch {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.querySelector('i').className = 'bi bi-clipboard2-check';
+        mostrarToastVoto('err', 'Erro de conexão. Tente novamente.');
+    }
+});
 </script>
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
