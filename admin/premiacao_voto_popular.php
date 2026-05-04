@@ -49,18 +49,15 @@ function badgeTipoEleitor(string $tipo): string
         <i class="bi ' . $icon . '"></i>' . h($label) . '</span>';
 }
 
-// ── Filtros ───────────────────────────────────────────────────────────────────
+// ── Filtros ────────────────────────────────────────────────────────────────
 $filtroAno       = (int)  ($_GET['ano']          ?? 0);
 $filtroPremiacao = (int)  ($_GET['premiacao_id'] ?? 0);
 $filtroFase      = (int)  ($_GET['fase_id']      ?? 0);
-$filtroCategoria = (int)  ($_GET['categoria_id'] ?? 0);
+$filtroCategoria = (int)  ($_GET['categoria_id'] ?? 0); // usado só na tabela de votos
 $filtroTipo      =        trim($_GET['tipo_eleitor'] ?? '');
 $filtroBusca     =        trim($_GET['busca']        ?? '');
-$pagina          = max(1, (int)($_GET['pag']         ?? 1));
-$porPagina       = 50;
-$offset          = ($pagina - 1) * $porPagina;
 
-// ── Anos disponíveis ──────────────────────────────────────────────────────────
+// ── Anos disponíveis ──────────────────────────────────────────────────────────────
 $anos = $pdo->query("SELECT DISTINCT ano FROM premiacoes ORDER BY ano DESC")->fetchAll(PDO::FETCH_COLUMN);
 
 // ── Premiações filtradas por ano ──────────────────────────────────────────────
@@ -72,7 +69,7 @@ if ($filtroAno > 0) {
 }
 $premiacoes = $stmtPrem->fetchAll();
 
-// ── Fases filtradas por premiação (apenas com voto popular) ───────────────────
+// ── Fases da premiação selecionada ────────────────────────────────────────────────
 if ($filtroPremiacao > 0) {
     $stmtF = $pdo->prepare("
         SELECT id, nome FROM premiacao_fases
@@ -91,7 +88,7 @@ if ($filtroPremiacao > 0) {
     ")->fetchAll();
 }
 
-// ── Categorias filtradas por premiação ────────────────────────────────────────
+// ── Categorias da premiação selecionada (para filtro da tabela de votos) ────────────
 if ($filtroPremiacao > 0) {
     $stmtC = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id = ? ORDER BY ordem");
     $stmtC->execute([$filtroPremiacao]);
@@ -105,7 +102,7 @@ if ($filtroPremiacao > 0) {
     ")->fetchAll();
 }
 
-// ── Monta cláusula WHERE compartilhada ────────────────────────────────────────
+// ── WHERE base para KPIs + tabela de votos ───────────────────────────────────────
 $where  = ['1=1'];
 $params = [];
 if ($filtroAno > 0)       { $where[] = 'p.ano = ?';           $params[] = $filtroAno; }
@@ -116,7 +113,7 @@ if ($filtroTipo !== '')   { $where[] = 'vp.tipo_eleitor = ?';  $params[] = $filt
 if ($filtroBusca !== '')  { $where[] = 'n.nome_fantasia LIKE ?'; $params[] = '%' . $filtroBusca . '%'; }
 $whereSql = implode(' AND ', $where);
 
-// ── KPIs (query leve sem JOIN de nome de eleitor) ─────────────────────────────
+// ── KPIs ───────────────────────────────────────────────────────────────────
 $kpiRow = $pdo->prepare("
     SELECT
         COUNT(*)                                           AS total_votos,
@@ -142,39 +139,100 @@ $votosPar        = (int)($kpi['votos_parceiro']     ?? 0);
 $votosSoc        = (int)($kpi['votos_sociedade']    ?? 0);
 $mediaPorNegocio = $negociosVotados > 0 ? round($totalVotos / $negociosVotados, 1) : 0;
 
-// ── Ranking Top 10 com cache de 60s ──────────────────────────────────────────
-$cacheKey  = md5('ranking_' . $whereSql . implode('_', $params));
-$cacheFile = sys_get_temp_dir() . '/pip_vp_rank_' . $cacheKey . '.json';
-$cacheTtl  = 60;
+// ================================================================================
+// TOP 10 POR CATEGORIA
+// Busca todas as categorias da premiação filtrada (ou todas se não filtrou)
+// e para cada uma retorna os top 10 mais votados nessa categoria
+// ================================================================================
 
-if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
-    $rankingData = json_decode(file_get_contents($cacheFile), true);
-} else {
-    $stmtRank = $pdo->prepare("
-        SELECT
-            n.id                                        AS negocio_id,
-            n.nome_fantasia,
-            pc.nome                                     AS categoria_nome,
-            COUNT(*)                                    AS total_votos,
-            SUM(vp.tipo_eleitor = 'empreendedor')       AS v_emp,
-            SUM(vp.tipo_eleitor = 'parceiro')           AS v_par,
-            SUM(vp.tipo_eleitor = 'sociedade_civil')    AS v_soc
-        FROM premiacao_votos_populares vp
-        INNER JOIN premiacoes           p  ON p.id  = vp.premiacao_id
-        INNER JOIN premiacao_categorias pc ON pc.id = vp.categoria_id
-        INNER JOIN premiacao_inscricoes pi ON pi.id = vp.inscricao_id
-        INNER JOIN negocios             n  ON n.id  = pi.negocio_id
-        WHERE $whereSql
-        GROUP BY vp.inscricao_id, n.id, n.nome_fantasia, pc.nome
-        ORDER BY total_votos DESC
-        LIMIT 10
-    ");
-    $stmtRank->execute($params);
-    $rankingData = $stmtRank->fetchAll();
-    file_put_contents($cacheFile, json_encode($rankingData));
+// WHERE para o ranking (sem filtro de categoria e sem filtro de busca,
+// pois o ranking é sempre "todos desta fase/premiação, por categoria")
+$whereRank  = ['1=1'];
+$paramsRank = [];
+if ($filtroAno > 0)       { $whereRank[] = 'p.ano = ?';           $paramsRank[] = $filtroAno; }
+if ($filtroPremiacao > 0) { $whereRank[] = 'vp.premiacao_id = ?'; $paramsRank[] = $filtroPremiacao; }
+if ($filtroFase > 0)      { $whereRank[] = 'vp.fase_id = ?';      $paramsRank[] = $filtroFase; }
+$whereRankSql = implode(' AND ', $whereRank);
+
+// Busca categorias que têm votos dentro do filtro
+$stmtCatsRank = $pdo->prepare("
+    SELECT DISTINCT
+        pc.id   AS cat_id,
+        pc.nome AS cat_nome,
+        pc.ordem AS cat_ordem
+    FROM premiacao_votos_populares vp
+    INNER JOIN premiacoes            p  ON p.id  = vp.premiacao_id
+    INNER JOIN premiacao_categorias  pc ON pc.id = vp.categoria_id
+    WHERE $whereRankSql
+    ORDER BY pc.ordem ASC
+");
+$stmtCatsRank->execute($paramsRank);
+$categoriasRank = $stmtCatsRank->fetchAll();
+
+// Para cada categoria, busca o top 10
+$rankingPorCategoria = [];
+
+foreach ($categoriasRank as $catR) {
+    $cacheKey  = md5('top10_' . $catR['cat_id'] . '_' . $whereRankSql . implode('_', $paramsRank));
+    $cacheFile = sys_get_temp_dir() . '/pip_vp_rank_' . $cacheKey . '.json';
+    $cacheTtl  = 60;
+
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
+        $rows = json_decode(file_get_contents($cacheFile), true);
+    } else {
+        $pRank   = array_merge($paramsRank, [(int)$catR['cat_id']]);
+        $stmtR   = $pdo->prepare("
+            SELECT
+                n.id                                         AS negocio_id,
+                n.nome_fantasia,
+                n.municipio,
+                n.estado,
+                COUNT(*)                                     AS total_votos,
+                SUM(vp.tipo_eleitor = 'empreendedor')        AS v_emp,
+                SUM(vp.tipo_eleitor = 'parceiro')            AS v_par,
+                SUM(vp.tipo_eleitor = 'sociedade_civil')     AS v_soc
+            FROM premiacao_votos_populares vp
+            INNER JOIN premiacoes            p   ON p.id   = vp.premiacao_id
+            INNER JOIN premiacao_inscricoes  pi  ON pi.id  = vp.inscricao_id
+            INNER JOIN negocios              n   ON n.id   = pi.negocio_id
+            WHERE $whereRankSql
+              AND vp.categoria_id = ?
+            GROUP BY vp.inscricao_id, n.id, n.nome_fantasia, n.municipio, n.estado
+            ORDER BY total_votos DESC
+            LIMIT 10
+        ");
+        $stmtR->execute($pRank);
+        $rows = $stmtR->fetchAll();
+        file_put_contents($cacheFile, json_encode($rows));
+    }
+
+    if (!empty($rows)) {
+        $rankingPorCategoria[] = [
+            'cat_id'   => $catR['cat_id'],
+            'cat_nome' => $catR['cat_nome'],
+            'itens'    => $rows,
+        ];
+    }
 }
 
-// ── Total de registros para paginação ─────────────────────────────────────────
+// ================================================================================
+// Últimos 20 votos registrados (sem paginação)
+// ================================================================================
+$totalRegistros = (int) $pdo->prepare("
+    SELECT COUNT(*) FROM premiacao_votos_populares vp
+    INNER JOIN premiacoes         p  ON p.id  = vp.premiacao_id
+    INNER JOIN premiacao_inscricoes pi ON pi.id = vp.inscricao_id
+    INNER JOIN negocios           n  ON n.id  = pi.negocio_id
+    WHERE $whereSql
+")->execute($params) ? $pdo->prepare("
+    SELECT COUNT(*) FROM premiacao_votos_populares vp
+    INNER JOIN premiacoes         p  ON p.id  = vp.premiacao_id
+    INNER JOIN premiacao_inscricoes pi ON pi.id = vp.inscricao_id
+    INNER JOIN negocios           n  ON n.id  = pi.negocio_id
+    WHERE $whereSql
+") : null;
+
+// Reexecuta corretamente
 $stmtTotal = $pdo->prepare("
     SELECT COUNT(*) FROM premiacao_votos_populares vp
     INNER JOIN premiacoes         p  ON p.id  = vp.premiacao_id
@@ -184,10 +242,7 @@ $stmtTotal = $pdo->prepare("
 ");
 $stmtTotal->execute($params);
 $totalRegistros = (int) $stmtTotal->fetchColumn();
-$totalPaginas   = (int) ceil($totalRegistros / $porPagina);
-if ($pagina > $totalPaginas && $totalPaginas > 0) $pagina = $totalPaginas;
 
-// ── Query principal paginada (50 por página) ──────────────────────────────────
 $stmtVotos = $pdo->prepare("
     SELECT
         vp.id,
@@ -219,12 +274,12 @@ $stmtVotos = $pdo->prepare("
     LEFT  JOIN sociedade_civil       sc  ON sc.id   = vp.eleitor_id AND vp.tipo_eleitor = 'sociedade_civil'
     WHERE $whereSql
     ORDER BY vp.created_at DESC
-    LIMIT $porPagina OFFSET $offset
+    LIMIT 20
 ");
 $stmtVotos->execute($params);
 $votos = $stmtVotos->fetchAll();
 
-// ── QueryString base para links de paginação ──────────────────────────────────
+// QueryString base para links
 $qsBase = http_build_query(array_filter([
     'ano'          => $filtroAno       ?: null,
     'premiacao_id' => $filtroPremiacao ?: null,
@@ -250,7 +305,7 @@ require_once $appBase . '/views/admin/header.php';
                 <i class="bi bi-bar-chart-steps me-1"></i>
                 <?= number_format($totalRegistros) ?> voto<?= $totalRegistros !== 1 ? 's' : '' ?> no total
             </span>
-            <a href="?<?= $qsBase ?>&pag=1" class="btn btn-sm btn-outline-secondary" title="Atualizar">
+            <a href="?<?= $qsBase ?>" class="btn btn-sm btn-outline-secondary" title="Atualizar">
                 <i class="bi bi-arrow-clockwise"></i>
             </a>
         </div>
@@ -259,9 +314,8 @@ require_once $appBase . '/views/admin/header.php';
     <!-- KPI Cards -->
     <div class="row g-3 mb-4">
 
-        <!-- Total de votos -->
         <div class="col-6 col-md-3">
-            <div class="prem-kpi-card prem-vp">
+            <div class="prem-kpi-card">
                 <div class="prem-kpi-icon" style="background:#eaf7ef;">
                     <i class="bi bi-hand-thumbs-up-fill" style="color:#1E3425;"></i>
                 </div>
@@ -271,9 +325,8 @@ require_once $appBase . '/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Eleitores únicos -->
         <div class="col-6 col-md-3">
-            <div class="prem-kpi-card prem-vp">
+            <div class="prem-kpi-card">
                 <div class="prem-kpi-icon" style="background:#e7f5ff;">
                     <i class="bi bi-people-fill" style="color:#084298;"></i>
                 </div>
@@ -283,9 +336,8 @@ require_once $appBase . '/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Negócios votados -->
         <div class="col-6 col-md-3">
-            <div class="prem-kpi-card prem-vp">
+            <div class="prem-kpi-card">
                 <div class="prem-kpi-icon" style="background:#fffbe6;">
                     <i class="bi bi-trophy-fill" style="color:#856404;"></i>
                 </div>
@@ -295,10 +347,9 @@ require_once $appBase . '/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Distribuição por tipo -->
         <div class="col-6 col-md-3">
-            <div class="kpi-card prem-vp">
-                <div class="kpi-icon" style="background:#f3f0ff;">
+            <div class="prem-kpi-card">
+                <div class="prem-kpi-icon" style="background:#f3f0ff;">
                     <i class="bi bi-pie-chart-fill" style="color:#5a3e9a;"></i>
                 </div>
                 <div class="prem-kpi-valor" style="font-size:18px;margin-bottom:4px;">Distribuição</div>
@@ -314,11 +365,11 @@ require_once $appBase . '/views/admin/header.php';
                 ?>
                     <div class="dist-item mb-1">
                         <span class="dist-dot" style="background:<?= $t['cor'] ?>;"></span>
-                        <span class="text-muted" style="min-width:85px;"><?= $t['label'] ?></span>
+                        <span class="text-muted" style="min-width:85px;font-size:11px;"><?= $t['label'] ?></span>
                         <div class="dist-bar-wrap">
                             <div class="dist-bar-fill" style="width:<?= $pct ?>%;background:<?= $t['cor'] ?>;"></div>
                         </div>
-                        <span class="fw-bold" style="min-width:32px;text-align:right;"><?= number_format($t['valor']) ?></span>
+                        <span class="fw-bold" style="min-width:32px;text-align:right;font-size:12px;"><?= number_format($t['valor']) ?></span>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -327,9 +378,8 @@ require_once $appBase . '/views/admin/header.php';
     </div>
 
     <!-- Filtros -->
-    <div class="filtros-card">
+    <div class="filtros-card mb-4">
         <form method="GET" id="formFiltros" class="row g-2 align-items-end">
-            <input type="hidden" name="pag" value="1">
 
             <div class="col-6 col-md-2">
                 <label class="form-label fw-semibold mb-1" style="font-size:12px;">Ano</label>
@@ -368,7 +418,7 @@ require_once $appBase . '/views/admin/header.php';
             </div>
 
             <div class="col-6 col-md-2">
-                <label class="form-label fw-semibold mb-1" style="font-size:12px;">Categoria</label>
+                <label class="form-label fw-semibold mb-1" style="font-size:12px;">Categoria (tabela)</label>
                 <select name="categoria_id" class="form-select form-select-sm">
                     <option value="">Todas</option>
                     <?php foreach ($categorias as $cat): ?>
@@ -407,221 +457,275 @@ require_once $appBase . '/views/admin/header.php';
         </form>
     </div>
 
-    <!-- Ranking + Tabela -->
-    <div class="row g-4">
-
-        <!-- Ranking Top 10 -->
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bi bi-bar-chart-fill me-2" style="color:#CDDE00;"></i>Top 10 Negócios
-                    </h5>
-                    <span class="badge" style="background:#e8ede9;color:#6c7a6e;font-size:10px;">
-                        cache 60s
-                    </span>
-                </div>
-                <div class="card-body p-0">
-                    <?php if (empty($rankingData)): ?>
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-inbox d-block fs-2 mb-2"></i>
-                            Sem votos registrados ainda.
-                        </div>
-                    <?php else: ?>
-                        <?php $maxVotos = max(1, (int)($rankingData[0]['total_votos'] ?? 1)); ?>
-                        <ul class="list-unstyled mb-0">
-                            <?php foreach ($rankingData as $i => $row): ?>
-                                <li class="px-3 py-2 <?= $i < count($rankingData) - 1 ? 'border-bottom' : '' ?>"
-                                    style="border-color:#f0f4f1;">
-
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <span class="rank-medal">
-                                            <?= match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉', default => '<span style="font-size:11px;color:#9aab9d;font-weight:700;">#'.($i+1).'</span>' } ?>
-                                        </span>
-                                        <div class="flex-grow-1 overflow-hidden">
-                                            <div class="fw-semibold text-truncate" style="font-size:13px;"
-                                                title="<?= h($row['nome_fantasia']) ?>">
-                                                <?= h($row['nome_fantasia']) ?>
-                                            </div>
-                                            <div class="text-muted" style="font-size:11px;"><?= h($row['categoria_nome']) ?></div>
-                                        </div>
-                                        <span class="fw-bold" style="font-size:15px;color:#1E3425;flex-shrink:0;">
-                                            <?= number_format((int)$row['total_votos']) ?>
-                                        </span>
-                                    </div>
-
-                                    <!-- barra proporcional -->
-                                    <div class="rank-bar-wrap ms-5 mb-1">
-                                        <div class="rank-bar-fill"
-                                            style="width:<?= round(($row['total_votos'] / $maxVotos) * 100) ?>%"></div>
-                                    </div>
-
-                                    <!-- breakdown por tipo -->
-                                    <div class="d-flex gap-3 ms-5" style="font-size:10px;color:#9aab9d;">
-                                        <span title="Empreendedores">
-                                            <i class="bi bi-person-badge"></i> <?= number_format((int)$row['v_emp']) ?>
-                                        </span>
-                                        <span title="Parceiros">
-                                            <i class="bi bi-diagram-3-fill"></i> <?= number_format((int)$row['v_par']) ?>
-                                        </span>
-                                        <span title="Sociedade Civil">
-                                            <i class="bi bi-people-fill"></i> <?= number_format((int)$row['v_soc']) ?>
-                                        </span>
-                                    </div>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php endif; ?>
-                </div>
-            </div>
+    <!-- ============================================================ -->
+    <!-- BLOCO TOP 10 POR CATEGORIA                                   -->
+    <!-- ============================================================ -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="mb-0">
+                <i class="bi bi-bar-chart-fill me-2" style="color:#CDDE00;"></i>
+                Top 10 por Categoria
+            </h5>
+            <span class="badge" style="background:#e8ede9;color:#6c7a6e;font-size:10px;">cache 60s</span>
         </div>
 
-        <!-- Tabela paginada -->
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0">
+        <?php if (empty($rankingPorCategoria)): ?>
+            <div class="card-body text-center py-5 text-muted">
+                <i class="bi bi-inbox d-block fs-2 mb-2"></i>
+                Nenhum voto encontrado com os filtros aplicados.
+            </div>
+        <?php else: ?>
 
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bi bi-list-check me-2" style="color:#CDDE00;"></i>Votos Registrados
-                    </h5>
-                    <span class="text-muted" style="font-size:12px;">
-                        <?php if ($totalRegistros > 0): ?>
-                            <?= number_format(($pagina - 1) * $porPagina + 1) ?>–<?= number_format(min($pagina * $porPagina, $totalRegistros)) ?>
-                            de <?= number_format($totalRegistros) ?>
-                        <?php endif; ?>
-                    </span>
-                </div>
+            <!-- Abas das categorias -->
+            <div class="card-header bg-white border-top-0 pb-0 pt-3" style="border-bottom:none;">
+                <ul class="nav nav-tabs card-header-tabs flex-nowrap overflow-auto" id="tabsCategorias" role="tablist"
+                    style="border-bottom:2px solid #e8ede9;gap:2px;">
+                    <?php foreach ($rankingPorCategoria as $idx => $catBloco): ?>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link <?= $idx === 0 ? 'active' : '' ?> px-3 py-2"
+                                id="tab-cat-<?= (int)$catBloco['cat_id'] ?>"
+                                data-bs-toggle="tab"
+                                data-bs-target="#panel-cat-<?= (int)$catBloco['cat_id'] ?>"
+                                type="button" role="tab"
+                                style="font-size:12px;font-weight:600;white-space:nowrap;
+                                       border-radius:6px 6px 0 0;">
+                                <?= h($catBloco['cat_nome']) ?>
+                                <span class="badge ms-1"
+                                      style="background:#eaf7ef;color:#1E3425;font-size:10px;">
+                                    <?= count($catBloco['itens']) ?>
+                                </span>
+                            </button>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
 
-                <div class="card-body p-0">
-                    <?php if (empty($votos)): ?>
-                        <div class="text-center py-5 text-muted">
-                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                            Nenhum voto encontrado com os filtros aplicados.
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table votos-table mb-0">
-                                <thead>
-                                    <tr>
-                                        <th class="ps-3">#</th>
-                                        <th>Negócio</th>
-                                        <th>Categoria / Fase</th>
-                                        <th>Eleitor</th>
-                                        <th>Tipo</th>
-                                        <th class="pe-3">Data do Voto</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($votos as $voto): ?>
-                                        <tr>
-                                            <td class="ps-3 text-muted" style="font-size:11px;">
-                                                <?= number_format((int)$voto['id']) ?>
-                                            </td>
-                                            <td>
-                                                <div class="fw-semibold" style="font-size:13px;">
-                                                    <?= h($voto['nome_fantasia']) ?>
+            <!-- Painéis -->
+            <div class="card-body p-0">
+                <div class="tab-content" id="tabsCatsContent">
+                    <?php foreach ($rankingPorCategoria as $idx => $catBloco): ?>
+                        <div
+                            class="tab-pane fade <?= $idx === 0 ? 'show active' : '' ?>"
+                            id="panel-cat-<?= (int)$catBloco['cat_id'] ?>"
+                            role="tabpanel">
+
+                            <?php
+                                $maxV = max(1, (int)($catBloco['itens'][0]['total_votos'] ?? 1));
+                            ?>
+                            <ul class="list-unstyled mb-0">
+                                <?php foreach ($catBloco['itens'] as $i => $row): ?>
+                                    <li class="px-4 py-3 <?= $i < count($catBloco['itens']) - 1 ? 'border-bottom' : '' ?>"
+                                        style="border-color:#f0f4f1;">
+
+                                        <div class="d-flex align-items-center gap-3">
+
+                                            <!-- Médala / posição -->
+                                            <div class="rank-pos-lg" style="
+                                                background:<?= match($i) { 0 => '#CDDE00', 1 => '#e8e8e8', 2 => '#fde8d0', default => '#f0f4f1' } ?>;
+                                                color:<?= match($i) { 0 => '#1E3425', default => '#6c7a6e' } ?>;
+                                            ">
+                                                <?= match($i) {
+                                                    0 => '🥇',
+                                                    1 => '🥈',
+                                                    2 => '🥉',
+                                                    default => '<span style="font-size:11px;font-weight:700;">#'.($i+1).'</span>'
+                                                } ?>
+                                            </div>
+
+                                            <!-- Nome + local -->
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <div class="fw-semibold text-truncate" style="font-size:13px;"
+                                                    title="<?= h($row['nome_fantasia']) ?>">
+                                                    <?= h($row['nome_fantasia']) ?>
                                                 </div>
-                                                <?php if ($voto['municipio'] || $voto['estado']): ?>
+                                                <?php if (!empty($row['municipio'])): ?>
                                                     <div class="text-muted" style="font-size:11px;">
                                                         <i class="bi bi-geo-alt"></i>
-                                                        <?= h(trim(($voto['municipio'] ?? '') . '/' . ($voto['estado'] ?? ''), '/')) ?>
+                                                        <?= h($row['municipio']) ?>/<?= h($row['estado']) ?>
                                                     </div>
                                                 <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <div style="font-size:12px;font-weight:600;">
-                                                    <?= h($voto['categoria_nome']) ?>
-                                                </div>
-                                                <div class="text-muted" style="font-size:11px;">
-                                                    <?= h($voto['fase_nome']) ?>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div style="font-size:12px;">
-                                                    <?= h($voto['eleitor_nome'] ?: '—') ?>
-                                                </div>
-                                                <div class="text-muted" style="font-size:11px;">
-                                                    ID <?= (int)$voto['eleitor_id'] ?>
-                                                </div>
-                                            </td>
-                                            <td><?= badgeTipoEleitor($voto['tipo_eleitor']) ?></td>
-                                            <td class="pe-3" style="font-size:11px;white-space:nowrap;">
-                                                <?= dataBr($voto['created_at']) ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                                            </div>
+
+                                            <!-- Total de votos -->
+                                            <div class="text-end" style="flex-shrink:0;min-width:60px;">
+                                                <span class="fw-bold" style="font-size:18px;color:#1E3425;">
+                                                    <?= number_format((int)$row['total_votos']) ?>
+                                                </span>
+                                                <div class="text-muted" style="font-size:10px;">votos</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Barra proporcional -->
+                                        <div class="rank-bar-wrap mt-2" style="margin-left:52px;">
+                                            <div class="rank-bar-fill"
+                                                style="width:<?= round(($row['total_votos'] / $maxV) * 100) ?>%;
+                                                       background:<?= match($i) { 0 => '#1E3425', 1 => '#6c7a6e', 2 => '#CDDE00', default => '#d6e3d6' } ?>;"></div>
+                                        </div>
+
+                                        <!-- Breakdown por tipo -->
+                                        <div class="d-flex gap-3 mt-1" style="font-size:10px;color:#9aab9d;margin-left:52px;">
+                                            <span title="Empreendedores">
+                                                <i class="bi bi-person-badge"></i> <?= number_format((int)$row['v_emp']) ?>
+                                            </span>
+                                            <span title="Parceiros">
+                                                <i class="bi bi-diagram-3-fill"></i> <?= number_format((int)$row['v_par']) ?>
+                                            </span>
+                                            <span title="Sociedade Civil">
+                                                <i class="bi bi-people-fill"></i> <?= number_format((int)$row['v_soc']) ?>
+                                            </span>
+                                        </div>
+
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+
                         </div>
-
-                        <!-- Paginação -->
-                        <?php if ($totalPaginas > 1): ?>
-                            <div class="paginacao-wrap">
-                                <span>
-                                    Página <strong><?= $pagina ?></strong> de <strong><?= $totalPaginas ?></strong>
-                                    &nbsp;·&nbsp; <?= number_format($totalRegistros) ?> votos
-                                </span>
-                                <div class="paginacao-nums">
-
-                                    <?php if ($pagina > 1): ?>
-                                        <a href="?<?= $qsBase ?>&pag=1" title="Primeira">
-                                            <i class="bi bi-chevron-double-left"></i>
-                                        </a>
-                                        <a href="?<?= $qsBase ?>&pag=<?= $pagina - 1 ?>">
-                                            <i class="bi bi-chevron-left"></i>
-                                        </a>
-                                    <?php endif; ?>
-
-                                    <?php
-                                    // Janela de páginas: mostra até 5 ao redor da atual
-                                    $janela = 2;
-                                    $ini    = max(1, $pagina - $janela);
-                                    $fim    = min($totalPaginas, $pagina + $janela);
-
-                                    if ($ini > 1) {
-                                        echo '<a href="?' . $qsBase . '&pag=1">1</a>';
-                                        if ($ini > 2) echo '<span class="reticencias">…</span>';
-                                    }
-
-                                    for ($p = $ini; $p <= $fim; $p++):
-                                        if ($p === $pagina):
-                                            echo '<span>' . $p . '</span>';
-                                        else:
-                                            echo '<a href="?' . $qsBase . '&pag=' . $p . '">' . $p . '</a>';
-                                        endif;
-                                    endfor;
-
-                                    if ($fim < $totalPaginas) {
-                                        if ($fim < $totalPaginas - 1) echo '<span class="reticencias">…</span>';
-                                        echo '<a href="?' . $qsBase . '&pag=' . $totalPaginas . '">' . $totalPaginas . '</a>';
-                                    }
-                                    ?>
-
-                                    <?php if ($pagina < $totalPaginas): ?>
-                                        <a href="?<?= $qsBase ?>&pag=<?= $pagina + 1 ?>">
-                                            <i class="bi bi-chevron-right"></i>
-                                        </a>
-                                        <a href="?<?= $qsBase ?>&pag=<?= $totalPaginas ?>" title="Última">
-                                            <i class="bi bi-chevron-double-right"></i>
-                                        </a>
-                                    <?php endif; ?>
-
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
+
+        <?php endif; ?>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- BLOCO: Últimos 20 Votos Registrados                          -->
+    <!-- ============================================================ -->
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-list-check me-2" style="color:#CDDE00;"></i>
+                Votos Registrados
+                <span class="badge ms-2" style="background:#e8ede9;color:#6c7a6e;font-size:11px;font-weight:600;"
+                      title="Exibe apenas os 20 mais recentes com os filtros aplicados">
+                    últimos 20
+                </span>
+            </h5>
+            <span class="text-muted" style="font-size:12px;">
+                <?= number_format($totalRegistros) ?> voto<?= $totalRegistros !== 1 ? 's' : '' ?> no total
+            </span>
         </div>
 
-    </div><!-- /row -->
+        <div class="card-body p-0">
+            <?php if (empty($votos)): ?>
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                    Nenhum voto encontrado com os filtros aplicados.
+                </div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table votos-table mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">#</th>
+                                <th>Negócio</th>
+                                <th>Categoria / Fase</th>
+                                <th>Eleitor</th>
+                                <th>Tipo</th>
+                                <th class="pe-3">Data do Voto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($votos as $voto): ?>
+                                <tr>
+                                    <td class="ps-3 text-muted" style="font-size:11px;">
+                                        <?= number_format((int)$voto['id']) ?>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold" style="font-size:13px;">
+                                            <?= h($voto['nome_fantasia']) ?>
+                                        </div>
+                                        <?php if ($voto['municipio'] || $voto['estado']): ?>
+                                            <div class="text-muted" style="font-size:11px;">
+                                                <i class="bi bi-geo-alt"></i>
+                                                <?= h(trim(($voto['municipio'] ?? '') . '/' . ($voto['estado'] ?? ''), '/')) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:12px;font-weight:600;">
+                                            <?= h($voto['categoria_nome']) ?>
+                                        </div>
+                                        <div class="text-muted" style="font-size:11px;">
+                                            <?= h($voto['fase_nome']) ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="font-size:12px;">
+                                            <?= h($voto['eleitor_nome'] ?: '—') ?>
+                                        </div>
+                                        <div class="text-muted" style="font-size:11px;">
+                                            ID <?= (int)$voto['eleitor_id'] ?>
+                                        </div>
+                                    </td>
+                                    <td><?= badgeTipoEleitor($voto['tipo_eleitor']) ?></td>
+                                    <td class="pe-3" style="font-size:11px;white-space:nowrap;">
+                                        <?= dataBr($voto['created_at']) ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
 
-</div>
+                <?php if ($totalRegistros > 20): ?>
+                    <div class="px-4 py-3 border-top" style="background:#f9fafb;">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Exibindo os <strong>20 mais recentes</strong> de
+                            <strong><?= number_format($totalRegistros) ?></strong> votos registrados.
+                            Use os filtros acima para refinar por premiação, fase ou categoria.
+                        </small>
+                    </div>
+                <?php endif; ?>
 
+            <?php endif; ?>
+        </div>
+    </div>
+
+</div><!-- /container-fluid -->
+
+<style>
+.rank-pos-lg {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.rank-bar-wrap {
+    height: 5px;
+    background: #f0f4f1;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.rank-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .3s ease;
+}
+.nav-tabs .nav-link {
+    color: #6c7a6e;
+    border: none;
+    border-bottom: 2px solid transparent;
+}
+.nav-tabs .nav-link.active {
+    color: #1E3425;
+    border-bottom: 2px solid #1E3425;
+    background: transparent;
+    font-weight: 700;
+}
+.nav-tabs .nav-link:hover:not(.active) {
+    color: #1E3425;
+    background: #f0f4f1;
+}
+</style>
 
 <script>
-// Auto-submit ao mudar Ano ou Premiação para recarregar os selects dependentes
 document.getElementById('selectAno').addEventListener('change', function () {
     this.form.submit();
 });
