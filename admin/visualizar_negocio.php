@@ -119,6 +119,7 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$negocio_id]);
 $docs = $stmt->fetch(PDO::FETCH_ASSOC);
+
 // Empreendedor responsável pelo negócio
 $empreendedorResponsavel = pdo_fetch_one($pdo, "
     SELECT e.*
@@ -127,6 +128,21 @@ $empreendedorResponsavel = pdo_fetch_one($pdo, "
     WHERE n.id = ?
     LIMIT 1
 ", [$negocio_id]) ?: [];
+
+// Role atual
+$_role = $_SESSION['user_role'] ?? '';
+$_isJuri    = ($_role === 'juri');
+$_isTecnica = ($_role === 'tecnica');
+$_isJuriOuTecnica = $_isJuri || $_isTecnica;
+
+// URL do botão Votar conforme role
+if ($_isJuri) {
+    $urlVotar = '/admin/premiacao_juri.php?negocio_id=' . $negocio_id;
+} elseif ($_isTecnica) {
+    $urlVotar = '/admin/premiacao_voto_tecnico.php?negocio_id=' . $negocio_id;
+} else {
+    $urlVotar = null;
+}
 
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
@@ -156,6 +172,24 @@ include __DIR__ . '/../app/views/admin/header.php';
                 <span class="admin-summary-label">Publicação</span>
                 <strong><?= !empty($negocio['publicado_vitrine']) ? 'Publicado' : 'Não publicado' ?></strong>
             </div>
+
+            <?php if (!empty($negocio['publicado_vitrine'])): ?>
+            <div class="admin-summary-item">
+                <a href="/negocio.php?id=<?= $negocio_id ?>" target="_blank" rel="noopener noreferrer"
+                   class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-box-arrow-up-right"></i> Ver na Vitrine
+                </a>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($_isJuriOuTecnica && $urlVotar): ?>
+            <div class="admin-summary-item">
+                <a href="<?= $urlVotar ?>" class="btn btn-sm btn-success d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-check2-circle"></i>
+                    <?= $_isJuri ? 'Votar como Júri' : 'Votar como Técnica' ?>
+                </a>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -325,8 +359,24 @@ include __DIR__ . '/../app/views/admin/header.php';
 
     <?php endif; ?>
 
-    <div class="text-center mt-4">
-        <a href="/admin/negocios.php" class="btn btn-outline-secondary px-4">Voltar</a>
+    <div class="text-center mt-4 d-flex justify-content-center align-items-center gap-3 flex-wrap">
+        <a href="/admin/negocios.php" class="btn btn-outline-secondary px-4">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+
+        <?php if (!empty($negocio['publicado_vitrine'])): ?>
+        <a href="/negocio.php?id=<?= $negocio_id ?>" target="_blank" rel="noopener noreferrer"
+           class="btn btn-outline-primary px-4 d-inline-flex align-items-center gap-2">
+            <i class="bi bi-box-arrow-up-right"></i> Ver na Vitrine
+        </a>
+        <?php endif; ?>
+
+        <?php if ($_isJuriOuTecnica && $urlVotar): ?>
+        <a href="<?= $urlVotar ?>" class="btn btn-success px-4 d-inline-flex align-items-center gap-2">
+            <i class="bi bi-check2-circle"></i>
+            <?= $_isJuri ? 'Votar como Júri' : 'Votar como Técnica' ?>
+        </a>
+        <?php endif; ?>
     </div>
 </div>
 
