@@ -62,8 +62,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log('updateLastLogin error: ' . $e->getMessage());
                     }
 
-                    // redireciona para painel
-                    header('Location: /admin/dashboard.php');
+                    // redireciona conforme role
+                    $role = $user['role'];
+                    if (in_array($role, ['juri', 'tecnica'], true)) {
+                        header('Location: /admin/negocios.php');
+                    } else {
+                        header('Location: /admin/dashboard.php');
+                    }
                     exit;
                 }
             } else {
