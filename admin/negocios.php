@@ -240,6 +240,11 @@ $etapas = [
     'demografia'   => 'Demografia',   'finalizado' => 'Finalizado'
 ];
 
+// Flag: oculta colunas de etapa/scores apenas para juri e tecnica
+$ocultarColunasScore = is_juri_ou_tecnica();
+// colspan dinâmico para o estado vazio da tabela
+$colspanTabela = $ocultarColunasScore ? 6 : 11;
+
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
 
@@ -384,6 +389,13 @@ include __DIR__ . '/../app/views/admin/header.php';
           <th>Nome Fantasia</th>
           <th>Categoria</th>
           <th>Empreendedor</th>
+          <?php if (!$ocultarColunasScore): ?>
+          <th><a href="<?= linkOrdenacao('etapa') ?>" class="neg-sort-link">Etapa <?= iconeOrdenacao('etapa') ?></a></th>
+          <th class="text-center"><a href="<?= linkOrdenacao('escala') ?>" class="neg-sort-link">Escala <?= iconeOrdenacao('escala') ?></a></th>
+          <th class="text-center"><a href="<?= linkOrdenacao('investimento') ?>" class="neg-sort-link">Invest. <?= iconeOrdenacao('investimento') ?></a></th>
+          <th class="text-center"><a href="<?= linkOrdenacao('impacto') ?>" class="neg-sort-link">Impacto <?= iconeOrdenacao('impacto') ?></a></th>
+          <th class="text-center"><a href="<?= linkOrdenacao('geral') ?>" class="neg-sort-link">Geral <?= iconeOrdenacao('geral') ?></a></th>
+          <?php endif; ?>
           <th>Status</th>
           <th class="text-center">Ações</th>
         </tr>
@@ -391,7 +403,7 @@ include __DIR__ . '/../app/views/admin/header.php';
       <tbody>
         <?php if (empty($negocios)): ?>
           <tr>
-            <td colspan="6" class="text-center py-4" style="color:#9aab9d;">
+            <td colspan="<?= $colspanTabela ?>" class="text-center py-4" style="color:#9aab9d;">
               <i class="bi bi-briefcase" style="font-size:1.8rem; opacity:.4; display:block; margin-bottom:.5rem;"></i>
               Nenhum negócio encontrado com os filtros selecionados.
             </td>
@@ -417,6 +429,23 @@ include __DIR__ . '/../app/views/admin/header.php';
               <td style="font-size:.85rem; color:#4a5e4f;">
                 <?= htmlspecialchars($n['empreendedor']) ?>
               </td>
+              <?php if (!$ocultarColunasScore): ?>
+              <td>
+                <?php if ($n['inscricao_completa']): ?>
+                  <span class="emp-badge" style="background:rgba(205,222,0,.2);color:#7a8500;">
+                    <i class="bi bi-check-circle-fill me-1"></i>Todas as etapas concluídas
+                  </span>
+                <?php else: ?>
+                  <span style="font-size:.8rem; color:#6c8070;">
+                    Etapa: <?= isset($etapas[$n['etapa_atual']]) ? $etapas[$n['etapa_atual']] : ($n['etapa_atual'] ?: 'Início') ?>
+                  </span>
+                <?php endif; ?>
+              </td>
+              <td class="text-center"><?= $n['score_escala']      ?? '-' ?></td>
+              <td class="text-center"><?= $n['score_investimento'] ?? '-' ?></td>
+              <td class="text-center"><?= $n['score_impacto']      ?? '-' ?></td>
+              <td class="text-center"><?= $n['score_geral']        ?? '-' ?></td>
+              <?php endif; ?>
               <td>
                 <?php if ($n['status_operacional'] === 'encerrado'): ?>
                   <span class="emp-badge" style="background:#fde8ea;color:#842029;">Encerrado</span>
