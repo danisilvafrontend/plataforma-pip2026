@@ -129,19 +129,42 @@ $empreendedorResponsavel = pdo_fetch_one($pdo, "
     LIMIT 1
 ", [$negocio_id]) ?: [];
 
-// Role atual
-$_role = $_SESSION['user_role'] ?? '';
-$_isJuri    = ($_role === 'juri');
-$_isTecnica = ($_role === 'tecnica');
+// ── Role do usuário logado ───────────────────────────────────────────────────
+$_role          = $_SESSION['user_role'] ?? '';
+$_userId        = (int)($_SESSION['user_id'] ?? 0);
+$_isJuri        = ($_role === 'juri');
+$_isTecnica     = ($_role === 'tecnica');
 $_isJuriOuTecnica = $_isJuri || $_isTecnica;
 
-// URL do botão Votar conforme role
-if ($_isJuri) {
-    $urlVotar = '/admin/premiacao_juri.php?negocio_id=' . $negocio_id;
-} elseif ($_isTecnica) {
-    $urlVotar = '/admin/premiacao_voto_tecnico.php?negocio_id=' . $negocio_id;
-} else {
-    $urlVotar = null;
+// ── Verifica se já votou neste negócio ──────────────────────────────────────
+$_jaVotou = false;
+$urlVotar = null;
+
+if ($_isJuriOuTecnica && $_userId > 0) {
+
+    if ($_isJuri) {
+        // Tabela: premiacao_votos_juri  → ligação: inscricao_id → premiacao_inscricoes.negocio_id
+        $stmtVoto = $pdo->prepare("
+            SELECT COUNT(*) FROM premiacao_votos_juri vj
+            INNER JOIN premiacao_inscricoes pi ON pi.id = vj.inscricao_id
+            WHERE vj.user_id = ? AND pi.negocio_id = ?
+        ");
+        $stmtVoto->execute([$_userId, $negocio_id]);
+        $_jaVotou = (int)$stmtVoto->fetchColumn() > 0;
+        $urlVotar = '/admin/premiacao_juri.php?negocio_id=' . $negocio_id;
+    }
+
+    if ($_isTecnica) {
+        // Tabela: premiacao_votos_tecnicos → mesma lógica
+        $stmtVoto = $pdo->prepare("
+            SELECT COUNT(*) FROM premiacao_votos_tecnicos vt
+            INNER JOIN premiacao_inscricoes pi ON pi.id = vt.inscricao_id
+            WHERE vt.user_id = ? AND pi.negocio_id = ?
+        ");
+        $stmtVoto->execute([$_userId, $negocio_id]);
+        $_jaVotou = (int)$stmtVoto->fetchColumn() > 0;
+        $urlVotar = '/admin/premiacao_voto_tecnico.php?negocio_id=' . $negocio_id;
+    }
 }
 
 include __DIR__ . '/../app/views/admin/header.php';
@@ -184,10 +207,18 @@ include __DIR__ . '/../app/views/admin/header.php';
 
             <?php if ($_isJuriOuTecnica && $urlVotar): ?>
             <div class="admin-summary-item">
-                <a href="<?= $urlVotar ?>" class="btn btn-sm btn-success d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-check2-circle"></i>
-                    <?= $_isJuri ? 'Votar como Júri' : 'Votar como Técnica' ?>
-                </a>
+                <?php if ($_jaVotou): ?>
+                    <span class="btn btn-sm btn-success disabled d-inline-flex align-items-center gap-2"
+                          title="Você já registrou seu voto neste negócio">
+                        <i class="bi bi-check2-circle"></i>
+                        <?= $_isJuri ? 'Já votei (Júri)' : 'Já votei (Técnica)' ?>
+                    </span>
+                <?php else: ?>
+                    <a href="<?= $urlVotar ?>" class="btn btn-sm btn-success d-inline-flex align-items-center gap-2">
+                        <i class="bi bi-check2-circle"></i>
+                        <?= $_isJuri ? 'Votar como Júri' : 'Votar como Técnica' ?>
+                    </a>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
         </div>
@@ -276,7 +307,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                     <i class="bi bi-check-circle me-2"></i>Aprovar e publicar
                 </a>
 
-                <!-- Botão que abre o modal de indeferimento -->
                 <button type="button" class="btn btn-outline-danger btn-lg"
                         data-bs-toggle="modal" data-bs-target="#modalIndeferir">
                     <i class="bi bi-x-circle me-2"></i>Indeferir cadastro
@@ -372,10 +402,18 @@ include __DIR__ . '/../app/views/admin/header.php';
         <?php endif; ?>
 
         <?php if ($_isJuriOuTecnica && $urlVotar): ?>
-        <a href="<?= $urlVotar ?>" class="btn btn-success px-4 d-inline-flex align-items-center gap-2">
-            <i class="bi bi-check2-circle"></i>
-            <?= $_isJuri ? 'Votar como Júri' : 'Votar como Técnica' ?>
-        </a>
+            <?php if ($_jaVotou): ?>
+                <span class="btn btn-success px-4 disabled d-inline-flex align-items-center gap-2"
+                      title="Você já registrou seu voto neste negócio">
+                    <i class="bi bi-check2-circle"></i>
+                    <?= $_isJuri ? 'Já votei (Júri)' : 'Já votei (Técnica)' ?>
+                </span>
+            <?php else: ?>
+                <a href="<?= $urlVotar ?>" class="btn btn-success px-4 d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-check2-circle"></i>
+                    <?= $_isJuri ? 'Votar como Júri' : 'Votar como Técnica' ?>
+                </a>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
