@@ -384,11 +384,6 @@ include __DIR__ . '/../app/views/admin/header.php';
           <th>Nome Fantasia</th>
           <th>Categoria</th>
           <th>Empreendedor</th>
-          <th><a href="<?= linkOrdenacao('etapa') ?>" class="neg-sort-link">Etapa <?= iconeOrdenacao('etapa') ?></a></th>
-          <th class="text-center"><a href="<?= linkOrdenacao('escala') ?>" class="neg-sort-link">Escala <?= iconeOrdenacao('escala') ?></a></th>
-          <th class="text-center"><a href="<?= linkOrdenacao('investimento') ?>" class="neg-sort-link">Invest. <?= iconeOrdenacao('investimento') ?></a></th>
-          <th class="text-center"><a href="<?= linkOrdenacao('impacto') ?>" class="neg-sort-link">Impacto <?= iconeOrdenacao('impacto') ?></a></th>
-          <th class="text-center"><a href="<?= linkOrdenacao('geral') ?>" class="neg-sort-link">Geral <?= iconeOrdenacao('geral') ?></a></th>
           <th>Status</th>
           <th class="text-center">Ações</th>
         </tr>
@@ -396,7 +391,7 @@ include __DIR__ . '/../app/views/admin/header.php';
       <tbody>
         <?php if (empty($negocios)): ?>
           <tr>
-            <td colspan="11" class="text-center py-4" style="color:#9aab9d;">
+            <td colspan="6" class="text-center py-4" style="color:#9aab9d;">
               <i class="bi bi-briefcase" style="font-size:1.8rem; opacity:.4; display:block; margin-bottom:.5rem;"></i>
               Nenhum negócio encontrado com os filtros selecionados.
             </td>
@@ -422,21 +417,6 @@ include __DIR__ . '/../app/views/admin/header.php';
               <td style="font-size:.85rem; color:#4a5e4f;">
                 <?= htmlspecialchars($n['empreendedor']) ?>
               </td>
-              <td>
-                <?php if ($n['inscricao_completa']): ?>
-                  <span class="emp-badge" style="background:rgba(205,222,0,.2);color:#7a8500;">
-                    <i class="bi bi-check-circle-fill me-1"></i>Todas as etapas concluídas
-                  </span>
-                <?php else: ?>
-                  <span style="font-size:.8rem; color:#6c8070;">
-                    Etapa: <?= isset($etapas[$n['etapa_atual']]) ? $etapas[$n['etapa_atual']] : ($n['etapa_atual'] ?: 'Início') ?>
-                  </span>
-                <?php endif; ?>
-              </td>
-              <td class="text-center"><?= $n['score_escala']      ?? '-' ?></td>
-              <td class="text-center"><?= $n['score_investimento'] ?? '-' ?></td>
-              <td class="text-center"><?= $n['score_impacto']      ?? '-' ?></td>
-              <td class="text-center"><?= $n['score_geral']        ?? '-' ?></td>
               <td>
                 <?php if ($n['status_operacional'] === 'encerrado'): ?>
                   <span class="emp-badge" style="background:#fde8ea;color:#842029;">Encerrado</span>
@@ -466,57 +446,64 @@ include __DIR__ . '/../app/views/admin/header.php';
 
               <!-- Ações -->
               <td class="text-center">
-                <div class="d-flex gap-1 justify-content-center">
+                <div class="d-flex gap-1 justify-content-center flex-wrap">
 
                   <!-- Ver detalhes -->
-                  <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>" class="act-btn edit" title="Ver detalhes">
+                  <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>" class="act-btn edit" title="Ver detalhes do negócio"
+                     style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;">
                     <i class="bi bi-eye"></i>
+                    <span>Ver Detalhes</span>
                   </a>
 
                   <?php if (is_tecnica() && $inscricaoId && $faseAtiva): ?>
                     <?php if ($jaVotou): ?>
-                      <button type="button" class="act-btn" title="Voto já registrado" disabled
-                              style="background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
+                      <button type="button" class="act-btn" title="Voto técnico já registrado para este negócio" disabled
+                              style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
                         <i class="bi bi-check-circle-fill"></i>
+                        <span>Voto Registrado</span>
                       </button>
                     <?php else: ?>
-                      <!-- botão AJAX — data-inscricao / data-fase passados via atributos -->
                       <button type="button"
                               class="act-btn btn-votar-tecnico"
-                              title="Votar como Técnico"
+                              title="Registrar voto técnico para este negócio"
                               data-inscricao="<?= $inscricaoId ?>"
                               data-fase="<?= (int)$faseAtiva ?>"
-                              style="background:rgba(25,135,84,.12);color:#198754;">
+                              style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(25,135,84,.12);color:#198754;">
                         <i class="bi bi-clipboard2-check"></i>
+                        <span>Votar (Técnico)</span>
                       </button>
                     <?php endif; ?>
 
                   <?php elseif (is_juri() && $inscricaoId && $faseAtiva): ?>
                     <?php if ($jaVotou): ?>
-                      <button type="button" class="act-btn" title="Voto já registrado" disabled
-                              style="background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
+                      <button type="button" class="act-btn" title="Voto de júri já registrado para este negócio" disabled
+                              style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
                         <i class="bi bi-award-fill"></i>
+                        <span>Voto Registrado</span>
                       </button>
                     <?php else: ?>
                       <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= $redirectUrl ?>"
                          class="act-btn"
-                         title="Votar como Júri"
-                         style="background:rgba(102,51,153,.12);color:#6633cc;">
+                         title="Registrar voto de júri para este negócio"
+                         style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(102,51,153,.12);color:#6633cc;">
                         <i class="bi bi-star-half"></i>
+                        <span>Votar (Júri)</span>
                       </a>
                     <?php endif; ?>
                   <?php endif; ?>
 
                   <?php if (can_see_admin_shortcuts()): ?>
-                    <a href="/admin/recalcular_score.php?id=<?= $nid ?>" class="act-btn" title="Recalcular Score"
-                      style="background:rgba(151,163,39,.12);color:#5c6318;">
+                    <a href="/admin/recalcular_score.php?id=<?= $nid ?>" class="act-btn" title="Recalcular score deste negócio"
+                       style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(151,163,39,.12);color:#5c6318;">
                       <i class="bi bi-arrow-repeat"></i>
+                      <span>Recalcular Score</span>
                     </a>
 
-                    <button type="button" class="act-btn" title="Enviar Notificação"
-                            style="background:rgba(149,188,204,.18);color:#3a6f82;"
+                    <button type="button" class="act-btn" title="Enviar notificação por e-mail ao empreendedor"
+                            style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(149,188,204,.18);color:#3a6f82;"
                             onclick="abrirModalNotificacao(<?= $nid ?>, '<?= htmlspecialchars(addslashes((string)$n['nome_fantasia'])) ?>')">
                       <i class="bi bi-bell"></i>
+                      <span>Notificar</span>
                     </button>
                   <?php endif; ?>
 
@@ -667,7 +654,7 @@ function mostrarToastVoto(tipo, msg) {
         : '<i class="bi bi-exclamation-circle-fill"></i>';
     t.innerHTML = icone + '<span>' + msg + '</span>';
     wrap.appendChild(t);
-    const dur = tipo === 'err' ? 7000 : 4000;   // erros ficam mais tempo
+    const dur = tipo === 'err' ? 7000 : 4000;
     setTimeout(() => {
         t.classList.add('saindo');
         t.addEventListener('animationend', () => t.remove(), { once: true });
@@ -700,16 +687,15 @@ document.addEventListener('click', async function(e) {
         const data = await res.json();
 
         if (data.ok) {
-            // Sucesso: transforma o botão no estado "já votou"
             btn.classList.remove('btn-votar-tecnico');
             btn.removeAttribute('data-inscricao');
             btn.removeAttribute('data-fase');
-            btn.title = 'Voto já registrado';
-            btn.style.cssText = 'background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;';
+            btn.title = 'Voto técnico já registrado para este negócio';
+            btn.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;';
             btn.querySelector('i').className = 'bi bi-check-circle-fill';
-            mostrarToastVoto('ok', 'Voto registrado com sucesso!');
+            btn.querySelector('span').textContent = 'Voto Registrado';
+            mostrarToastVoto('ok', 'Voto técnico registrado com sucesso!');
         } else {
-            // Erro do servidor (limite, duplicado, fase encerrada etc.)
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.querySelector('i').className = 'bi bi-clipboard2-check';
