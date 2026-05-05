@@ -22,8 +22,6 @@ try {
     die('Erro na conexão com o banco: ' . $e->getMessage());
 }
 
-$pageTitle = 'Premiação — Júri';
-
 function h(?string $v): string
 {
     return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
@@ -90,13 +88,12 @@ if ($filtroPremiacao > 0) {
 }
 
 // Jurados ativos
-$jurados = $pdo->query("
+$jurados      = $pdo->query("
     SELECT id, nome FROM users
     WHERE role = 'juri' AND status = 'ativo'
     ORDER BY nome
 ")->fetchAll();
-
-$totalJurados = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role='juri' AND status='ativo'")->fetchColumn();
+$totalJurados = count($jurados);
 
 // ── WHERE base ────────────────────────────────────────────────────────────────────
 $where  = ['1=1'];
@@ -129,7 +126,6 @@ $categoriasComVoto = (int)($kpi['categorias_com_voto'] ?? 0);
 $pctParticipacao   = $totalJurados > 0 ? round(($juradosVotaram / $totalJurados) * 100) : 0;
 
 // ── Ranking por categoria (abas) ────────────────────────────────────────────────────
-// Categorias que têm votos nos filtros ativos
 $stmtCatsComVoto = $pdo->prepare("
     SELECT DISTINCT
         pc.id   AS categoria_id,
@@ -144,7 +140,6 @@ $stmtCatsComVoto = $pdo->prepare("
 $stmtCatsComVoto->execute($params);
 $catsComVoto = $stmtCatsComVoto->fetchAll();
 
-// Top 10 por categoria
 $rankingPorCategoria = [];
 foreach ($catsComVoto as $cat) {
     $paramsRank = array_merge($params, [$cat['categoria_id']]);
@@ -178,9 +173,23 @@ foreach ($catsComVoto as $cat) {
     ];
 }
 
+// ── Categorias para painel jurado × categorias ─────────────────────────────────────
+if ($filtroPremiacao > 0) {
+    $stmtCP = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id = ? ORDER BY ordem");
+    $stmtCP->execute([$filtroPremiacao]);
+    $categorias_painel = $stmtCP->fetchAll();
+} else {
+    $categorias_painel = $pdo->query("SELECT id, nome FROM premiacao_categorias ORDER BY ordem")->fetchAll();
+}
+
+$todasCategorias = [];
+foreach ($categorias_painel as $c) {
+    $todasCategorias[$c['id']] = $c['nome'];
+}
+
 // ── Painel: jurado × categorias ─────────────────────────────────────────────────────
-$painelWhere  = ['1=1'];
-$painelParams = [];
+$painelParams  = [];
+$painelWhere   = ['1=1'];
 if ($filtroAno > 0)       { $painelWhere[] = 'p.ano = ?';           $painelParams[] = $filtroAno; }
 if ($filtroPremiacao > 0) { $painelWhere[] = 'vj.premiacao_id = ?'; $painelParams[] = $filtroPremiacao; }
 if ($filtroFase > 0)      { $painelWhere[] = 'vj.fase_id = ?';      $painelParams[] = $filtroFase; }
@@ -192,32 +201,21 @@ $stmtPainel = $pdo->prepare("
         u.id               AS user_id,
         u.nome             AS jurado_nome,
         u.email            AS jurado_email,
-        pc.id              AS categoria_id,
-        pc.nome            AS categoria_nome,
+        vj.categoria_id,
         COUNT(vj.id)       AS votos_categoria,
         MAX(vj.created_at) AS ultimo_voto
     FROM users u
-    CROSS JOIN premiacao_categorias pc
-    LEFT JOIN premiacao_votos_juri vj
-        ON  vj.user_id      = u.id
-        AND vj.categoria_id = pc.id
+    LEFT JOIN premiacao_votos_juri vj ON vj.user_id = u.id
     LEFT JOIN premiacoes p ON p.id = vj.premiacao_id
-    WHERE u.role   = 'juri'
-      AND u.status = 'ativo'
-      AND ($painelWhereSql)
-    GROUP BY u.id, u.nome, u.email, pc.id, pc.nome
-    ORDER BY u.nome, pc.ordem
+    WHERE u.role = 'juri' AND u.status = 'ativo'
+      AND ($painelWhereSql OR vj.id IS NULL)
+    GROUP BY u.id, u.nome, u.email, vj.categoria_id
+    ORDER BY u.nome, vj.categoria_id
 ");
-$painelParamsFinal = [];
-if ($filtroAno > 0)       $painelParamsFinal[] = $filtroAno;
-if ($filtroPremiacao > 0) $painelParamsFinal[] = $filtroPremiacao;
-if ($filtroFase > 0)      $painelParamsFinal[] = $filtroFase;
-if ($filtroCategoria > 0) $painelParamsFinal[] = $filtroCategoria;
-$stmtPainel->execute(array_merge($painelParamsFinal, $painelParamsFinal));
+$stmtPainel->execute($painelParams);
 $painelRaw = $stmtPainel->fetchAll();
 
 $painelPorJurado = [];
-$todasCategorias = [];
 foreach ($painelRaw as $row) {
     $uid = $row['user_id'];
     if (!isset($painelPorJurado[$uid])) {
@@ -229,15 +227,13 @@ foreach ($painelRaw as $row) {
             'ultimo'     => null,
         ];
     }
-    $painelPorJurado[$uid]['categorias'][$row['categoria_id']] = [
-        'votos'  => (int)$row['votos_categoria'],
-        'ultimo' => $row['ultimo_voto'],
-    ];
-    $painelPorJurado[$uid]['total'] += (int)$row['votos_categoria'];
-    if ($row['ultimo_voto'] && (!$painelPorJurado[$uid]['ultimo'] || $row['ultimo_voto'] > $painelPorJurado[$uid]['ultimo'])) {
-        $painelPorJurado[$uid]['ultimo'] = $row['ultimo_voto'];
+    if ($row['categoria_id']) {
+        $painelPorJurado[$uid]['categorias'][$row['categoria_id']] = (int)$row['votos_categoria'];
+        $painelPorJurado[$uid]['total'] += (int)$row['votos_categoria'];
+        if ($row['ultimo_voto'] && (!$painelPorJurado[$uid]['ultimo'] || $row['ultimo_voto'] > $painelPorJurado[$uid]['ultimo'])) {
+            $painelPorJurado[$uid]['ultimo'] = $row['ultimo_voto'];
+        }
     }
-    $todasCategorias[$row['categoria_id']] = $row['categoria_nome'];
 }
 
 // ── Log — total para paginação ───────────────────────────────────────────────────────────
@@ -276,7 +272,7 @@ $stmtVotos = $pdo->prepare("
     LIMIT $logPorPagina OFFSET $logOffset
 ");
 $stmtVotos->execute($params);
-$votos = $stmtVotos->fetchAll();
+$log = $stmtVotos->fetchAll();
 
 // Helper: URL de paginação do log
 function logPageUrl(int $pag, array $get): string
@@ -302,7 +298,7 @@ require_once $appBase . '/views/admin/header.php';
         <div>
             <h1 class="mb-1">Premiação — Júri</h1>
             <p class="text-muted mb-0">
-                Acompanhe os votos dos jurados na fase final da premiação.
+                Registro dos votos do júri na fase final da premiação.
                 <span class="ms-2 badge" style="background:#eaf7ef;color:#1E3425;font-size:11px;">
                     Fase Final: top 1 por categoria definido pelo júri
                 </span>
@@ -487,10 +483,10 @@ require_once $appBase . '/views/admin/header.php';
                                     <td class="ps-3 fw-semibold"><?= h($jurado['nome']) ?></td>
                                     <td class="text-muted" style="font-size:12px;"><?= h($jurado['email']) ?></td>
                                     <?php foreach ($todasCategorias as $catId => $catNome): ?>
-                                        <?php $votoCat = $jurado['categorias'][$catId]['votos'] ?? 0; ?>
+                                        <?php $qtd = $jurado['categorias'][$catId] ?? 0; ?>
                                         <td class="text-center">
-                                            <?php if ($votoCat > 0): ?>
-                                                <span class="cell-ok"><i class="bi bi-check2"></i> <?= $votoCat ?></span>
+                                            <?php if ($qtd > 0): ?>
+                                                <span class="cell-ok"><i class="bi bi-check2"></i> <?= $qtd ?></span>
                                             <?php else: ?>
                                                 <span class="cell-zero"><i class="bi bi-dash"></i> 0</span>
                                             <?php endif; ?>
@@ -513,7 +509,7 @@ require_once $appBase . '/views/admin/header.php';
         </div>
     </div>
 
-    <!-- Mais Votados por Categoria (abas) + Log -->
+    <!-- Placar por Categoria (abas) + Log -->
     <div class="row g-4">
 
         <!-- Ranking por categoria -->
@@ -585,9 +581,7 @@ require_once $appBase . '/views/admin/header.php';
                                                         </div>
                                                     </div>
                                                     <div class="text-end flex-shrink-0">
-                                                        <!-- % adesão -->
                                                         <div class="fw-bold" style="font-size:15px;color:#1E3425;"><?= $row['pct_adesao'] ?>%</div>
-                                                        <!-- qtd votos e jurados -->
                                                         <div style="font-size:10px;color:#9aab9d;">
                                                             <?= $row['jurados_que_votaram'] ?>/<?= $totalJurados ?> jurado<?= $row['jurados_que_votaram'] != 1 ? 's' : '' ?>
                                                             &middot;
@@ -615,7 +609,7 @@ require_once $appBase . '/views/admin/header.php';
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="bi bi-journal-text me-2" style="color:#CDDE00;"></i>
-                        Log de Votos
+                        Log de Votos do Júri
                     </h5>
                     <span class="text-muted" style="font-size:12px;">
                         <?= number_format($logTotal) ?> registro<?= $logTotal !== 1 ? 's' : '' ?>
@@ -625,7 +619,7 @@ require_once $appBase . '/views/admin/header.php';
                     </span>
                 </div>
                 <div class="card-body p-0">
-                    <?php if (empty($votos)): ?>
+                    <?php if (empty($log)): ?>
                         <div class="text-center py-5 text-muted">
                             <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                             Nenhum voto de júri encontrado.
@@ -644,7 +638,7 @@ require_once $appBase . '/views/admin/header.php';
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($votos as $voto): ?>
+                                    <?php foreach ($log as $voto): ?>
                                         <tr>
                                             <td class="ps-3 text-muted" style="font-size:11px;"><?= (int)$voto['id'] ?></td>
                                             <td>
