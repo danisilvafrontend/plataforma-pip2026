@@ -4,9 +4,9 @@
 // REGRAS:
 // - Apenas usuários com role = 'tecnico' ou 'tecnica' podem votar
 // - Limite: 10 votos por técnico, por categoria (SEMPRE, em todas as fases)
-// - Fase 1: Pode votar em qualquer elegível (até 10 por categoria)
+// - Fase 1: Pode votar em qualquer elegível ou classificado_fase_1 (até 10 por categoria)
 // - Fase 2: Pode votar apenas nos classificados da F1 (até 10)
-// - Final: Pode votar apenas nos classificados da F2 (até 10)
+// - Final: Pode votar apenas nos classificados da F2 / finalistas (até 10)
 // - Tabela de classificados: premiacao_classificados (fase_id, categoria_id, negocio_id)
 // ================================================================
 
@@ -44,10 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // ── Autenticação: somente tipo = tecnico ──────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    jsonErro('Método não permitido.', 405);
-}
-
 $actor = premiacao_current_actor();
 
 if (!$actor || $actor['tipo'] !== 'tecnico') {
@@ -89,13 +85,27 @@ if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
     jsonErro('A votação técnica não está aberta no momento.');
 }
 
-// ── Valida inscrição ────────────────────────────────────────────────────────────────
+// ── Determina quais status de inscrição são válidos para esta fase ─────────────
+$tipoFase = $fase['tipo_fase'] ?? 'classificatoria';
+$rodada   = (int)($fase['rodada'] ?? 1);
+
+if ($tipoFase === 'final') {
+    $statusValidos = "IN ('finalista')";
+} elseif ($rodada <= 1) {
+    $statusValidos = "IN ('elegivel','classificada_fase_1')";
+} else {
+    $statusAnterior = 'classificada_fase_' . ($rodada - 1);
+    $statusAtual    = 'classificada_fase_' . $rodada;
+    $statusValidos  = "IN ('{$statusAnterior}','{$statusAtual}')";
+}
+
+// ── Valida inscrição: status ativo e pertencente à mesma premiação ────────────────────
 $stmtInsc = $pdo->prepare("
     SELECT pi.id, pi.negocio_id, pi.categoria
     FROM premiacao_inscricoes pi
     WHERE pi.id = ?
       AND pi.premiacao_id = ?
-      AND pi.status = 'elegivel'
+      AND pi.status $statusValidos
     LIMIT 1
 ");
 $stmtInsc->execute([$inscricaoId, $fase['premiacao_id']]);
@@ -123,39 +133,39 @@ if (!$categoriaRow) {
 
 $categoriaId = (int)$categoriaRow['id'];
 
-// ── Validação de Classificação ──────────────────────────────────────────────────────
-if ($fase['tipo_fase'] === 'classificatoria' && (int)$fase['rodada'] === 2) {
+// ── Validação de Classificação (fases 2+ e final) ──────────────────────────────────
+if ($tipoFase === 'classificatoria' && $rodada >= 2) {
 
-    $stmtFase1 = $pdo->prepare("
+    $stmtFaseAnt = $pdo->prepare("
         SELECT id FROM premiacao_fases
         WHERE premiacao_id = ?
           AND tipo_fase = 'classificatoria'
-          AND rodada = 1
+          AND rodada = ?
         LIMIT 1
     ");
-    $stmtFase1->execute([$fase['premiacao_id']]);
-    $fase1Row = $stmtFase1->fetch(PDO::FETCH_ASSOC);
+    $stmtFaseAnt->execute([$fase['premiacao_id'], $rodada - 1]);
+    $faseAntRow = $stmtFaseAnt->fetch(PDO::FETCH_ASSOC);
 
-    if ($fase1Row) {
+    if ($faseAntRow) {
         $stmtValida = $pdo->prepare("
             SELECT COUNT(*) FROM premiacao_classificados
             WHERE fase_id     = ?
               AND categoria_id = ?
               AND negocio_id   = ?
         ");
-        $stmtValida->execute([(int)$fase1Row['id'], $categoriaId, $negocioId]);
+        $stmtValida->execute([(int)$faseAntRow['id'], $categoriaId, $negocioId]);
         if ((int)$stmtValida->fetchColumn() === 0) {
-            jsonErro('Este negócio não foi classificado na Fase 1.');
+            jsonErro('Este negócio não foi classificado na fase anterior.');
         }
     }
 
-} elseif ($fase['tipo_fase'] === 'final') {
+} elseif ($tipoFase === 'final') {
 
     $stmtFase2 = $pdo->prepare("
         SELECT id FROM premiacao_fases
         WHERE premiacao_id = ?
           AND tipo_fase = 'classificatoria'
-          AND rodada = 2
+        ORDER BY rodada DESC
         LIMIT 1
     ");
     $stmtFase2->execute([$fase['premiacao_id']]);

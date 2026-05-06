@@ -52,7 +52,8 @@ if ($inscricaoId <= 0 || $faseId <= 0) {
 
 // ── Valida fase: deve existir, estar em_andamento e permitir voto popular ─────
 $stmtFase = $pdo->prepare("
-    SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim
+    SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim,
+           pf.tipo_fase, pf.rodada
     FROM premiacao_fases pf
     WHERE pf.id = ?
       AND pf.permite_voto_popular = 1
@@ -73,13 +74,29 @@ if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
     jsonErro('A votação não está aberta no momento.');
 }
 
-// ── Valida inscrição: deve ser elegível e pertencer à mesma premiação ─────────
+// ── Determina quais status de inscrição são válidos para esta fase ─────────────
+// Fase final aceita 'finalista'; classificatórias aceitam 'elegivel' e
+// 'classificada_fase_N' de acordo com a rodada; rodada 1 aceita ambos.
+$tipoFase = $fase['tipo_fase'] ?? 'classificatoria';
+$rodada   = (int)($fase['rodada'] ?? 1);
+
+if ($tipoFase === 'final') {
+    $statusValidos = "IN ('finalista')";
+} elseif ($rodada <= 1) {
+    $statusValidos = "IN ('elegivel','classificada_fase_1')";
+} else {
+    $statusAnterior = 'classificada_fase_' . ($rodada - 1);
+    $statusAtual    = 'classificada_fase_' . $rodada;
+    $statusValidos  = "IN ('{$statusAnterior}','{$statusAtual}')";
+}
+
+// ── Valida inscrição: deve ter status ativo e pertencer à mesma premiação ──────
 $stmtInsc = $pdo->prepare("
     SELECT pi.id, pi.negocio_id, pi.categoria
     FROM premiacao_inscricoes pi
     WHERE pi.id = ?
       AND pi.premiacao_id = ?
-      AND pi.status = 'elegivel'
+      AND pi.status $statusValidos
     LIMIT 1
 ");
 $stmtInsc->execute([$inscricaoId, $fase['premiacao_id']]);
