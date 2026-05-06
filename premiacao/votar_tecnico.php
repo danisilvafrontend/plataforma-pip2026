@@ -3,10 +3,10 @@
 // ================================================================
 // REGRAS:
 // - Apenas usuários com role = 'tecnico' ou 'tecnica' podem votar
-// - Limite: 10 votos por técnico, por categoria (SEMPRE, em todas as fases)
-// - Fase 1: Pode votar em qualquer elegível ou classificado_fase_1 (até 10 por categoria)
-// - Fase 2: Pode votar apenas nos classificados da F1 (até 10)
-// - Final: Pode votar apenas nos classificados da F2 / finalistas (até 10)
+// - Limite: qtd_classificados_tecnica votos por técnico, por categoria (lido da fase)
+// - Fase 1: Pode votar em qualquer elegível ou classificado_fase_1
+// - Fase 2: Pode votar apenas nos classificados da F1
+// - Final: Pode votar apenas nos finalistas
 // - Tabela de classificados: premiacao_classificados (fase_id, categoria_id, negocio_id)
 // ================================================================
 
@@ -50,7 +50,6 @@ if (!$actor || $actor['tipo'] !== 'tecnico') {
     jsonErro('Você precisa estar logado como técnico para votar.', 401);
 }
 
-// user_id é a coluna real da tabela
 $userId = $actor['id'];
 
 $inscricaoId = (int)($_POST['inscricao_id'] ?? 0);
@@ -66,7 +65,7 @@ if ($inscricaoId <= 0 || $faseId <= 0) {
 // desatualizado no banco. A janela real é validada pelo intervalo de datas abaixo.
 $stmtFase = $pdo->prepare("
     SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim,
-           pf.tipo_fase, pf.rodada
+           pf.tipo_fase, pf.rodada, pf.qtd_classificados_tecnica
     FROM premiacao_fases pf
     WHERE pf.id = ?
       AND pf.permite_avaliacao_tecnica = 1
@@ -84,6 +83,12 @@ $ini   = $fase['data_inicio'] ? strtotime($fase['data_inicio']) : 0;
 $fim   = $fase['data_fim']    ? strtotime($fase['data_fim'])    : 0;
 if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
     jsonErro('A votação técnica não está aberta no momento.');
+}
+
+// Limite real lido do banco; fallback 10 caso não esteja preenchido
+$limiteVotos = (int)($fase['qtd_classificados_tecnica'] ?? 0);
+if ($limiteVotos <= 0) {
+    $limiteVotos = 10;
 }
 
 // ── Determina quais status de inscrição são válidos para esta fase ─────────────
@@ -186,7 +191,7 @@ if ($tipoFase === 'classificatoria' && $rodada >= 2) {
     }
 }
 
-// ── Limite: máximo 10 votos por técnico por categoria ───────────────────────────────
+// ── Limite de votos por técnico por categoria (lido de qtd_classificados_tecnica) ───
 $stmtContaVotos = $pdo->prepare("
     SELECT COUNT(*) FROM premiacao_votos_tecnicos
     WHERE fase_id      = ?
@@ -196,10 +201,10 @@ $stmtContaVotos = $pdo->prepare("
 $stmtContaVotos->execute([$faseId, $categoriaId, $userId]);
 $votosJaFeitos = (int)$stmtContaVotos->fetchColumn();
 
-if ($votosJaFeitos >= 10) {
+if ($votosJaFeitos >= $limiteVotos) {
     jsonErro(
-        "Você já votou em {$votosJaFeitos} inscrições desta categoria. " .
-        "O máximo permitido é 10 votos por categoria.",
+        "Você já atingiu o limite de {$limiteVotos} voto" . ($limiteVotos > 1 ? 's' : '') .
+        " por categoria nesta fase.",
         400
     );
 }
@@ -237,7 +242,7 @@ $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
        && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
 if ($isAjax) {
-    jsonOk('Voto técnico registrado com sucesso!');
+    jsonOk('Voto técnico registrado com sucesso!', ['votos_feitos' => $votosJaFeitos + 1, 'limite' => $limiteVotos]);
 }
 
 $_SESSION['flash_success'] = 'Seu voto técnico foi registrado com sucesso!';
