@@ -124,7 +124,52 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Inscrições da premiação ativa: mapa negocio_id => inscricao_id ────
+    // ── Fase ativa por role (busca rodada e tipo_fase para pool dinâmico) ──────
+    $faseAtiva     = null;
+    $faseAtivaDados = null;
+    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
+        if (is_tecnica()) {
+            $colFase = 'permite_avaliacao_tecnica';
+        } else {
+            $colFase = 'permite_juri_final';
+        }
+        $stmtFaseRole = $pdo->prepare("
+            SELECT id, tipo_fase, rodada FROM premiacao_fases
+            WHERE premiacao_id = ?
+              AND status = 'em_andamento'
+              AND {$colFase} = 1
+            ORDER BY rodada ASC LIMIT 1
+        ");
+        $stmtFaseRole->execute([$premiacaoAtualId]);
+        $faseAtivaDados = $stmtFaseRole->fetch(PDO::FETCH_ASSOC) ?: null;
+        $faseAtiva      = $faseAtivaDados ? (int)$faseAtivaDados['id'] : null;
+    }
+
+    // ── Pool de status dinâmico baseado na rodada da fase ──────────────────────
+    // Rodada 1 → elegivel
+    // Rodada 2 → classificada_fase_1
+    // Rodada N → classificada_fase_(N-1)
+    // Final    → finalista
+    function buildStatusPoolAdmin(?array $fase): string
+    {
+        if (!$fase) return "'elegivel'";
+        $tipo   = $fase['tipo_fase'] ?? 'classificatoria';
+        $rodada = (int)($fase['rodada'] ?? 1);
+        if ($tipo === 'final') {
+            return "'finalista'";
+        }
+        if ($rodada <= 1) {
+            return "'elegivel'";
+        }
+        $anterior = 'classificada_fase_' . ($rodada - 1);
+        return "'elegivel','{$anterior}'";
+    }
+
+    $statusPool    = buildStatusPoolAdmin($faseAtivaDados);
+    $statusPoolArr = array_unique(array_map('trim', explode(',', str_replace("'", '', $statusPool))));
+    $statusPoolIn  = implode(',', array_map(fn($s) => "'$s'", $statusPoolArr));
+
+    // ── Inscrições da premiação ativa: mapa negocio_id => inscricao_id ────────
     $inscricoesPorNegocio = [];
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
         $negIds = array_column($negocios, 'id');
@@ -135,7 +180,7 @@ try {
                 FROM premiacao_inscricoes
                 WHERE premiacao_id = ?
                   AND negocio_id IN ({$placeholders})
-                  AND status = 'elegivel'
+                  AND status IN ({$statusPoolIn})
             ");
             $stmtInsc->execute(array_merge([$premiacaoAtualId], $negIds));
             foreach ($stmtInsc->fetchAll() as $row) {
@@ -144,26 +189,7 @@ try {
         }
     }
 
-    // ── Fase ativa por role ──────────────────────────────────────
-    $faseAtiva = null;
-    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
-        if (is_tecnica()) {
-            $colFase = 'permite_avaliacao_tecnica';
-        } else {
-            $colFase = 'permite_juri_final';
-        }
-        $stmtFaseRole = $pdo->prepare("
-            SELECT id FROM premiacao_fases
-            WHERE premiacao_id = ?
-              AND status = 'em_andamento'
-              AND {$colFase} = 1
-            ORDER BY rodada ASC LIMIT 1
-        ");
-        $stmtFaseRole->execute([$premiacaoAtualId]);
-        $faseAtiva = $stmtFaseRole->fetchColumn() ?: null;
-    }
-
-    // ── Votos já dados pelo usuário logado nesta fase ────────────────
+    // ── Votos já dados pelo usuário logado nesta fase ─────────────────────────
     $votosJaDados = [];
     if ($faseAtiva) {
         require_once __DIR__ . '/../app/helpers/premiacao_auth.php';
