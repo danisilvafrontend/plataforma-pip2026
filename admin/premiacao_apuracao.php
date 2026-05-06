@@ -133,20 +133,28 @@ function apurarFase(
     return $selecionados;
 }
 
+/**
+ * Apura a fase final restringindo os votos ao pool da categoria.
+ * O ponto popular (+1) vai para quem tiver mais votos populares
+ * DENTRO do pool — não globalmente.
+ */
 function apurarFaseFinal(
     array $pool,
     array $votosPopulares,
     array $votosJuri
 ): array {
-    $maxPop = 0;
-    foreach ($pool as $id) {
-        $v = $votosPopulares[$id] ?? 0;
-        if ($v > $maxPop) $maxPop = $v;
-    }
+    // Filtra votos apenas dos inscritos do pool desta categoria
+    $poolSet = array_flip($pool);
+    $vpPool  = array_filter($votosPopulares, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+    $vjPool  = array_filter($votosJuri,      fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+
+    // Máximo popular restrito ao pool
+    $maxPop = !empty($vpPool) ? max($vpPool) : 0;
+
     $result = [];
     foreach ($pool as $id) {
-        $pop  = $votosPopulares[$id] ?? 0;
-        $juri = $votosJuri[$id] ?? 0;
+        $pop  = $vpPool[$id] ?? 0;
+        $juri = $vjPool[$id] ?? 0;
         $pontoPop = ($maxPop > 0 && $pop === $maxPop) ? 1 : 0;
         $result[$id] = [
             'votos_popular' => $pop,
@@ -222,6 +230,11 @@ if ($filtroPremiacao > 0 && $faseAtual) {
     $faseId     = (int)$faseAtual['id'];
     $ordemAtual = (int)($faseAtual['ordem_exibicao'] ?? 1);
 
+    // ── Busca votos UMA VEZ, fora do loop de categorias ──────────────────────
+    $votosPopulares = getVotosPopulares($pdo, $faseId);
+    $votosTecnicos  = getVotosTecnicos($pdo, $faseId);
+    $votosJuri      = getVotosJuri($pdo, $faseId);
+
     $stmtCats = $pdo->prepare("
         SELECT pc.id AS cat_id, pc.nome AS cat_nome, pc.ordem AS cat_ordem
         FROM premiacao_categorias pc
@@ -239,7 +252,6 @@ if ($filtroPremiacao > 0 && $faseAtual) {
         $catNome = $cat['cat_nome']; // VARCHAR em premiacao_inscricoes.categoria
 
         // ── Pool ──────────────────────────────────────────────────────────────
-        // premiacao_inscricoes.categoria é VARCHAR (nome), não ID numérico.
         if ($tipoFase === 'classificatoria') {
             if ($ordemAtual <= 1) {
                 $statusPool = "IN ('elegivel','classificada_fase_1','classificada_fase_2','finalista')";
@@ -261,10 +273,6 @@ if ($filtroPremiacao > 0 && $faseAtual) {
         $pool = array_map(fn($r) => (int)$r['inscricao_id'], $stmtPool->fetchAll());
 
         if (empty($pool)) continue;
-
-        $votosPopulares = getVotosPopulares($pdo, $faseId);
-        $votosTecnicos  = getVotosTecnicos($pdo, $faseId);
-        $votosJuri      = getVotosJuri($pdo, $faseId);
 
         $topPop     = (int)($faseAtual['qtd_classificados_popular'] ?? 10);
         $topTec     = (int)($faseAtual['qtd_classificados_tecnica'] ?? 10);
@@ -298,9 +306,15 @@ if ($filtroPremiacao > 0 && $faseAtual) {
             $negMap[(int)$row['inscricao_id']] = $row;
         }
 
-        $maxPop = max([1, ...array_values($votosPopulares)] ?: [1]);
-        $maxTec = max([1, ...array_values($votosTecnicos)]  ?: [1]);
-        $maxJur = max([1, ...array_values($votosJuri)]      ?: [1]);
+        // ── max* restrito ao pool da categoria (barras de progresso corretas) ─
+        $poolSet = array_flip($pool);
+        $vpPool  = array_filter($votosPopulares, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+        $vtPool  = array_filter($votosTecnicos,  fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+        $vjPool  = array_filter($votosJuri,       fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+
+        $maxPop = !empty($vpPool) ? max($vpPool) : 1;
+        $maxTec = !empty($vtPool) ? max($vtPool) : 1;
+        $maxJur = !empty($vjPool) ? max($vjPool) : 1;
 
         $itens = [];
         $pos   = 1;
@@ -590,7 +604,7 @@ require_once $appBase . '/views/admin/header.php';
                 <?php endif; ?>
                 <form method="POST"
                       action="premiacao_apuracao.php?premiacao_id=<?= $filtroPremiacao ?>&fase_id=<?= $filtroFase ?><?= $filtroCategoria ? '&categoria_id='.$filtroCategoria : '' ?>"
-                      onsubmit="return confirm('Gravar <?= $totalParaGravar ?> classificados da fase &laquo;<?= $faseNomeEsc ?>&raquo;?<?= $jaGravados > 0 ? '\n\nISSO SUBSTITUIRÁ OS DADOS ANTERIORES.' : '' ?>')">
+                      onsubmit="return confirm('Gravar <?= $totalParaGravar ?> classificados da fase «<?= $faseNomeEsc ?>»?<?= $jaGravados > 0 ? '\n\nISSO SUBSTITUIRÁ OS DADOS ANTERIORES.' : '' ?>')">
                     <button type="submit" name="acao" value="gravar"
                             class="btn fw-bold px-4"
                             style="background:#1E3425;color:#CDDE00;border:none;white-space:nowrap;">
