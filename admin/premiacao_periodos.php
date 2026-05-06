@@ -23,10 +23,9 @@ try {
     die('Erro na conexão com o banco: ' . $e->getMessage());
 }
 
-
 $pageTitle = 'Premiação - Períodos';
-$mensagem = '';
-$erro = '';
+$mensagem  = '';
+$erro      = '';
 
 function h(?string $value): string
 {
@@ -35,281 +34,269 @@ function h(?string $value): string
 
 function formatDatetimeLocal(?string $value): string
 {
-    if (empty($value) || $value === '0000-00-00' || $value === '0000-00-00 00:00:00') {
-        return '';
-    }
-
+    if (empty($value) || $value === '0000-00-00' || $value === '0000-00-00 00:00:00') return '';
     $ts = strtotime($value);
-    if (!$ts) {
-        return '';
-    }
-
-    return date('Y-m-d\TH:i', $ts);
+    return $ts ? date('Y-m-d\TH:i', $ts) : '';
 }
 
 function dataBr(?string $dt): string
 {
-    if (empty($dt) || $dt === '0000-00-00' || $dt === '0000-00-00 00:00:00') {
-        return '—';
-    }
-
+    if (empty($dt) || $dt === '0000-00-00' || $dt === '0000-00-00 00:00:00') return '—';
     return date('d/m/Y H:i', strtotime($dt));
 }
 
 function calcularStatusAutomatico(string $inicio, string $fim, string $statusAtual = 'rascunho'): string
 {
-    if ($statusAtual === 'apurada') {
-        return 'apurada';
-    }
-
-    if ($statusAtual === 'rascunho') {
-        return 'rascunho';
-    }
-
-    $agora = new DateTime('now');
+    if ($statusAtual === 'apurada') return 'apurada';
+    if ($statusAtual === 'rascunho') return 'rascunho';
+    $agora      = new DateTime('now');
     $dataInicio = new DateTime($inicio);
-    $dataFim = new DateTime($fim);
-
-    if ($agora < $dataInicio) {
-        return 'agendada';
-    }
-
-    if ($agora > $dataFim) {
-        return 'encerrada';
-    }
-
+    $dataFim    = new DateTime($fim);
+    if ($agora < $dataInicio) return 'agendada';
+    if ($agora > $dataFim)    return 'encerrada';
     return 'em_andamento';
 }
 
 function labelStatus(string $status): string
 {
     return match ($status) {
-        'rascunho' => 'Rascunho',
-        'agendada' => 'Agendada',
+        'rascunho'     => 'Rascunho',
+        'agendada'     => 'Agendada',
         'em_andamento' => 'Em andamento',
-        'encerrada' => 'Encerrada',
-        'apurada' => 'Apurada',
-        default => '-',
+        'encerrada'    => 'Encerrada',
+        'apurada'      => 'Apurada',
+        default        => '-',
     };
 }
 
 function labelTipoFase(string $tipo): string
 {
     return match ($tipo) {
-        'inscricoes' => 'Inscrições',
+        'inscricoes'         => 'Inscrições',
         'triagem_documental' => 'Triagem documental',
-        'classificatoria' => 'Classificatória',
-        'final' => 'Fase final',
-        'resultado' => 'Resultado',
-        default => $tipo,
+        'classificatoria'    => 'Classificatória',
+        'final'              => 'Fase final',
+        'resultado'          => 'Resultado',
+        default              => $tipo,
     };
 }
 
+// ============================================================
+// APURAÇÃO AUTOMÁTICA
+// ============================================================
+function buildStatusPool(string $tipoFase, int $ordemAtual): string
+{
+    if ($tipoFase === 'final') return "IN ('finalista')";
+    if ($ordemAtual <= 1) return "IN ('elegivel','classificada_fase_1','classificada_fase_2','finalista')";
+    $s = [];
+    for ($i = $ordemAtual - 1; $i <= 10; $i++) $s[] = "'classificada_fase_{$i}'";
+    $s[] = "'finalista'";
+    return 'IN (' . implode(',', $s) . ')';
+}
+
+function apurarEGravar(PDO $pdo, array $fase): array
+{
+    $faseId      = (int)$fase['id'];
+    $premiacaoId = (int)$fase['premiacao_id'];
+    $tipoFase    = $fase['tipo_fase'] ?? 'classificatoria';
+    $ordemAtual  = (int)($fase['ordem_exibicao'] ?? 1);
+    $statusNovo  = 'classificada_fase_' . $ordemAtual;
+    $statusPool  = buildStatusPool($tipoFase, $ordemAtual);
+
+    // Coleta votos
+    $vp = [];
+    $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_populares WHERE fase_id=? GROUP BY inscricao_id");
+    $st->execute([$faseId]);
+    foreach ($st->fetchAll() as $r) $vp[(int)$r['inscricao_id']] = (int)$r['v'];
+
+    $vt = [];
+    $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_tecnicos WHERE fase_id=? GROUP BY inscricao_id");
+    $st->execute([$faseId]);
+    foreach ($st->fetchAll() as $r) $vt[(int)$r['inscricao_id']] = (int)$r['v'];
+
+    $vj = [];
+    $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_juri WHERE fase_id=? GROUP BY inscricao_id");
+    $st->execute([$faseId]);
+    foreach ($st->fetchAll() as $r) $vj[(int)$r['inscricao_id']] = (int)$r['v'];
+
+    // Categorias
+    $cats = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id=? ORDER BY ordem");
+    $cats->execute([$premiacaoId]);
+
+    $totalGravados = 0;
+    $pdo->beginTransaction();
+
+    try {
+        $pdo->prepare("DELETE FROM premiacao_classificados WHERE fase_id=?")->execute([$faseId]);
+
+        $statusProtegidos = ['finalista'];
+        for ($i = $ordemAtual + 1; $i <= 10; $i++) $statusProtegidos[] = 'classificada_fase_' . $i;
+
+        foreach ($cats->fetchAll() as $cat) {
+            $catId   = (int)$cat['id'];
+            $catNome = $cat['nome'];
+
+            $stPool = $pdo->prepare("SELECT id FROM premiacao_inscricoes WHERE premiacao_id=? AND categoria=? AND status $statusPool");
+            $stPool->execute([$premiacaoId, $catNome]);
+            $pool = array_map(fn($r) => (int)$r['id'], $stPool->fetchAll());
+            if (empty($pool)) continue;
+
+            $topPop  = (int)($fase['qtd_classificados_popular'] ?? 10);
+            $topTec  = (int)($fase['qtd_classificados_tecnica'] ?? 10);
+            $totalCl = min(count($pool), $topPop + $topTec);
+
+            if ($tipoFase === 'final') {
+                $poolSet = array_flip($pool);
+                $vpPool  = array_filter($vp, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+                $vjPool  = array_filter($vj, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+                $maxPop  = !empty($vpPool) ? max($vpPool) : 0;
+                $resultado = [];
+                foreach ($pool as $id) {
+                    $pop  = $vpPool[$id] ?? 0;
+                    $juri = $vjPool[$id] ?? 0;
+                    $pp   = ($maxPop > 0 && $pop === $maxPop) ? 1 : 0;
+                    $resultado[$id] = ['origem' => 'juri', 'total' => $pp + $juri, 'pop' => $pop, 'juri' => $juri];
+                }
+                uasort($resultado, fn($a, $b) => $b['total'] <=> $a['total'] ?: $b['juri'] <=> $a['juri'] ?: $b['pop'] <=> $a['pop']);
+            } else {
+                $poolSet = array_flip($pool);
+                $vpF = array_filter($vp, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+                $vtF = array_filter($vt, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+                arsort($vpF); $selPop = array_slice(array_keys($vpF), 0, $topPop, true);
+                arsort($vtF); $selTec = array_slice(array_keys($vtF), 0, $topTec, true);
+                $sel = [];
+                foreach ($selPop as $id) $sel[$id] = ['origem' => 'popular', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                foreach ($selTec as $id) {
+                    if (!isset($sel[$id])) $sel[$id] = ['origem' => 'tecnica', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                    else $sel[$id]['origem'] = 'ambos';
+                }
+                if (count($sel) < $totalCl) {
+                    $todos = $pool;
+                    usort($todos, fn($a, $b) => ($vpF[$b] ?? 0) <=> ($vpF[$a] ?? 0));
+                    foreach ($todos as $id) {
+                        if (count($sel) >= $totalCl) break;
+                        if (!isset($sel[$id])) $sel[$id] = ['origem' => 'complemento', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                    }
+                }
+                $ord = ['ambos' => 0, 'popular' => 1, 'tecnica' => 2, 'complemento' => 3];
+                uasort($sel, fn($a, $b) => ($ord[$a['origem']] ?? 9) <=> ($ord[$b['origem']] ?? 9) ?: $b['pop'] <=> $a['pop'] ?: $b['tec'] <=> $a['tec']);
+                $resultado = $sel;
+            }
+
+            $pos      = 1;
+            $idsClass = [];
+            foreach ($resultado as $inscId => $dados) {
+                $stNeg = $pdo->prepare("SELECT negocio_id FROM premiacao_inscricoes WHERE id=?");
+                $stNeg->execute([$inscId]);
+                $negId = (int)$stNeg->fetchColumn();
+
+                $pdo->prepare("
+                    INSERT INTO premiacao_classificados (fase_id, categoria_id, negocio_id, posicao, origem, apurado_em)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE posicao=VALUES(posicao), origem=VALUES(origem), apurado_em=NOW()
+                ")->execute([$faseId, $catId, $negId, $pos, $dados['origem']]);
+                $totalGravados++;
+                $idsClass[] = $inscId;
+
+                $stSt = $pdo->prepare("SELECT status FROM premiacao_inscricoes WHERE id=?");
+                $stSt->execute([$inscId]);
+                $stAtual = $stSt->fetchColumn();
+                if (!in_array($stAtual, $statusProtegidos, true)) {
+                    $pdo->prepare("UPDATE premiacao_inscricoes SET status=?, updated_at=NOW() WHERE id=?")
+                        ->execute([$statusNovo, $inscId]);
+                }
+                $pos++;
+            }
+
+            // Rebaixa não-classificados
+            if (!empty($idsClass)) {
+                $ph = implode(',', array_fill(0, count($idsClass), '?'));
+                $pdo->prepare("UPDATE premiacao_inscricoes SET status='elegivel', updated_at=NOW() WHERE premiacao_id=? AND categoria=? AND status $statusPool AND id NOT IN ($ph)")
+                    ->execute(array_merge([$premiacaoId, $catNome], $idsClass));
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+
+    return ['gravados' => $totalGravados];
+}
+
+// ============================================================
 $edicaoSelecionada = (int)($_GET['premiacao_id'] ?? $_POST['premiacao_id'] ?? 0);
-$faseEdicaoId = (int)($_GET['editar'] ?? 0);
+$faseEdicaoId      = (int)($_GET['editar'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $acao = $_POST['acao'] ?? '';
 
     try {
+        // ── SALVAR FASE ────────────────────────────────────────────────────────
         if ($acao === 'salvar_fase') {
-            $faseId = (int)($_POST['fase_id'] ?? 0);
-            $premiacaoId = (int)($_POST['premiacao_id'] ?? 0);
-            $tipoFase = trim($_POST['tipo_fase'] ?? '');
-            $rodada = (int)($_POST['rodada'] ?? 0);
-            $ordemExibicao = (int)($_POST['ordem_exibicao'] ?? 0);
-            $nome = trim($_POST['nome'] ?? '');
-            $slug = trim($_POST['slug'] ?? '');
-            $descricao = trim($_POST['descricao'] ?? '');
-            $dataInicio = trim($_POST['data_inicio'] ?? '');
-            $dataFim = trim($_POST['data_fim'] ?? '');
-            $permiteVotoPopular = isset($_POST['permite_voto_popular']) ? 1 : 0;
+            $faseId                  = (int)($_POST['fase_id'] ?? 0);
+            $premiacaoId             = (int)($_POST['premiacao_id'] ?? 0);
+            $tipoFase                = trim($_POST['tipo_fase'] ?? '');
+            $rodada                  = (int)($_POST['rodada'] ?? 0);
+            $ordemExibicao           = (int)($_POST['ordem_exibicao'] ?? 0);
+            $nome                    = trim($_POST['nome'] ?? '');
+            $slug                    = trim($_POST['slug'] ?? '');
+            $descricao               = trim($_POST['descricao'] ?? '');
+            $dataInicio              = trim($_POST['data_inicio'] ?? '');
+            $dataFim                 = trim($_POST['data_fim'] ?? '');
+            $permiteVotoPopular      = isset($_POST['permite_voto_popular']) ? 1 : 0;
             $permiteAvaliacaoTecnica = isset($_POST['permite_avaliacao_tecnica']) ? 1 : 0;
-            $permiteJuriFinal = isset($_POST['permite_juri_final']) ? 1 : 0;
+            $permiteJuriFinal        = isset($_POST['permite_juri_final']) ? 1 : 0;
             $qtdClassificadosPopular = (int)($_POST['qtd_classificados_popular'] ?? 0);
             $qtdClassificadosTecnica = (int)($_POST['qtd_classificados_tecnica'] ?? 0);
-            $qtdClassificadosFinal = (int)($_POST['qtd_classificados_final'] ?? 0);
-            $criterioDesempate = trim($_POST['criterio_desempate'] ?? '');
-            $statusManual = trim($_POST['status'] ?? 'rascunho');
+            $qtdClassificadosFinal   = (int)($_POST['qtd_classificados_final'] ?? 0);
+            $criterioDesempate       = trim($_POST['criterio_desempate'] ?? '');
+            $statusManual            = trim($_POST['status'] ?? 'rascunho');
 
-            if ($premiacaoId <= 0) {
-                throw new Exception('Selecione uma edição da premiação.');
-            }
+            if ($premiacaoId <= 0)    throw new Exception('Selecione uma edição da premiação.');
+            if ($tipoFase === '')     throw new Exception('Selecione o tipo da fase.');
+            if ($nome === '')         throw new Exception('Informe o nome da fase.');
+            if ($slug === '')         throw new Exception('Informe o slug da fase.');
+            if ($dataInicio === '' || $dataFim === '') throw new Exception('Informe as datas de início e fim.');
 
-            if ($tipoFase === '') {
-                throw new Exception('Selecione o tipo da fase.');
-            }
-
-            if ($nome === '') {
-                throw new Exception('Informe o nome da fase.');
-            }
-
-            if ($slug === '') {
-                throw new Exception('Informe o slug da fase.');
-            }
-
-            if ($dataInicio === '' || $dataFim === '') {
-                throw new Exception('Informe as datas de início e fim.');
-            }
-
-            $stmtEdicao = $pdo->prepare("
-                SELECT id, nome, ano, slug, status
-                FROM premiacoes
-                WHERE id = ?
-                LIMIT 1
-            ");
+            $stmtEdicao = $pdo->prepare("SELECT id FROM premiacoes WHERE id=? LIMIT 1");
             $stmtEdicao->execute([$premiacaoId]);
-            $edicao = $stmtEdicao->fetch();
-
-            if (!$edicao) {
-                throw new Exception('Edição da premiação não encontrada.');
-            }
+            if (!$stmtEdicao->fetch()) throw new Exception('Edição da premiação não encontrada.');
 
             $inicioObj = new DateTime($dataInicio);
-            $fimObj = new DateTime($dataFim);
+            $fimObj    = new DateTime($dataFim);
+            if ($fimObj < $inicioObj) throw new Exception('A data/hora de fim não pode ser menor que a data/hora de início.');
 
-            if ($fimObj < $inicioObj) {
-                throw new Exception('A data/hora de fim não pode ser menor que a data/hora de início.');
-            }
-
-            $stmtFasesMesmaEdicao = $pdo->prepare("
-                SELECT id, nome, ordem_exibicao, data_inicio, data_fim
-                FROM premiacao_fases
-                WHERE premiacao_id = ?
-                  AND id <> ?
-                ORDER BY ordem_exibicao ASC, data_inicio ASC, id ASC
-            ");
+            $stmtFasesMesmaEdicao = $pdo->prepare("SELECT id, ordem_exibicao FROM premiacao_fases WHERE premiacao_id=? AND id<>? ORDER BY ordem_exibicao ASC");
             $stmtFasesMesmaEdicao->execute([$premiacaoId, $faseId]);
-            $fasesMesmaEdicao = $stmtFasesMesmaEdicao->fetchAll();
-
-            foreach ($fasesMesmaEdicao as $faseExistente) {
-                $mesmaOrdem = (int)$faseExistente['ordem_exibicao'] === $ordemExibicao;
-                if ($mesmaOrdem) {
-                    throw new Exception('Já existe outra fase com esta ordem de exibição nesta edição.');
-                }
+            foreach ($stmtFasesMesmaEdicao->fetchAll() as $fe) {
+                if ((int)$fe['ordem_exibicao'] === $ordemExibicao) throw new Exception('Já existe outra fase com esta ordem de exibição nesta edição.');
             }
 
             if ($tipoFase === 'inscricoes') {
-                $sqlConflito = "
-                    SELECT pf.id, pf.nome, p.nome AS premiacao_nome
-                    FROM premiacao_fases pf
-                    INNER JOIN premiacoes p ON p.id = pf.premiacao_id
-                    WHERE pf.tipo_fase = 'inscricoes'
-                      AND pf.premiacao_id <> ?
-                      AND pf.id <> ?
-                      AND pf.status <> 'rascunho'
-                      AND (
-                            (? BETWEEN pf.data_inicio AND pf.data_fim)
-                         OR (? BETWEEN pf.data_inicio AND pf.data_fim)
-                         OR (pf.data_inicio BETWEEN ? AND ?)
-                         OR (pf.data_fim BETWEEN ? AND ?)
-                      )
-                    LIMIT 1
-                ";
-
-                $stmtConflito = $pdo->prepare($sqlConflito);
-                $stmtConflito->execute([
-                    $premiacaoId,
-                    $faseId,
-                    $inicioObj->format('Y-m-d H:i:s'),
-                    $fimObj->format('Y-m-d H:i:s'),
-                    $inicioObj->format('Y-m-d H:i:s'),
-                    $fimObj->format('Y-m-d H:i:s'),
-                    $inicioObj->format('Y-m-d H:i:s'),
-                    $fimObj->format('Y-m-d H:i:s'),
-                ]);
-
-                $conflito = $stmtConflito->fetch();
-                if ($conflito) {
-                    throw new Exception(
-                        'Já existe uma fase de inscrições em conflito com este período: ' .
-                        $conflito['premiacao_nome'] . ' / ' . $conflito['nome']
-                    );
-                }
+                $sqlConflito = "SELECT pf.id FROM premiacao_fases pf WHERE pf.tipo_fase='inscricoes' AND pf.premiacao_id<>? AND pf.id<>? AND pf.status<>'rascunho' AND ((? BETWEEN pf.data_inicio AND pf.data_fim) OR (? BETWEEN pf.data_inicio AND pf.data_fim) OR (pf.data_inicio BETWEEN ? AND ?) OR (pf.data_fim BETWEEN ? AND ?)) LIMIT 1";
+                $stmtC = $pdo->prepare($sqlConflito);
+                $stmtC->execute([$premiacaoId, $faseId, $inicioObj->format('Y-m-d H:i:s'), $fimObj->format('Y-m-d H:i:s'), $inicioObj->format('Y-m-d H:i:s'), $fimObj->format('Y-m-d H:i:s'), $inicioObj->format('Y-m-d H:i:s'), $fimObj->format('Y-m-d H:i:s')]);
+                if ($stmtC->fetch()) throw new Exception('Já existe uma fase de inscrições em conflito com este período.');
             }
 
-            if ($tipoFase === 'classificatoria') {
-                if ($permiteVotoPopular !== 1 || $permiteAvaliacaoTecnica !== 1) {
-                    throw new Exception('A fase classificatória deve habilitar voto popular e avaliação técnica ao mesmo tempo.');
-                }
+            if ($tipoFase === 'classificatoria' && ($permiteVotoPopular !== 1 || $permiteAvaliacaoTecnica !== 1))
+                throw new Exception('A fase classificatória deve habilitar voto popular e avaliação técnica ao mesmo tempo.');
+            if ($tipoFase === 'classificatoria' && ($qtdClassificadosPopular <= 0 || $qtdClassificadosTecnica <= 0 || $qtdClassificadosFinal <= 0))
+                throw new Exception('Informe as quantidades de classificados da fase classificatória.');
+            if ($tipoFase === 'final' && ($permiteVotoPopular !== 1 || $permiteJuriFinal !== 1))
+                throw new Exception('A fase final deve habilitar voto popular e júri final.');
 
-                if ($qtdClassificadosPopular <= 0 || $qtdClassificadosTecnica <= 0 || $qtdClassificadosFinal <= 0) {
-                    throw new Exception('Informe as quantidades de classificados da fase classificatória.');
-                }
-            }
-
-            if ($tipoFase === 'final') {
-                if ($permiteVotoPopular !== 1 || $permiteJuriFinal !== 1) {
-                    throw new Exception('A fase final deve habilitar voto popular e júri final.');
-                }
-            }
-
-            $statusSalvar = calcularStatusAutomatico(
-                $inicioObj->format('Y-m-d H:i:s'),
-                $fimObj->format('Y-m-d H:i:s'),
-                $statusManual
-            );
+            $statusSalvar = calcularStatusAutomatico($inicioObj->format('Y-m-d H:i:s'), $fimObj->format('Y-m-d H:i:s'), $statusManual);
 
             if ($faseId > 0) {
-                $stmt = $pdo->prepare("
-                    UPDATE premiacao_fases
-                    SET premiacao_id = ?, tipo_fase = ?, rodada = ?, ordem_exibicao = ?, nome = ?, slug = ?, descricao = ?,
-                        data_inicio = ?, data_fim = ?, permite_voto_popular = ?, permite_avaliacao_tecnica = ?,
-                        permite_juri_final = ?, qtd_classificados_popular = ?, qtd_classificados_tecnica = ?,
-                        qtd_classificados_final = ?, criterio_desempate = ?, status = ?, updated_at = NOW()
-                    WHERE id = ?
-                ");
-                $stmt->execute([
-                    $premiacaoId,
-                    $tipoFase,
-                    $rodada > 0 ? $rodada : null,
-                    $ordemExibicao,
-                    $nome,
-                    $slug,
-                    $descricao !== '' ? $descricao : null,
-                    $inicioObj->format('Y-m-d H:i:s'),
-                    $fimObj->format('Y-m-d H:i:s'),
-                    $permiteVotoPopular,
-                    $permiteAvaliacaoTecnica,
-                    $permiteJuriFinal,
-                    $qtdClassificadosPopular,
-                    $qtdClassificadosTecnica,
-                    $qtdClassificadosFinal,
-                    $criterioDesempate !== '' ? $criterioDesempate : null,
-                    $statusSalvar,
-                    $faseId
-                ]);
-
+                $pdo->prepare("UPDATE premiacao_fases SET premiacao_id=?,tipo_fase=?,rodada=?,ordem_exibicao=?,nome=?,slug=?,descricao=?,data_inicio=?,data_fim=?,permite_voto_popular=?,permite_avaliacao_tecnica=?,permite_juri_final=?,qtd_classificados_popular=?,qtd_classificados_tecnica=?,qtd_classificados_final=?,criterio_desempate=?,status=?,updated_at=NOW() WHERE id=?")
+                    ->execute([$premiacaoId,$tipoFase,$rodada>0?$rodada:null,$ordemExibicao,$nome,$slug,$descricao!==''?$descricao:null,$inicioObj->format('Y-m-d H:i:s'),$fimObj->format('Y-m-d H:i:s'),$permiteVotoPopular,$permiteAvaliacaoTecnica,$permiteJuriFinal,$qtdClassificadosPopular,$qtdClassificadosTecnica,$qtdClassificadosFinal,$criterioDesempate!==''?$criterioDesempate:null,$statusSalvar,$faseId]);
                 $mensagem = 'Fase atualizada com sucesso.';
             } else {
-                $stmt = $pdo->prepare("
-                    INSERT INTO premiacao_fases (
-                        premiacao_id, tipo_fase, rodada, ordem_exibicao, nome, slug, descricao,
-                        data_inicio, data_fim, permite_voto_popular, permite_avaliacao_tecnica,
-                        permite_juri_final, qtd_classificados_popular, qtd_classificados_tecnica,
-                        qtd_classificados_final, criterio_desempate, status, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                ");
-                $stmt->execute([
-                    $premiacaoId,
-                    $tipoFase,
-                    $rodada > 0 ? $rodada : null,
-                    $ordemExibicao,
-                    $nome,
-                    $slug,
-                    $descricao !== '' ? $descricao : null,
-                    $inicioObj->format('Y-m-d H:i:s'),
-                    $fimObj->format('Y-m-d H:i:s'),
-                    $permiteVotoPopular,
-                    $permiteAvaliacaoTecnica,
-                    $permiteJuriFinal,
-                    $qtdClassificadosPopular,
-                    $qtdClassificadosTecnica,
-                    $qtdClassificadosFinal,
-                    $criterioDesempate !== '' ? $criterioDesempate : null,
-                    $statusSalvar
-                ]);
-
+                $pdo->prepare("INSERT INTO premiacao_fases (premiacao_id,tipo_fase,rodada,ordem_exibicao,nome,slug,descricao,data_inicio,data_fim,permite_voto_popular,permite_avaliacao_tecnica,permite_juri_final,qtd_classificados_popular,qtd_classificados_tecnica,qtd_classificados_final,criterio_desempate,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")
+                    ->execute([$premiacaoId,$tipoFase,$rodada>0?$rodada:null,$ordemExibicao,$nome,$slug,$descricao!==''?$descricao:null,$inicioObj->format('Y-m-d H:i:s'),$fimObj->format('Y-m-d H:i:s'),$permiteVotoPopular,$permiteAvaliacaoTecnica,$permiteJuriFinal,$qtdClassificadosPopular,$qtdClassificadosTecnica,$qtdClassificadosFinal,$criterioDesempate!==''?$criterioDesempate:null,$statusSalvar]);
                 $mensagem = 'Fase cadastrada com sucesso.';
             }
 
@@ -317,25 +304,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // ── RECALCULAR STATUS + APURAÇÃO AUTOMÁTICA ────────────────────────────
         if ($acao === 'recalcular_status') {
             $faseId = (int)($_POST['fase_id'] ?? 0);
-
-            $stmt = $pdo->prepare("SELECT * FROM premiacao_fases WHERE id = ? LIMIT 1");
+            $stmt   = $pdo->prepare("SELECT * FROM premiacao_fases WHERE id=? LIMIT 1");
             $stmt->execute([$faseId]);
             $fase = $stmt->fetch();
-
-            if (!$fase) {
-                throw new Exception('Fase não encontrada.');
-            }
+            if (!$fase) throw new Exception('Fase não encontrada.');
 
             $novoStatus = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], $fase['status']);
+            $pdo->prepare("UPDATE premiacao_fases SET status=?,updated_at=NOW() WHERE id=?")->execute([$novoStatus, $faseId]);
 
-            $stmtUpdate = $pdo->prepare("UPDATE premiacao_fases SET status = ?, updated_at = NOW() WHERE id = ?");
-            $stmtUpdate->execute([$novoStatus, $faseId]);
+            $msgExtra = '';
+            $tipoApuravel = in_array($fase['tipo_fase'], ['classificatoria', 'final'], true);
 
-            header('Location: premiacao_periodos.php?premiacao_id=' . (int)$fase['premiacao_id'] . '&ok=' . urlencode('Status da fase recalculado com sucesso.'));
+            if ($novoStatus === 'encerrada' && $tipoApuravel) {
+                $fase['status'] = $novoStatus;
+                $res = apurarEGravar($pdo, $fase);
+                $pdo->prepare("UPDATE premiacao_fases SET status='apurada',updated_at=NOW() WHERE id=?")->execute([$faseId]);
+                $msgExtra = ' Apuração automática: ' . $res['gravados'] . ' classificados gravados.';
+            }
+
+            header('Location: premiacao_periodos.php?premiacao_id=' . (int)$fase['premiacao_id'] . '&ok=' . urlencode('Status recalculado.' . $msgExtra));
             exit;
         }
+
     } catch (Throwable $e) {
         $erro = $e->getMessage();
     }
@@ -345,11 +338,7 @@ if (isset($_GET['ok']) && $_GET['ok'] !== '') {
     $mensagem = trim($_GET['ok']);
 }
 
-$stmtPremiacoes = $pdo->query("
-    SELECT id, nome, ano, slug, status
-    FROM premiacoes
-    ORDER BY ano DESC, id DESC
-");
+$stmtPremiacoes = $pdo->query("SELECT id, nome, ano, slug, status FROM premiacoes ORDER BY ano DESC, id DESC");
 $premiacoes = $stmtPremiacoes->fetchAll();
 
 if ($edicaoSelecionada <= 0 && !empty($premiacoes)) {
@@ -365,33 +354,32 @@ foreach ($premiacoes as $premiacaoItem) {
 }
 
 $faseEdicao = [
-    'id' => 0,
-    'premiacao_id' => $edicaoSelecionada,
-    'tipo_fase' => '',
-    'rodada' => '',
-    'ordem_exibicao' => 0,
-    'nome' => '',
-    'slug' => '',
-    'descricao' => '',
-    'data_inicio' => '',
-    'data_fim' => '',
-    'permite_voto_popular' => 0,
-    'permite_avaliacao_tecnica' => 0,
-    'permite_juri_final' => 0,
-    'qtd_classificados_popular' => 0,
-    'qtd_classificados_tecnica' => 0,
-    'qtd_classificados_final' => 0,
-    'criterio_desempate' => '',
-    'status' => 'rascunho',
+    'id'                       => 0,
+    'premiacao_id'             => $edicaoSelecionada,
+    'tipo_fase'                => '',
+    'rodada'                   => '',
+    'ordem_exibicao'           => 0,
+    'nome'                     => '',
+    'slug'                     => '',
+    'descricao'                => '',
+    'data_inicio'              => '',
+    'data_fim'                 => '',
+    'permite_voto_popular'     => 0,
+    'permite_avaliacao_tecnica'=> 0,
+    'permite_juri_final'       => 0,
+    'qtd_classificados_popular'=> 0,
+    'qtd_classificados_tecnica'=> 0,
+    'qtd_classificados_final'  => 0,
+    'criterio_desempate'       => '',
+    'status'                   => 'rascunho',
 ];
 
 if ($faseEdicaoId > 0) {
-    $stmtFase = $pdo->prepare("SELECT * FROM premiacao_fases WHERE id = ? LIMIT 1");
+    $stmtFase = $pdo->prepare("SELECT * FROM premiacao_fases WHERE id=? LIMIT 1");
     $stmtFase->execute([$faseEdicaoId]);
     $faseEncontrada = $stmtFase->fetch();
-
     if ($faseEncontrada) {
-        $faseEdicao = $faseEncontrada;
+        $faseEdicao        = $faseEncontrada;
         $edicaoSelecionada = (int)$faseEncontrada['premiacao_id'];
     }
 }
@@ -463,68 +451,55 @@ require_once $appBase . '/views/admin/header.php';
                             <select name="tipo_fase" class="form-select" required>
                                 <?php
                                 $tipos = [
-                                    'inscricoes' => 'Inscrições',
+                                    'inscricoes'         => 'Inscrições',
                                     'triagem_documental' => 'Triagem documental',
-                                    'classificatoria' => 'Classificatória',
-                                    'final' => 'Fase final',
-                                    'resultado' => 'Resultado',
+                                    'classificatoria'    => 'Classificatória',
+                                    'final'              => 'Fase final',
+                                    'resultado'          => 'Resultado',
                                 ];
-                                foreach ($tipos as $valor => $label):
-                                ?>
-                                    <option value="<?= h($valor) ?>" <?= ($faseEdicao['tipo_fase'] ?? '') === $valor ? 'selected' : '' ?>>
-                                        <?= h($label) ?>
-                                    </option>
+                                foreach ($tipos as $valor => $label): ?>
+                                    <option value="<?= h($valor) ?>" <?= ($faseEdicao['tipo_fase'] ?? '') === $valor ? 'selected' : '' ?>><?= h($label) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
 
                         <div class="col-md-2">
                             <label class="form-label">Rodada</label>
-                            <input type="number" name="rodada" class="form-control" min="0"
-                                   value="<?= h((string)($faseEdicao['rodada'] ?? '')) ?>">
+                            <input type="number" name="rodada" class="form-control" min="0" value="<?= h((string)($faseEdicao['rodada'] ?? '')) ?>">
                         </div>
 
                         <div class="col-md-2">
                             <label class="form-label">Ordem</label>
-                            <input type="number" name="ordem_exibicao" class="form-control" min="1" required
-                                   value="<?= h((string)($faseEdicao['ordem_exibicao'] ?? 0)) ?>">
+                            <input type="number" name="ordem_exibicao" class="form-control" min="1" required value="<?= h((string)($faseEdicao['ordem_exibicao'] ?? 0)) ?>">
                         </div>
 
                         <div class="col-md-3">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
-                                <?php
-                                foreach (['rascunho', 'agendada', 'em_andamento', 'encerrada', 'apurada'] as $statusFase):
-                                ?>
-                                    <option value="<?= h($statusFase) ?>" <?= ($faseEdicao['status'] ?? 'rascunho') === $statusFase ? 'selected' : '' ?>>
-                                        <?= h(labelStatus($statusFase)) ?>
-                                    </option>
+                                <?php foreach (['rascunho','agendada','em_andamento','encerrada','apurada'] as $statusFase): ?>
+                                    <option value="<?= h($statusFase) ?>" <?= ($faseEdicao['status'] ?? 'rascunho') === $statusFase ? 'selected' : '' ?>><?= h(labelStatus($statusFase)) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
 
                         <div class="col-md-12">
                             <label class="form-label">Nome</label>
-                            <input type="text" name="nome" class="form-control" required
-                                   value="<?= h($faseEdicao['nome'] ?? '') ?>">
+                            <input type="text" name="nome" class="form-control" required value="<?= h($faseEdicao['nome'] ?? '') ?>">
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Slug</label>
-                            <input type="text" name="slug" class="form-control" required
-                                   value="<?= h($faseEdicao['slug'] ?? '') ?>">
+                            <input type="text" name="slug" class="form-control" required value="<?= h($faseEdicao['slug'] ?? '') ?>">
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Data/hora início</label>
-                            <input type="datetime-local" name="data_inicio" class="form-control" required
-                                   value="<?= h(formatDatetimeLocal($faseEdicao['data_inicio'] ?? '')) ?>">
+                            <input type="datetime-local" name="data_inicio" class="form-control" required value="<?= h(formatDatetimeLocal($faseEdicao['data_inicio'] ?? '')) ?>">
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Data/hora fim</label>
-                            <input type="datetime-local" name="data_fim" class="form-control" required
-                                   value="<?= h(formatDatetimeLocal($faseEdicao['data_fim'] ?? '')) ?>">
+                            <input type="datetime-local" name="data_fim" class="form-control" required value="<?= h(formatDatetimeLocal($faseEdicao['data_fim'] ?? '')) ?>">
                         </div>
 
                         <div class="col-12">
@@ -534,50 +509,43 @@ require_once $appBase . '/views/admin/header.php';
 
                         <div class="col-md-4">
                             <div class="form-check mt-4">
-                                <input class="form-check-input" type="checkbox" name="permite_voto_popular" id="permite_voto_popular"
-                                       <?= (int)($faseEdicao['permite_voto_popular'] ?? 0) === 1 ? 'checked' : '' ?>>
+                                <input class="form-check-input" type="checkbox" name="permite_voto_popular" id="permite_voto_popular" <?= (int)($faseEdicao['permite_voto_popular'] ?? 0) === 1 ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="permite_voto_popular">Permite voto popular</label>
                             </div>
                         </div>
 
                         <div class="col-md-4">
                             <div class="form-check mt-4">
-                                <input class="form-check-input" type="checkbox" name="permite_avaliacao_tecnica" id="permite_avaliacao_tecnica"
-                                       <?= (int)($faseEdicao['permite_avaliacao_tecnica'] ?? 0) === 1 ? 'checked' : '' ?>>
+                                <input class="form-check-input" type="checkbox" name="permite_avaliacao_tecnica" id="permite_avaliacao_tecnica" <?= (int)($faseEdicao['permite_avaliacao_tecnica'] ?? 0) === 1 ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="permite_avaliacao_tecnica">Permite avaliação técnica</label>
                             </div>
                         </div>
 
                         <div class="col-md-4">
                             <div class="form-check mt-4">
-                                <input class="form-check-input" type="checkbox" name="permite_juri_final" id="permite_juri_final"
-                                       <?= (int)($faseEdicao['permite_juri_final'] ?? 0) === 1 ? 'checked' : '' ?>>
+                                <input class="form-check-input" type="checkbox" name="permite_juri_final" id="permite_juri_final" <?= (int)($faseEdicao['permite_juri_final'] ?? 0) === 1 ? 'checked' : '' ?>>
                                 <label class="form-check-label" for="permite_juri_final">Permite júri final</label>
                             </div>
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Qtd. classificados popular</label>
-                            <input type="number" name="qtd_classificados_popular" class="form-control" min="0"
-                                   value="<?= h((string)($faseEdicao['qtd_classificados_popular'] ?? 0)) ?>">
+                            <input type="number" name="qtd_classificados_popular" class="form-control" min="0" value="<?= h((string)($faseEdicao['qtd_classificados_popular'] ?? 0)) ?>">
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Qtd. classificados técnica</label>
-                            <input type="number" name="qtd_classificados_tecnica" class="form-control" min="0"
-                                   value="<?= h((string)($faseEdicao['qtd_classificados_tecnica'] ?? 0)) ?>">
+                            <input type="number" name="qtd_classificados_tecnica" class="form-control" min="0" value="<?= h((string)($faseEdicao['qtd_classificados_tecnica'] ?? 0)) ?>">
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label">Qtd. classificados final</label>
-                            <input type="number" name="qtd_classificados_final" class="form-control" min="0"
-                                   value="<?= h((string)($faseEdicao['qtd_classificados_final'] ?? 0)) ?>">
+                            <input type="number" name="qtd_classificados_final" class="form-control" min="0" value="<?= h((string)($faseEdicao['qtd_classificados_final'] ?? 0)) ?>">
                         </div>
 
                         <div class="col-12">
                             <label class="form-label">Critério de desempate</label>
-                            <input type="text" name="criterio_desempate" class="form-control"
-                                   value="<?= h($faseEdicao['criterio_desempate'] ?? '') ?>">
+                            <input type="text" name="criterio_desempate" class="form-control" value="<?= h($faseEdicao['criterio_desempate'] ?? '') ?>">
                         </div>
                     </div>
 
@@ -585,7 +553,6 @@ require_once $appBase . '/views/admin/header.php';
                         <button type="submit" class="btn btn-dark">
                             <?= (int)$faseEdicao['id'] > 0 ? 'Salvar alterações' : 'Cadastrar fase' ?>
                         </button>
-
                         <?php if ((int)$faseEdicao['id'] > 0): ?>
                             <a href="premiacao_periodos.php?premiacao_id=<?= (int)$edicaoSelecionada ?>" class="btn btn-outline-secondary">Cancelar edição</a>
                         <?php endif; ?>
@@ -595,9 +562,7 @@ require_once $appBase . '/views/admin/header.php';
         </div>
 
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white">
-                <strong>Fases cadastradas</strong>
-            </div>
+            <div class="card-header bg-white"><strong>Fases cadastradas</strong></div>
             <div class="card-body">
                 <?php if (empty($fases)): ?>
                     <p class="text-muted mb-0">Nenhuma fase cadastrada para esta edição.</p>
@@ -639,10 +604,8 @@ require_once $appBase . '/views/admin/header.php';
                                         <div><strong>Final:</strong> <?= (int)$fase['qtd_classificados_final'] ?></div>
                                         <div><strong>Desempate:</strong> <?= h((string)($fase['criterio_desempate'] ?: '—')) ?></div>
                                         <div class="small text-muted mt-1">
-                                            <?= (int)$fase['permite_voto_popular'] === 1 ? 'Voto popular' : 'Sem voto popular' ?>
-                                            /
-                                            <?= (int)$fase['permite_avaliacao_tecnica'] === 1 ? 'Avaliação técnica' : 'Sem avaliação técnica' ?>
-                                            /
+                                            <?= (int)$fase['permite_voto_popular'] === 1 ? 'Voto popular' : 'Sem voto popular' ?> /
+                                            <?= (int)$fase['permite_avaliacao_tecnica'] === 1 ? 'Avaliação técnica' : 'Sem avaliação técnica' ?> /
                                             <?= (int)$fase['permite_juri_final'] === 1 ? 'Júri final' : 'Sem júri' ?>
                                         </div>
                                     </td>
@@ -655,7 +618,10 @@ require_once $appBase . '/views/admin/header.php';
                                         <form method="post" class="d-inline">
                                             <input type="hidden" name="acao" value="recalcular_status">
                                             <input type="hidden" name="fase_id" value="<?= (int)$fase['id'] ?>">
-                                            <button type="submit" class="btn btn-sm btn-outline-dark">Recalcular status</button>
+                                            <button type="submit" class="btn btn-sm btn-outline-dark"
+                                                onclick="return confirm('Recalcular status e, se encerrada, apurar classificados?')">
+                                                Recalcular status
+                                            </button>
                                         </form>
                                     </td>
                                 </tr>
