@@ -26,22 +26,22 @@ function h(?string $v): string
 }
 
 // ================================================================================
-// HELPERS DE APURAÇÃO (mesma lógica do premiacao_apuracao.php)
+// HELPERS DE APURAÇÃO
 // ================================================================================
 
 function getVotosPopulares(PDO $pdo, int $faseId): array
 {
     $stmt = $pdo->prepare("
-        SELECT inscricao_id, COUNT(*) AS votos
-        FROM premiacao_votos_populares
-        WHERE fase_id = ?
-        GROUP BY inscricao_id
+        SELECT inscricaoid, COUNT(*) AS votos
+        FROM premiacaovotospopulares
+        WHERE faseid = ?
+        GROUP BY inscricaoid
         ORDER BY votos DESC
     ");
     $stmt->execute([$faseId]);
     $result = [];
     foreach ($stmt->fetchAll() as $row) {
-        $result[(int)$row['inscricao_id']] = (int)$row['votos'];
+        $result[(int)$row['inscricaoid']] = (int)$row['votos'];
     }
     return $result;
 }
@@ -49,16 +49,16 @@ function getVotosPopulares(PDO $pdo, int $faseId): array
 function getVotosTecnicos(PDO $pdo, int $faseId): array
 {
     $stmt = $pdo->prepare("
-        SELECT inscricao_id, COUNT(*) AS votos
-        FROM premiacao_votos_tecnicos
-        WHERE fase_id = ?
-        GROUP BY inscricao_id
+        SELECT inscricaoid, COUNT(*) AS votos
+        FROM premiacaovotostecnicos
+        WHERE faseid = ?
+        GROUP BY inscricaoid
         ORDER BY votos DESC
     ");
     $stmt->execute([$faseId]);
     $result = [];
     foreach ($stmt->fetchAll() as $row) {
-        $result[(int)$row['inscricao_id']] = (int)$row['votos'];
+        $result[(int)$row['inscricaoid']] = (int)$row['votos'];
     }
     return $result;
 }
@@ -142,12 +142,12 @@ $premiacoes = $pdo->query("
 $fases = [];
 if ($filtroPremiacao > 0) {
     $stmt = $pdo->prepare("
-        SELECT id, nome, tipo_fase, qtd_classificados_popular, qtd_classificados_tecnica,
-               ordem_exibicao, status
-        FROM premiacao_fases
-        WHERE premiacao_id = ?
-          AND tipo_fase = 'classificatoria'
-        ORDER BY ordem_exibicao ASC
+        SELECT id, nome, tipofase, qtdclassificadospopular, qtdclassificadostecnica,
+               ordemexibicao, status
+        FROM premiacaofases
+        WHERE premiacaoid = ?
+          AND tipofase = 'classificatoria'
+        ORDER BY ordemexibicao ASC
     ");
     $stmt->execute([$filtroPremiacao]);
     $fases = $stmt->fetchAll();
@@ -170,11 +170,11 @@ if (!$faseAtual && count($fases) > 0) {
 // ================================================================================
 function statusNovoPorFase(array $fase): string
 {
-    $ordem = (int)($fase['ordem_exibicao'] ?? 1);
+    $ordem = (int)($fase['ordemexibicao'] ?? 1);
     return match(true) {
-        $ordem === 1 => 'classificada_fase_1',
-        $ordem === 2 => 'classificada_fase_2',
-        default      => 'classificada_fase_' . $ordem,
+        $ordem === 1 => 'classificadafase1',
+        $ordem === 2 => 'classificadafase2',
+        default      => 'classificadafase' . $ordem,
     };
 }
 
@@ -186,12 +186,12 @@ $jaGravados = [];
 
 if ($filtroPremiacao > 0 && $faseAtual) {
 
-    $faseId = (int)$faseAtual['id'];
-    $ordemAtual = (int)($faseAtual['ordem_exibicao'] ?? 1);
+    $faseId     = (int)$faseAtual['id'];
+    $ordemAtual = (int)($faseAtual['ordemexibicao'] ?? 1);
 
     // Verifica se já existem registros gravados para esta fase
     $stmtGravados = $pdo->prepare("
-        SELECT COUNT(*) FROM premiacao_classificados WHERE fase_id = ?
+        SELECT COUNT(*) FROM premiacaoclassificados WHERE faseid = ?
     ");
     $stmtGravados->execute([$faseId]);
     $jaGravados[$faseId] = (int)$stmtGravados->fetchColumn();
@@ -199,44 +199,47 @@ if ($filtroPremiacao > 0 && $faseAtual) {
     // Busca todas as categorias
     $stmtCats = $pdo->prepare("
         SELECT pc.id AS cat_id, pc.nome AS cat_nome, pc.ordem AS cat_ordem
-        FROM premiacao_categorias pc
-        WHERE pc.premiacao_id = ?
+        FROM premiacaocategorias pc
+        WHERE pc.premiacaoid = ?
         ORDER BY pc.ordem
     ");
     $stmtCats->execute([$filtroPremiacao]);
     $cats = $stmtCats->fetchAll();
 
     foreach ($cats as $cat) {
-        $catId = (int)$cat['cat_id'];
+        $catId    = (int)$cat['cat_id'];
+        $catNome  = $cat['cat_nome'];   // texto, como está em premiacaoinscricoes.categoria
 
         // Pool: fase 1 = todas elegíveis; fase 2+ = classificadas da fase anterior
+        // NOTA: premiacaoinscricoes.categoria é VARCHAR (ex: 'Ideação'), não um ID.
+        //       Filtramos pelo nome da categoria obtido de premiacaocategorias.
         if ($ordemAtual <= 1) {
             $stmtPool = $pdo->prepare("
-                SELECT pi.id AS inscricao_id
-                FROM premiacao_inscricoes pi
-                WHERE pi.premiacao_id = ?
-                  AND pi.categoria_id = ?
-                  AND pi.status IN ('elegivel','classificada_fase_1','classificada_fase_2','finalista')
+                SELECT pi.id AS inscricaoid
+                FROM premiacaoinscricoes pi
+                WHERE pi.premiacaoid = ?
+                  AND pi.categoria   = ?
+                  AND pi.status IN ('elegivel','classificadafase1','classificadafase2','finalista')
             ");
         } else {
             $stmtPool = $pdo->prepare("
-                SELECT pi.id AS inscricao_id
-                FROM premiacao_inscricoes pi
-                WHERE pi.premiacao_id = ?
-                  AND pi.categoria_id = ?
-                  AND pi.status IN ('classificada_fase_1','classificada_fase_2','finalista')
+                SELECT pi.id AS inscricaoid
+                FROM premiacaoinscricoes pi
+                WHERE pi.premiacaoid = ?
+                  AND pi.categoria   = ?
+                  AND pi.status IN ('classificadafase1','classificadafase2','finalista')
             ");
         }
-        $stmtPool->execute([$filtroPremiacao, $catId]);
-        $pool = array_map(fn($r) => (int)$r['inscricao_id'], $stmtPool->fetchAll());
+        $stmtPool->execute([$filtroPremiacao, $catNome]);
+        $pool = array_map(fn($r) => (int)$r['inscricaoid'], $stmtPool->fetchAll());
 
         if (empty($pool)) continue;
 
         $votosPopulares = getVotosPopulares($pdo, $faseId);
         $votosTecnicos  = getVotosTecnicos($pdo, $faseId);
 
-        $topPop    = (int)($faseAtual['qtd_classificados_popular'] ?? 5);
-        $topTec    = (int)($faseAtual['qtd_classificados_tecnica'] ?? 5);
+        $topPop     = (int)($faseAtual['qtdclassificadospopular'] ?? 5);
+        $topTec     = (int)($faseAtual['qtdclassificadostecnica'] ?? 5);
         $totalClass = min(count($pool), $topPop + $topTec);
 
         $resultado = apurarFase($pool, $votosPopulares, $votosTecnicos, $topPop, $topTec, $totalClass);
@@ -247,18 +250,18 @@ if ($filtroPremiacao > 0 && $faseAtual) {
         $ids = implode(',', array_map('intval', array_keys($resultado)));
         $stmtNeg = $pdo->query("
             SELECT
-                pi.id AS inscricao_id,
-                pi.status AS status_inscricao,
-                n.nome_fantasia,
+                pi.id AS inscricaoid,
+                pi.status AS statusinscricao,
+                n.nomefantasia,
                 n.municipio,
                 n.estado
-            FROM premiacao_inscricoes pi
-            INNER JOIN negocios n ON n.id = pi.negocio_id
+            FROM premiacaoinscricoes pi
+            INNER JOIN negocios n ON n.id = pi.negocioid
             WHERE pi.id IN ($ids)
         ");
         $negMap = [];
         foreach ($stmtNeg->fetchAll() as $row) {
-            $negMap[(int)$row['inscricao_id']] = $row;
+            $negMap[(int)$row['inscricaoid']] = $row;
         }
 
         $maxPop = max([1, ...array_values($votosPopulares)] ?: [1]);
@@ -269,23 +272,23 @@ if ($filtroPremiacao > 0 && $faseAtual) {
         foreach ($resultado as $inscId => $dados) {
             $neg = $negMap[$inscId] ?? [];
             $itens[] = array_merge($dados, [
-                'inscricao_id'    => $inscId,
-                'pos'             => $pos++,
-                'nome_fantasia'   => $neg['nome_fantasia'] ?? 'Não identificado',
-                'municipio'       => $neg['municipio'] ?? '',
-                'estado'          => $neg['estado'] ?? '',
-                'status_inscricao'=> $neg['status_inscricao'] ?? '',
-                'max_pop'         => $maxPop,
-                'max_tec'         => $maxTec,
+                'inscricaoid'      => $inscId,
+                'pos'              => $pos++,
+                'nomefantasia'     => $neg['nomefantasia'] ?? 'Não identificado',
+                'municipio'        => $neg['municipio'] ?? '',
+                'estado'           => $neg['estado'] ?? '',
+                'statusinscricao'  => $neg['statusinscricao'] ?? '',
+                'max_pop'          => $maxPop,
+                'max_tec'          => $maxTec,
             ]);
         }
 
         $apuracaoPorCategoria[$catId] = [
-            'nome'        => $cat['cat_nome'],
-            'ordem'       => $cat['cat_ordem'],
-            'total_pool'  => count($pool),
-            'total_class' => count($resultado),
-            'itens'       => $itens,
+            'nome'       => $catNome,
+            'ordem'      => $cat['cat_ordem'],
+            'total_pool' => count($pool),
+            'total_class'=> count($resultado),
+            'itens'      => $itens,
         ];
     }
 }
@@ -298,92 +301,96 @@ $erros     = [];
 
 if ($acao === 'gravar' && $filtroPremiacao > 0 && $faseAtual && !empty($apuracaoPorCategoria)) {
 
-    $faseId      = (int)$faseAtual['id'];
-    $statusNovo  = statusNovoPorFase($faseAtual);
-    $ordemAtual  = (int)($faseAtual['ordem_exibicao'] ?? 1);
+    $faseId     = (int)$faseAtual['id'];
+    $statusNovo = statusNovoPorFase($faseAtual);
+    $ordemAtual = (int)($faseAtual['ordemexibicao'] ?? 1);
 
     // Status que NÃO devem ser rebaixados (finalistas/classificadas de fases POSTERIORES)
     $statusProtegidos = ['finalista'];
     for ($i = $ordemAtual + 1; $i <= 10; $i++) {
-        $statusProtegidos[] = 'classificada_fase_' . $i;
+        $statusProtegidos[] = 'classificadafase' . $i;
     }
 
     try {
         $pdo->beginTransaction();
 
-        // 1. Limpa classificados já gravados desta fase (para re-apuração idempotente)
-        $pdo->prepare("DELETE FROM premiacao_classificados WHERE fase_id = ?")->execute([$faseId]);
+        // 1. Limpa classificados já gravados desta fase (re-apuração idempotente)
+        $pdo->prepare("DELETE FROM premiacaoclassificados WHERE faseid = ?")->execute([$faseId]);
 
-        // Verifica se existe a tabela premiacao_classificados_fases e limpa também
-        $tabelasExistentes = $pdo->query("SHOW TABLES LIKE 'premiacao_classificados_fases'")->fetchAll();
+        // Verifica se existe a tabela premiacaoclassificadosfase e limpa também
+        $tabelasExistentes = $pdo->query("SHOW TABLES LIKE 'premiacaoclassificadosfase'")->fetchAll();
         $temClassFases = !empty($tabelasExistentes);
         if ($temClassFases) {
-            $pdo->prepare("DELETE FROM premiacao_classificados_fases WHERE fase_id = ?")->execute([$faseId]);
+            $pdo->prepare("DELETE FROM premiacaoclassificadosfase WHERE faseid = ?")->execute([$faseId]);
         }
 
-        $totalGravados = 0;
+        $totalGravados    = 0;
         $totalAtualizados = 0;
 
         foreach ($apuracaoPorCategoria as $catId => $cat) {
             foreach ($cat['itens'] as $item) {
-                $inscId = (int)$item['inscricao_id'];
+                $inscId = (int)$item['inscricaoid'];
                 $pos    = (int)$item['pos'];
                 $origem = $item['origem'];
 
-                // 2. Insere em premiacao_classificados
+                // 2. Insere em premiacaoclassificados
                 $pdo->prepare("
-                    INSERT INTO premiacao_classificados
-                        (fase_id, categoria_id, inscricao_id, posicao, origem, criado_em)
-                    VALUES
-                        (?, ?, ?, ?, ?, NOW())
-                ")->execute([$faseId, $catId, $inscId, $pos, $origem]);
+                    INSERT INTO premiacaoclassificados
+                        (faseid, categoriaid, negocioid, posicao, origem, apuradoem)
+                    SELECT ?, ?, pi.negocioid, ?, ?, NOW()
+                    FROM premiacaoinscricoes pi
+                    WHERE pi.id = ?
+                ")->execute([$faseId, $catId, $pos, $origem, $inscId]);
                 $totalGravados++;
 
-                // 3. Insere em premiacao_classificados_fases (se existir)
+                // 3. Insere em premiacaoclassificadosfase (se existir)
                 if ($temClassFases) {
                     $pdo->prepare("
-                        INSERT INTO premiacao_classificados_fases
-                            (fase_id, categoria_id, inscricao_id, posicao, origem, criado_em)
-                        VALUES
-                            (?, ?, ?, ?, ?, NOW())
-                    ")->execute([$faseId, $catId, $inscId, $pos, $origem]);
+                        INSERT INTO premiacaoclassificadosfase
+                            (faseid, premiacaoid, categoria, negocioid, origemclassificacao,
+                             posicaopopular, posicaotecnica, totalvotospopular, createdat)
+                        SELECT ?, ?, pi.categoria, pi.negocioid, ?, ?, ?, ?, NOW()
+                        FROM premiacaoinscricoes pi
+                        WHERE pi.id = ?
+                    ")->execute([
+                        $faseId, $filtroPremiacao, $origem,
+                        ($origem === 'popular' || $origem === 'ambos') ? $pos : null,
+                        ($origem === 'tecnica' || $origem === 'ambos') ? $pos : null,
+                        $item['pop'] ?? 0,
+                        $inscId,
+                    ]);
                 }
 
                 // 4. Atualiza status da inscrição (somente se não for status mais avançado)
-                $stmtStatus = $pdo->prepare("
-                    SELECT status FROM premiacao_inscricoes WHERE id = ?
-                ");
+                $stmtStatus = $pdo->prepare("SELECT status FROM premiacaoinscricoes WHERE id = ?");
                 $stmtStatus->execute([$inscId]);
                 $statusAtual = $stmtStatus->fetchColumn();
 
                 if (!in_array($statusAtual, $statusProtegidos, true)) {
                     $pdo->prepare("
-                        UPDATE premiacao_inscricoes
-                        SET status = ?, updated_at = NOW()
+                        UPDATE premiacaoinscricoes
+                        SET status = ?, updatedat = NOW()
                         WHERE id = ?
                     ")->execute([$statusNovo, $inscId]);
                     $totalAtualizados++;
                 }
             }
 
-            // 5. Atualiza as NÃO classificadas de volta para 'elegivel'
-            //    (apenas se eram classificada_fase_X desta ordem — não rebaixa finalistas)
-            $idsClassificados = array_map(fn($i) => (int)$i['inscricao_id'], $cat['itens']);
+            // 5. Rebaixa para 'elegivel' as NÃO classificadas desta categoria/fase
+            $idsClassificados = array_map(fn($i) => (int)$i['inscricaoid'], $cat['itens']);
             if (!empty($idsClassificados)) {
                 $placeholders = implode(',', array_fill(0, count($idsClassificados), '?'));
-                $params = array_merge(
-                    [$filtroPremiacao, $catId],
-                    $idsClassificados
-                );
-                // Rebaixa para 'elegivel' somente as que estavam como classificada desta fase
                 $pdo->prepare("
-                    UPDATE premiacao_inscricoes
-                    SET status = 'elegivel', updated_at = NOW()
-                    WHERE premiacao_id = ?
-                      AND categoria_id = ?
-                      AND status = ?
+                    UPDATE premiacaoinscricoes
+                    SET status = 'elegivel', updatedat = NOW()
+                    WHERE premiacaoid = ?
+                      AND categoria   = ?
+                      AND status      = ?
                       AND id NOT IN ($placeholders)
-                ")->execute(array_merge([$filtroPremiacao, $catId, $statusNovo], $idsClassificados));
+                ")->execute(array_merge(
+                    [$filtroPremiacao, $cat['nome'], $statusNovo],
+                    $idsClassificados
+                ));
             }
         }
 
@@ -392,7 +399,7 @@ if ($acao === 'gravar' && $filtroPremiacao > 0 && $faseAtual && !empty($apuracao
         $mensagens[] = "📝 <strong>$totalAtualizados</strong> inscrições tiveram o status atualizado para <code>$statusNovo</code>.";
 
         // Recarrega os gravados
-        $stmtGravados = $pdo->prepare("SELECT COUNT(*) FROM premiacao_classificados WHERE fase_id = ?");
+        $stmtGravados = $pdo->prepare("SELECT COUNT(*) FROM premiacaoclassificados WHERE faseid = ?");
         $stmtGravados->execute([$faseId]);
         $jaGravados[$faseId] = (int)$stmtGravados->fetchColumn();
 
@@ -461,7 +468,7 @@ require_once $appBase . '/views/admin/header.php';
                         <option value="<?= (int)$f['id'] ?>"
                             <?= $filtroFase === (int)$f['id'] ? 'selected' : '' ?>>
                             <?= h($f['nome']) ?>
-                            (<?= (int)$f['qtd_classificados_popular'] ?>pop + <?= (int)$f['qtd_classificados_tecnica'] ?>tec por cat.)
+                            (<?= (int)$f['qtdclassificadospopular'] ?>pop + <?= (int)$f['qtdclassificadostecnica'] ?>tec por cat.)
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -514,7 +521,7 @@ require_once $appBase . '/views/admin/header.php';
                     <div class="prem-kpi-icon" style="background:#e7f5ff;">
                         <i class="bi bi-people-fill" style="color:#084298;"></i>
                     </div>
-                    <div class="prem-kpi-valor"><?= (int)($faseAtual['qtd_classificados_popular'] ?? 0) ?></div>
+                    <div class="prem-kpi-valor"><?= (int)($faseAtual['qtdclassificadospopular'] ?? 0) ?></div>
                     <div class="prem-kpi-label">Top Popular</div>
                     <div class="prem-kpi-sub">por categoria</div>
                 </div>
@@ -524,7 +531,7 @@ require_once $appBase . '/views/admin/header.php';
                     <div class="prem-kpi-icon" style="background:#eaf7ef;">
                         <i class="bi bi-clipboard-data-fill" style="color:#1E3425;"></i>
                     </div>
-                    <div class="prem-kpi-valor"><?= (int)($faseAtual['qtd_classificados_tecnica'] ?? 0) ?></div>
+                    <div class="prem-kpi-valor"><?= (int)($faseAtual['qtdclassificadostecnica'] ?? 0) ?></div>
                     <div class="prem-kpi-label">Top Técnica</div>
                     <div class="prem-kpi-sub">por categoria</div>
                 </div>
@@ -590,13 +597,13 @@ require_once $appBase . '/views/admin/header.php';
                                     $origem = $item['origem'] ?? 'complemento';
                                     [$bg, $color, $icon, $label] = $origensBadge[$origem] ?? $origensBadge['complemento'];
                                     $stMap = [
-                                        'finalista'           => ['bg-info text-dark',     'Finalista'],
-                                        'classificada_fase_2' => ['bg-primary',             'Class. F2'],
-                                        'classificada_fase_1' => ['bg-secondary',           'Class. F1'],
-                                        'elegivel'            => ['bg-light text-dark border','Elegível'],
-                                        'vencedora'           => ['bg-success',              'Vencedora'],
+                                        'finalista'          => ['bg-info text-dark',      'Finalista'],
+                                        'classificadafase2'  => ['bg-primary',              'Class. F2'],
+                                        'classificadafase1'  => ['bg-secondary',            'Class. F1'],
+                                        'elegivel'           => ['bg-light text-dark border','Elegível'],
+                                        'vencedora'          => ['bg-success',               'Vencedora'],
                                     ];
-                                    [$sc, $sl] = $stMap[$item['status_inscricao']] ?? ['bg-light text-dark border', h($item['status_inscricao'])];
+                                    [$sc, $sl] = $stMap[$item['statusinscricao']] ?? ['bg-light text-dark border', h($item['statusinscricao'])];
                                 ?>
                                 <tr>
                                     <td class="ps-3 text-center">
@@ -605,7 +612,7 @@ require_once $appBase . '/views/admin/header.php';
                                         </span>
                                     </td>
                                     <td>
-                                        <div class="fw-semibold" style="font-size:13px;"><?= h($item['nome_fantasia']) ?></div>
+                                        <div class="fw-semibold" style="font-size:13px;"><?= h($item['nomefantasia']) ?></div>
                                         <?php if ($item['municipio']): ?>
                                             <div style="font-size:11px;color:#9aab9d;"><?= h($item['municipio']) ?>/<?= h($item['estado']) ?></div>
                                         <?php endif; ?>
@@ -655,11 +662,11 @@ require_once $appBase . '/views/admin/header.php';
                             O que será gravado ao confirmar:
                         </div>
                         <ul class="mb-0 ps-3" style="font-size:13px;color:#555;">
-                            <li>Registros inseridos em <code>premiacao_classificados</code> para a fase <strong><?= h($faseAtual['nome']) ?></strong></li>
+                            <li>Registros inseridos em <code>premiacaoclassificados</code> para a fase <strong><?= h($faseAtual['nome']) ?></strong></li>
                             <?php
-                            $tblCf = $pdo->query("SHOW TABLES LIKE 'premiacao_classificados_fases'")->fetchAll();
+                            $tblCf = $pdo->query("SHOW TABLES LIKE 'premiacaoclassificadosfase'")->fetchAll();
                             if (!empty($tblCf)): ?>
-                            <li>Registros inseridos em <code>premiacao_classificados_fases</code></li>
+                            <li>Registros inseridos em <code>premiacaoclassificadosfase</code></li>
                             <?php endif; ?>
                             <li>Status das inscrições classificadas atualizado para <code><?= statusNovoPorFase($faseAtual) ?></code></li>
                             <li>Gravações anteriores desta fase serão substituídas</li>
