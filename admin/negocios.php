@@ -54,7 +54,7 @@ try {
         $where[] = "n.status_vitrine = 'indeferido'";
     }
 
-    // Premiação ativa
+    // ── Premiação ativa ────────────────────────────────────────────────────────
     $stmtPremAtiva = $pdo->query("
         SELECT id
         FROM premiacoes
@@ -67,14 +67,57 @@ try {
     ");
     $premiacaoAtualId = (int) ($stmtPremAtiva->fetchColumn() ?: 0);
 
+    // ── Fase ativa por role (busca rodada e tipo_fase para pool dinâmico) ──────
+    $faseAtiva      = null;
+    $faseAtivaDados = null;
+    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
+        $colFase = is_tecnica() ? 'permite_avaliacao_tecnica' : 'permite_juri_final';
+        $stmtFaseRole = $pdo->prepare("
+            SELECT id, tipo_fase, rodada FROM premiacao_fases
+            WHERE premiacao_id = ?
+              AND status = 'em_andamento'
+              AND {$colFase} = 1
+            ORDER BY rodada ASC LIMIT 1
+        ");
+        $stmtFaseRole->execute([$premiacaoAtualId]);
+        $faseAtivaDados = $stmtFaseRole->fetch(PDO::FETCH_ASSOC) ?: null;
+        $faseAtiva      = $faseAtivaDados ? (int)$faseAtivaDados['id'] : null;
+    }
+
+    // ── Pool de status dinâmico baseado na rodada da fase ──────────────────────
+    function buildStatusPoolAdmin(?array $fase): array
+    {
+        if (!$fase) return ['elegivel'];
+        $tipo   = $fase['tipo_fase'] ?? 'classificatoria';
+        $rodada = (int)($fase['rodada'] ?? 1);
+        if ($tipo === 'final') {
+            return ['finalista'];
+        }
+        if ($rodada <= 1) {
+            return ['elegivel'];
+        }
+        return ['elegivel', 'classificada_fase_' . ($rodada - 1)];
+    }
+
+    $statusPoolArr = buildStatusPoolAdmin($faseAtivaDados);
+    $statusPoolIn  = implode(',', array_map(fn($s) => "'$s'", $statusPoolArr));
+
+    // ── Filtro de listagem para técnica/júri: mostra só negócios na fase certa ─
     if (is_juri_ou_tecnica() && $premiacaoAtualId > 0) {
-        $where[] = "EXISTS (
-            SELECT 1
-            FROM premiacao_inscricoes pi
-            WHERE pi.negocio_id = n.id
-              AND pi.premiacao_id = ?
-        )";
-        $params[] = $premiacaoAtualId;
+        if ($faseAtiva) {
+            // Exibe apenas negócios com status elegível para a fase ativa
+            $where[] = "EXISTS (
+                SELECT 1
+                FROM premiacao_inscricoes pi
+                WHERE pi.negocio_id = n.id
+                  AND pi.premiacao_id = ?
+                  AND pi.status IN ({$statusPoolIn})
+            )";
+            $params[] = $premiacaoAtualId;
+        } else {
+            // Nenhuma fase ativa para este role → não exibe nenhum negócio
+            $where[] = "1 = 0";
+        }
     }
 
     $sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_completa,
@@ -123,51 +166,6 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // ── Fase ativa por role (busca rodada e tipo_fase para pool dinâmico) ──────
-    $faseAtiva     = null;
-    $faseAtivaDados = null;
-    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
-        if (is_tecnica()) {
-            $colFase = 'permite_avaliacao_tecnica';
-        } else {
-            $colFase = 'permite_juri_final';
-        }
-        $stmtFaseRole = $pdo->prepare("
-            SELECT id, tipo_fase, rodada FROM premiacao_fases
-            WHERE premiacao_id = ?
-              AND status = 'em_andamento'
-              AND {$colFase} = 1
-            ORDER BY rodada ASC LIMIT 1
-        ");
-        $stmtFaseRole->execute([$premiacaoAtualId]);
-        $faseAtivaDados = $stmtFaseRole->fetch(PDO::FETCH_ASSOC) ?: null;
-        $faseAtiva      = $faseAtivaDados ? (int)$faseAtivaDados['id'] : null;
-    }
-
-    // ── Pool de status dinâmico baseado na rodada da fase ──────────────────────
-    // Rodada 1 → elegivel
-    // Rodada 2 → classificada_fase_1
-    // Rodada N → classificada_fase_(N-1)
-    // Final    → finalista
-    function buildStatusPoolAdmin(?array $fase): string
-    {
-        if (!$fase) return "'elegivel'";
-        $tipo   = $fase['tipo_fase'] ?? 'classificatoria';
-        $rodada = (int)($fase['rodada'] ?? 1);
-        if ($tipo === 'final') {
-            return "'finalista'";
-        }
-        if ($rodada <= 1) {
-            return "'elegivel'";
-        }
-        $anterior = 'classificada_fase_' . ($rodada - 1);
-        return "'elegivel','{$anterior}'";
-    }
-
-    $statusPool    = buildStatusPoolAdmin($faseAtivaDados);
-    $statusPoolArr = array_unique(array_map('trim', explode(',', str_replace("'", '', $statusPool))));
-    $statusPoolIn  = implode(',', array_map(fn($s) => "'$s'", $statusPoolArr));
 
     // ── Inscrições da premiação ativa: mapa negocio_id => inscricao_id ────────
     $inscricoesPorNegocio = [];
@@ -382,6 +380,7 @@ include __DIR__ . '/../app/views/admin/header.php';
         <?php endforeach; ?>
       </select>
     </div>
+    <?php if (!$ocultarColunasScore): ?>
     <div class="col-12 col-sm-6 col-lg-2">
       <label class="form-label">Status</label>
       <select name="status" class="form-select">
@@ -394,6 +393,7 @@ include __DIR__ . '/../app/views/admin/header.php';
         <option value="indeferido" <?= $filtro_status === 'indeferido' ? 'selected' : '' ?>>Indeferido</option>
       </select>
     </div>
+    <?php endif; ?>
     <div class="col-12 col-sm-6 col-lg-2 d-flex gap-2">
       <button type="submit" class="hd-btn primary w-100">
         <i class="bi bi-funnel-fill"></i> Filtrar
@@ -421,8 +421,8 @@ include __DIR__ . '/../app/views/admin/header.php';
           <th class="text-center"><a href="<?= linkOrdenacao('investimento') ?>" class="neg-sort-link">Invest. <?= iconeOrdenacao('investimento') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('impacto') ?>" class="neg-sort-link">Impacto <?= iconeOrdenacao('impacto') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('geral') ?>" class="neg-sort-link">Geral <?= iconeOrdenacao('geral') ?></a></th>
-          <?php endif; ?>
           <th>Status</th>
+          <?php endif; ?>
           <th class="text-center">Ações</th>
         </tr>
       </thead>
@@ -471,7 +471,6 @@ include __DIR__ . '/../app/views/admin/header.php';
               <td class="text-center"><?= $n['score_investimento'] ?? '-' ?></td>
               <td class="text-center"><?= $n['score_impacto']      ?? '-' ?></td>
               <td class="text-center"><?= $n['score_geral']        ?? '-' ?></td>
-              <?php endif; ?>
               <td>
                 <?php if ($n['status_operacional'] === 'encerrado'): ?>
                   <span class="emp-badge" style="background:#fde8ea;color:#842029;">Encerrado</span>
@@ -498,6 +497,7 @@ include __DIR__ . '/../app/views/admin/header.php';
                   <span class="emp-badge" style="background:#fff3cd;color:#856404;">Em andamento</span>
                 <?php endif; ?>
               </td>
+              <?php endif; ?>
 
               <!-- Ações -->
               <td class="text-center">
