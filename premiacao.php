@@ -4,29 +4,94 @@ require_once __DIR__ . '/app/config/database.php';
 
 $pageTitle = 'Premiação Impactos Positivos 2026';
 
-// Busca a premiação ativa/mais recente para exibir dados dinâmicos
+// Busca a premiação ativa/mais recente
 try {
-    $stmt = $pdo->query("
-        SELECT p.*, pr.ano, pr.nome AS premiacao_nome
-        FROM premiacoes pr
-        LEFT JOIN fases p ON p.premiacao_id = pr.id AND p.status = 'ativa'
-        WHERE pr.status = 'ativa'
-        ORDER BY pr.ano DESC, p.id DESC
+    $stPremiacao = $pdo->query("
+        SELECT id, nome, ano, status
+        FROM premiacoes
+        WHERE status = 'ativa'
+        ORDER BY ano DESC, id DESC
         LIMIT 1
     ");
-    $premiacaoInfo = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $premiacaoAtiva = $stPremiacao->fetch(PDO::FETCH_ASSOC) ?: [];
 } catch (Exception $e) {
-    $premiacaoInfo = [];
+    $premiacaoAtiva = [];
 }
 
-// Busca categorias disponíveis
-try {
-    $cats = $pdo->query("SELECT DISTINCT categoria FROM negocios WHERE status = 'aprovado' ORDER BY categoria")->fetchAll(PDO::FETCH_COLUMN);
-} catch (Exception $e) {
-    $cats = [];
+// ── Classificados por fase/categoria (apenas fases apuradas ou encerradas) ────
+$classificadosPorFase = [];
+if (!empty($premiacaoAtiva['id'])) {
+    try {
+        $premId = (int)$premiacaoAtiva['id'];
+
+        // Fases com classificados gravados
+        $stFases = $pdo->prepare("
+            SELECT pf.id, pf.nome, pf.tipo_fase, pf.ordem_exibicao, pf.status
+            FROM premiacao_fases pf
+            WHERE pf.premiacao_id = ?
+              AND pf.status IN ('apurada', 'encerrada')
+              AND EXISTS (
+                  SELECT 1 FROM premiacao_classificados pc WHERE pc.fase_id = pf.id
+              )
+            ORDER BY pf.ordem_exibicao ASC
+        ");
+        $stFases->execute([$premId]);
+        $fases = $stFases->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($fases as $fase) {
+            $faseId = (int)$fase['id'];
+
+            $stCl = $pdo->prepare("
+                SELECT
+                    pc.posicao,
+                    pc.origem,
+                    cat.nome       AS categoria_nome,
+                    cat.ordem      AS categoria_ordem,
+                    n.nome_fantasia,
+                    n.municipio,
+                    n.estado,
+                    e.nome         AS empreendedor_nome,
+                    na.logo_negocio
+                FROM premiacao_classificados pc
+                INNER JOIN premiacao_categorias  cat ON cat.id = pc.categoria_id
+                INNER JOIN negocios              n   ON n.id   = pc.negocio_id
+                INNER JOIN premiacao_inscricoes  pi  ON pi.negocio_id = pc.negocio_id
+                                                    AND pi.premiacao_id = ?
+                INNER JOIN empreendedores        e   ON e.id   = pi.empreendedor_id
+                LEFT  JOIN negocio_apresentacao  na  ON na.negocio_id  = n.id
+                WHERE pc.fase_id = ?
+                ORDER BY cat.ordem ASC, pc.posicao ASC
+            ");
+            $stCl->execute([$premId, $faseId]);
+            $rows = $stCl->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($rows)) continue;
+
+            // Agrupa por categoria
+            $porCat = [];
+            foreach ($rows as $r) {
+                $cn = $r['categoria_nome'];
+                if (!isset($porCat[$cn])) {
+                    $porCat[$cn] = ['ordem' => $r['categoria_ordem'], 'itens' => []];
+                }
+                $porCat[$cn]['itens'][] = $r;
+            }
+
+            $classificadosPorFase[] = [
+                'fase'   => $fase,
+                'porCat' => $porCat,
+            ];
+        }
+    } catch (Exception $e) {
+        $classificadosPorFase = [];
+    }
 }
 
 require_once __DIR__ . '/app/views/public/header_public.php';
+
+function h(?string $v): string {
+    return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+}
 ?>
 
 <!-- ══════════════════════════════════════════
@@ -51,9 +116,15 @@ require_once __DIR__ . '/app/views/public/header_public.php';
           <a href="/empreendedores/dashboard.php" class="btn-premiacao-primary">
             <i class="bi bi-rocket-takeoff-fill me-2"></i> Inscreva seu negócio
           </a>
+          <?php if (!empty($classificadosPorFase)): ?>
+          <a href="#classificados" class="btn-premiacao-outline">
+            <i class="bi bi-award-fill me-2"></i> Ver classificados
+          </a>
+          <?php else: ?>
           <a href="#como-funciona" class="btn-premiacao-outline">
             <i class="bi bi-info-circle me-2"></i> Como funciona
           </a>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -98,6 +169,123 @@ require_once __DIR__ . '/app/views/public/header_public.php';
     </div>
   </div>
 </section>
+
+<?php if (!empty($classificadosPorFase)): ?>
+<!-- ══════════════════════════════════════════
+     CLASSIFICADOS — DINÂMICO
+══════════════════════════════════════════ -->
+<section id="classificados" class="py-5" style="background:#f8f9f3;">
+  <div class="container">
+
+    <div class="text-center mb-5">
+      <span class="section-kicker section-kicker--accent mb-3">
+        <i class="bi bi-award-fill me-1"></i> Classificados
+      </span>
+      <h2 class="section-title mt-2">Negócios classificados</h2>
+      <p class="section-sub mx-auto" style="max-width:520px;">
+        Conheça os negócios que avançaram nas fases da Premiação Impactos Positivos <?= (int)($premiacaoAtiva['ano'] ?? 2026) ?>.
+      </p>
+    </div>
+
+    <?php foreach ($classificadosPorFase as $bloco): ?>
+      <?php
+        $fase      = $bloco['fase'];
+        $labelTipo = match($fase['tipo_fase'] ?? '') {
+            'classificatoria' => 'Classificatória',
+            'final'           => 'Fase Final',
+            default           => ucfirst((string)($fase['tipo_fase'] ?? '')),
+        };
+      ?>
+
+      <!-- Título da fase -->
+      <div class="d-flex align-items-center gap-3 mb-4 mt-2">
+        <div style="flex:1; height:2px; background:linear-gradient(90deg,#CDDE00,transparent);"></div>
+        <h3 class="mb-0 fw-bold" style="font-size:1.15rem; color:#1E3425; white-space:nowrap;">
+          <i class="bi bi-layers-fill me-2" style="color:#CDDE00;"></i>
+          <?= h($fase['nome']) ?>
+          <span class="badge ms-2" style="background:#1E3425; color:#CDDE00; font-size:.7rem; font-weight:600; vertical-align:middle;"><?= h($labelTipo) ?></span>
+        </h3>
+        <div style="flex:1; height:2px; background:linear-gradient(90deg,transparent,#CDDE00);"></div>
+      </div>
+
+      <?php foreach ($bloco['porCat'] as $catNome => $catDados): ?>
+        <div class="mb-5">
+
+          <!-- Cabeçalho da categoria -->
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-bookmark-fill" style="color:#CDDE00; font-size:1rem;"></i>
+            <h4 class="mb-0 fw-semibold" style="font-size:1rem; color:#1E3425;"><?= h($catNome) ?></h4>
+            <span class="badge bg-secondary" style="font-size:.7rem;"><?= count($catDados['itens']) ?> classificado<?= count($catDados['itens']) !== 1 ? 's' : '' ?></span>
+          </div>
+
+          <!-- Grid de cards -->
+          <div class="row g-3">
+            <?php foreach ($catDados['itens'] as $item): ?>
+              <?php
+                $pos   = (int)$item['posicao'];
+                $medal = match($pos) { 1 => '🥇', 2 => '🥈', 3 => '🥉', default => $pos . 'º' };
+                $isTop = $pos <= 3;
+                $bordaColor = match($pos) {
+                    1 => '#CDDE00',
+                    2 => '#B0BEC5',
+                    3 => '#CD7F32',
+                    default => '#dee2e6',
+                };
+                $origemLabel = match($item['origem'] ?? '') {
+                    'popular'     => ['bg' => '#fff3cd', 'color' => '#856404', 'text' => 'Popular'],
+                    'tecnica'     => ['bg' => '#cfe2ff', 'color' => '#084298', 'text' => 'Técnica'],
+                    'ambos'       => ['bg' => '#d1e7dd', 'color' => '#0a3622', 'text' => 'Popular + Técnica'],
+                    'juri'        => ['bg' => '#e2d9f3', 'color' => '#3d0f6e', 'text' => 'Júri'],
+                    'complemento' => ['bg' => '#f8f9fa', 'color' => '#6c757d', 'text' => 'Complemento'],
+                    default       => ['bg' => '#f8f9fa', 'color' => '#6c757d', 'text' => h($item['origem'] ?? '')],
+                };
+              ?>
+              <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                <div class="card h-100 border-0 shadow-sm"
+                     style="border-top: 3px solid <?= $bordaColor ?> !important; border-radius:12px; overflow:hidden;">
+
+                  <!-- Logo / Avatar -->
+                  <div style="height:80px; background:#f0f2ec; display:flex; align-items:center; justify-content:center; position:relative;">
+                    <?php if (!empty($item['logo_negocio'])): ?>
+                      <img src="/uploads/<?= h($item['logo_negocio']) ?>"
+                           alt="Logo <?= h($item['nome_fantasia']) ?>"
+                           style="max-height:60px; max-width:90%; object-fit:contain;">
+                    <?php else: ?>
+                      <div style="width:50px; height:50px; border-radius:50%; background:#1E3425; display:flex; align-items:center; justify-content:center;">
+                        <i class="bi bi-building" style="color:#CDDE00; font-size:1.3rem;"></i>
+                      </div>
+                    <?php endif; ?>
+                    <!-- Posição badge -->
+                    <span style="position:absolute; top:8px; left:10px; font-size:1.3rem; line-height:1;"><?= $medal ?></span>
+                  </div>
+
+                  <div class="card-body p-3">
+                    <p class="fw-bold mb-1" style="font-size:.93rem; color:#1E3425; line-height:1.25;">
+                      <?= h($item['nome_fantasia']) ?>
+                    </p>
+                    <p class="mb-2" style="font-size:.78rem; color:#6c757d; line-height:1.3;">
+                      <i class="bi bi-person-fill me-1"></i><?= h($item['empreendedor_nome']) ?>
+                      <?php if (!empty($item['municipio'])): ?>
+                        <br><i class="bi bi-geo-alt-fill me-1"></i><?= h($item['municipio']) ?>/<?= h($item['estado']) ?>
+                      <?php endif; ?>
+                    </p>
+                    <span class="badge" style="background:<?= $origemLabel['bg'] ?>; color:<?= $origemLabel['color'] ?>; font-size:.7rem; font-weight:600;">
+                      <?= $origemLabel['text'] ?>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+
+        </div>
+      <?php endforeach; ?>
+
+    <?php endforeach; ?>
+
+  </div>
+</section>
+<?php endif; ?>
 
 <!-- ══════════════════════════════════════════
      COMO FUNCIONA

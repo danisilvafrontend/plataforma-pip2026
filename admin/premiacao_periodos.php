@@ -98,28 +98,16 @@ function labelTipoFase(string $tipo): string
 /**
  * Retorna a cláusula SQL "IN (...)" com os status elegíveis para entrar
  * no pool de uma determinada fase.
- *
- * Lógica:
- *  - fase final       → somente 'finalista'
- *  - classificatória rodada 1 → 'elegivel' + 'classificada_fase_1'
- *    (o segundo valor permite re-apuração sem perder inscrições já marcadas)
- *  - classificatória rodada N≥2 → 'classificada_fase_N-1'
- *    (apenas quem avançou da rodada anterior)
  */
 function buildStatusPool(string $tipoFase, int $rodada): string
 {
     if ($tipoFase === 'final') {
         return "IN ('finalista')";
     }
-
-    // Rodada 1 (primeira classificatória): pool principal são os elegíveis.
-    // Inclui também 'classificada_fase_1' para que re-apurações não percam
-    // inscrições que já foram marcadas em execuções anteriores.
     if ($rodada <= 1) {
+        // Rodada 1: inclui 'elegivel' e 'classificada_fase_1' para re-apuração
         return "IN ('elegivel','classificada_fase_1')";
     }
-
-    // Rodadas seguintes: somente quem foi classificado na rodada anterior.
     $statusAnterior = 'classificada_fase_' . ($rodada - 1);
     return "IN ('{$statusAnterior}')";
 }
@@ -129,16 +117,9 @@ function apurarEGravar(PDO $pdo, array $fase): array
     $faseId      = (int)$fase['id'];
     $premiacaoId = (int)$fase['premiacao_id'];
     $tipoFase    = $fase['tipo_fase'] ?? 'classificatoria';
-
-    // Usa 'rodada' para identificar a fase corretamente.
-    // Fases do tipo 'final' recebem rodada=null no DB; tratamos como rodada=0.
     $rodada      = (int)($fase['rodada'] ?? 0);
 
-    // statusNovo deve corresponder ao ENUM real: 'classificada_fase_1', 'classificada_fase_2'.
-    // Para fase final, o status avançado é 'finalista'.
     $statusNovo  = ($tipoFase === 'final') ? 'finalista' : 'classificada_fase_' . max(1, $rodada);
-
-    // Status que este pool de inscrições deve ter para ser elegível.
     $statusPool  = buildStatusPool($tipoFase, $rodada);
 
     // Coleta votos populares
@@ -172,7 +153,6 @@ function apurarEGravar(PDO $pdo, array $fase): array
 
         // Status que não devem ser rebaixados (fases futuras já concluídas)
         $statusProtegidos = ['finalista', 'vencedora'];
-        // Protege classificadas de rodadas superiores à atual
         for ($i = max(1, $rodada) + 1; $i <= 10; $i++) {
             $statusProtegidos[] = 'classificada_fase_' . $i;
         }
@@ -190,7 +170,7 @@ function apurarEGravar(PDO $pdo, array $fase): array
 
             $topPop  = (int)($fase['qtd_classificados_popular'] ?? 10);
             $topTec  = (int)($fase['qtd_classificados_tecnica'] ?? 10);
-            $totalCl = $topPop + $topTec; // máximo de classificados esperado
+            $totalCl = $topPop + $topTec;
 
             if ($tipoFase === 'final') {
                 $poolSet = array_flip($pool);
@@ -225,7 +205,6 @@ function apurarEGravar(PDO $pdo, array $fase): array
                     }
                 }
 
-                // Complemento: preenche com mais inscrições se não atingiu o mínimo
                 if (count($sel) < $totalCl) {
                     $todos = $pool;
                     usort($todos, fn($a, $b) => ($vpF[$b] ?? 0) <=> ($vpF[$a] ?? 0));
@@ -250,7 +229,6 @@ function apurarEGravar(PDO $pdo, array $fase): array
             $idsClass = [];
 
             foreach ($resultado as $inscId => $dados) {
-                // Obtém o negocio_id correspondente à inscrição
                 $stNeg = $pdo->prepare("SELECT negocio_id FROM premiacao_inscricoes WHERE id=?");
                 $stNeg->execute([$inscId]);
                 $negId = (int)$stNeg->fetchColumn();
@@ -277,14 +255,27 @@ function apurarEGravar(PDO $pdo, array $fase): array
                 $pos++;
             }
 
-            // Rebaixa não-classificados desta categoria de volta para 'elegivel'
+            // ── Marca como 'eliminada' quem estava no pool mas NÃO foi classificado ──
+            // Não rebaixamos mais para 'elegivel': quem não passou foi eliminado.
             if (!empty($idsClass)) {
                 $ph = implode(',', array_fill(0, count($idsClass), '?'));
                 $pdo->prepare("
                     UPDATE premiacao_inscricoes
-                    SET status='elegivel', updated_at=NOW()
-                    WHERE premiacao_id=? AND categoria=? AND status $statusPool AND id NOT IN ($ph)
+                    SET status = 'eliminada', updated_at = NOW()
+                    WHERE premiacao_id = ?
+                      AND categoria    = ?
+                      AND status       $statusPool
+                      AND id NOT IN ($ph)
                 ")->execute(array_merge([$premiacaoId, $catNome], $idsClass));
+            } else {
+                // Pool não vazio mas nenhum foi classificado: elimina todos do pool
+                $pdo->prepare("
+                    UPDATE premiacao_inscricoes
+                    SET status = 'eliminada', updated_at = NOW()
+                    WHERE premiacao_id = ?
+                      AND categoria    = ?
+                      AND status       $statusPool
+                ")->execute([$premiacaoId, $catNome]);
             }
         }
 
@@ -384,7 +375,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fase = $stmt->fetch();
             if (!$fase) throw new Exception('Fase não encontrada.');
 
-            // Recalcula desconsiderando o status 'apurada' salvo
             $novoStatus = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], 'agendada');
             $pdo->prepare("UPDATE premiacao_fases SET status=?,updated_at=NOW() WHERE id=?")->execute([$novoStatus, $faseId]);
 
