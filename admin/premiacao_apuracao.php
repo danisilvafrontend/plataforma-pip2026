@@ -143,12 +143,10 @@ function apurarFaseFinal(
     array $votosPopulares,
     array $votosJuri
 ): array {
-    // Filtra votos apenas dos inscritos do pool desta categoria
     $poolSet = array_flip($pool);
     $vpPool  = array_filter($votosPopulares, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
     $vjPool  = array_filter($votosJuri,      fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
 
-    // Máximo popular restrito ao pool
     $maxPop = !empty($vpPool) ? max($vpPool) : 0;
 
     $result = [];
@@ -175,6 +173,37 @@ function apurarFaseFinal(
 function statusNovoPorOrdem(int $ordem): string
 {
     return 'classificada_fase_' . $ordem;
+}
+
+/**
+ * Monta a cláusula IN de status do pool para uma fase.
+ *
+ * Regras:
+ *  - Fase final (tipo_fase='final'): apenas 'finalista'
+ *  - Fase classificatória ordem=1: 'elegivel' + todos os status de fases anteriores
+ *  - Fase classificatória ordem>=2: apenas 'classificada_fase_(ordem-1)' e superiores
+ *    (quem foi classificado na fase anterior entra; quem não foi, fica de fora)
+ */
+function buildStatusPool(string $tipoFase, int $ordemAtual): string
+{
+    if ($tipoFase === 'final') {
+        return "IN ('finalista')";
+    }
+
+    // Fase classificatória 1: todos elegíveis entram
+    if ($ordemAtual <= 1) {
+        return "IN ('elegivel','classificada_fase_1','classificada_fase_2','finalista')";
+    }
+
+    // Fase classificatória 2+: apenas quem passou pela fase anterior
+    // Inclui status da fase anterior e qualquer status mais avançado
+    $statusPermitidos = [];
+    for ($i = $ordemAtual - 1; $i <= 10; $i++) {
+        $statusPermitidos[] = "'classificada_fase_{$i}'";
+    }
+    $statusPermitidos[] = "'finalista'";
+
+    return 'IN (' . implode(',', $statusPermitidos) . ')';
 }
 
 // ================================================================================
@@ -230,10 +259,13 @@ if ($filtroPremiacao > 0 && $faseAtual) {
     $faseId     = (int)$faseAtual['id'];
     $ordemAtual = (int)($faseAtual['ordem_exibicao'] ?? 1);
 
-    // ── Busca votos UMA VEZ, fora do loop de categorias ──────────────────────
+    // Busca votos UMA VEZ, fora do loop de categorias
     $votosPopulares = getVotosPopulares($pdo, $faseId);
     $votosTecnicos  = getVotosTecnicos($pdo, $faseId);
     $votosJuri      = getVotosJuri($pdo, $faseId);
+
+    // Cláusula de status do pool para esta fase
+    $statusPool = buildStatusPool($tipoFase, $ordemAtual);
 
     $stmtCats = $pdo->prepare("
         SELECT pc.id AS cat_id, pc.nome AS cat_nome, pc.ordem AS cat_ordem
@@ -249,18 +281,7 @@ if ($filtroPremiacao > 0 && $faseAtual) {
 
     foreach ($cats as $cat) {
         $catId   = (int)$cat['cat_id'];
-        $catNome = $cat['cat_nome']; // VARCHAR em premiacao_inscricoes.categoria
-
-        // ── Pool ──────────────────────────────────────────────────────────────
-        if ($tipoFase === 'classificatoria') {
-            if ($ordemAtual <= 1) {
-                $statusPool = "IN ('elegivel','classificada_fase_1','classificada_fase_2','finalista')";
-            } else {
-                $statusPool = "IN ('classificada_fase_1','classificada_fase_2','finalista')";
-            }
-        } else {
-            $statusPool = "IN ('finalista')";
-        }
+        $catNome = $cat['cat_nome'];
 
         $stmtPool = $pdo->prepare("
             SELECT pi.id AS inscricao_id
@@ -306,7 +327,7 @@ if ($filtroPremiacao > 0 && $faseAtual) {
             $negMap[(int)$row['inscricao_id']] = $row;
         }
 
-        // ── max* restrito ao pool da categoria (barras de progresso corretas) ─
+        // max* restrito ao pool da categoria
         $poolSet = array_flip($pool);
         $vpPool  = array_filter($votosPopulares, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
         $vtPool  = array_filter($votosTecnicos,  fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
@@ -365,11 +386,14 @@ if ($acao === 'gravar' && $filtroPremiacao > 0 && $faseAtual && !empty($apuracao
     $statusNovo = statusNovoPorOrdem($ordemAtual);
     $tipoFase   = $faseAtual['tipo_fase'] ?? 'classificatoria';
 
-    // Status que NÃO devem ser rebaixados
+    // Status que NÃO devem ser rebaixados (mais avançados que o atual)
     $statusProtegidos = ['finalista'];
     for ($i = $ordemAtual + 1; $i <= 10; $i++) {
         $statusProtegidos[] = 'classificada_fase_' . $i;
     }
+
+    // Todos os status que compõem o pool desta fase (para rebaixar corretamente)
+    $statusDoPool = buildStatusPool($tipoFase, $ordemAtual);
 
     try {
         $pdo->beginTransaction();
@@ -414,7 +438,8 @@ if ($acao === 'gravar' && $filtroPremiacao > 0 && $faseAtual && !empty($apuracao
                 }
             }
 
-            // 5. Rebaixa para 'elegivel' as NÃO classificadas desta categoria
+            // 5. Rebaixa para 'elegivel' todos do pool que NÃO foram classificados
+            // Usa o mesmo $statusDoPool para garantir que todos os não-classificados sejam rebaixados
             $idsClassificados = array_map(fn($i) => (int)$i['inscricao_id'], $cat['itens']);
             if (!empty($idsClassificados)) {
                 $ph = implode(',', array_fill(0, count($idsClassificados), '?'));
@@ -423,10 +448,10 @@ if ($acao === 'gravar' && $filtroPremiacao > 0 && $faseAtual && !empty($apuracao
                     SET status = 'elegivel', updated_at = NOW()
                     WHERE premiacao_id = ?
                       AND categoria    = ?
-                      AND status       = ?
+                      AND status $statusDoPool
                       AND id NOT IN ($ph)
                 ")->execute(array_merge(
-                    [$filtroPremiacao, $cat['nome'], $statusNovo],
+                    [$filtroPremiacao, $cat['nome']],
                     $idsClassificados
                 ));
             }
@@ -590,7 +615,7 @@ require_once $appBase . '/views/admin/header.php';
                 </div>
             </div>
 
-            <!-- Botão Gravar (canto direito dos KPIs) -->
+            <!-- Botão Gravar -->
             <div class="col-12 col-md-4 d-flex align-items-center justify-content-end">
                 <?php
                     $totalParaGravar = array_sum(array_column($apuracaoPorCategoria, 'total_class'));
