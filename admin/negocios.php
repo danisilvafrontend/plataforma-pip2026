@@ -102,10 +102,9 @@ try {
     $statusPoolArr = buildStatusPoolAdmin($faseAtivaDados);
     $statusPoolIn  = implode(',', array_map(fn($s) => "'$s'", $statusPoolArr));
 
-    // ── Filtro de listagem para técnica/júri: mostra só negócios na fase certa ─
+    // ── Filtro de listagem para técnica/júri: mostra só negócios da fase ativa ─
     if (is_juri_ou_tecnica() && $premiacaoAtualId > 0) {
         if ($faseAtiva) {
-            // Exibe apenas negócios com status elegível para a fase ativa
             $where[] = "EXISTS (
                 SELECT 1
                 FROM premiacao_inscricoes pi
@@ -115,7 +114,6 @@ try {
             )";
             $params[] = $premiacaoAtualId;
         } else {
-            // Nenhuma fase ativa para este role → não exibe nenhum negócio
             $where[] = "1 = 0";
         }
     }
@@ -195,13 +193,11 @@ try {
         if ($actor) {
             $currentUserId = (int)$actor['id'];
             $inscIds = array_values($inscricoesPorNegocio);
-
             if (!empty($inscIds)) {
                 $phVotos     = implode(',', array_fill(0, count($inscIds), '?'));
                 $tabelaVotos = is_tecnica()
                     ? 'premiacao_votos_tecnicos'
                     : 'premiacao_votos_juri';
-
                 $stmtVotos = $pdo->prepare("
                     SELECT inscricao_id
                     FROM {$tabelaVotos}
@@ -263,11 +259,6 @@ $etapas = [
     'pitch'        => 'Pitch',        'impacto'   => 'Impacto',
     'demografia'   => 'Demografia',   'finalizado' => 'Finalizado'
 ];
-
-// Flag: oculta colunas de etapa/scores apenas para juri e tecnica
-$ocultarColunasScore = is_juri_ou_tecnica();
-// colspan dinâmico para o estado vazio da tabela
-$colspanTabela = $ocultarColunasScore ? 6 : 11;
 
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
@@ -380,7 +371,6 @@ include __DIR__ . '/../app/views/admin/header.php';
         <?php endforeach; ?>
       </select>
     </div>
-    <?php if (!$ocultarColunasScore): ?>
     <div class="col-12 col-sm-6 col-lg-2">
       <label class="form-label">Status</label>
       <select name="status" class="form-select">
@@ -393,7 +383,6 @@ include __DIR__ . '/../app/views/admin/header.php';
         <option value="indeferido" <?= $filtro_status === 'indeferido' ? 'selected' : '' ?>>Indeferido</option>
       </select>
     </div>
-    <?php endif; ?>
     <div class="col-12 col-sm-6 col-lg-2 d-flex gap-2">
       <button type="submit" class="hd-btn primary w-100">
         <i class="bi bi-funnel-fill"></i> Filtrar
@@ -415,21 +404,19 @@ include __DIR__ . '/../app/views/admin/header.php';
           <th>Nome Fantasia</th>
           <th>Categoria</th>
           <th>Empreendedor</th>
-          <?php if (!$ocultarColunasScore): ?>
           <th><a href="<?= linkOrdenacao('etapa') ?>" class="neg-sort-link">Etapa <?= iconeOrdenacao('etapa') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('escala') ?>" class="neg-sort-link">Escala <?= iconeOrdenacao('escala') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('investimento') ?>" class="neg-sort-link">Invest. <?= iconeOrdenacao('investimento') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('impacto') ?>" class="neg-sort-link">Impacto <?= iconeOrdenacao('impacto') ?></a></th>
           <th class="text-center"><a href="<?= linkOrdenacao('geral') ?>" class="neg-sort-link">Geral <?= iconeOrdenacao('geral') ?></a></th>
           <th>Status</th>
-          <?php endif; ?>
           <th class="text-center">Ações</th>
         </tr>
       </thead>
       <tbody>
         <?php if (empty($negocios)): ?>
           <tr>
-            <td colspan="<?= $colspanTabela ?>" class="text-center py-4" style="color:#9aab9d;">
+            <td colspan="11" class="text-center py-4" style="color:#9aab9d;">
               <i class="bi bi-briefcase" style="font-size:1.8rem; opacity:.4; display:block; margin-bottom:.5rem;"></i>
               Nenhum negócio encontrado com os filtros selecionados.
             </td>
@@ -455,7 +442,6 @@ include __DIR__ . '/../app/views/admin/header.php';
               <td style="font-size:.85rem; color:#4a5e4f;">
                 <?= htmlspecialchars($n['empreendedor']) ?>
               </td>
-              <?php if (!$ocultarColunasScore): ?>
               <td>
                 <?php if ($n['inscricao_completa']): ?>
                   <span class="emp-badge" style="background:rgba(205,222,0,.2);color:#7a8500;">
@@ -497,7 +483,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                   <span class="emp-badge" style="background:#fff3cd;color:#856404;">Em andamento</span>
                 <?php endif; ?>
               </td>
-              <?php endif; ?>
 
               <!-- Ações -->
               <td class="text-center">
