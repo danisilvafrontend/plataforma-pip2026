@@ -94,14 +94,34 @@ function labelTipoFase(string $tipo): string
 // ============================================================
 // APURAÇÃO AUTOMÁTICA
 // ============================================================
-function buildStatusPool(string $tipoFase, int $ordemAtual): string
+
+/**
+ * Retorna a cláusula SQL "IN (...)" com os status elegíveis para entrar
+ * no pool de uma determinada fase.
+ *
+ * Lógica:
+ *  - fase final       → somente 'finalista'
+ *  - classificatória rodada 1 → 'elegivel' + 'classificada_fase_1'
+ *    (o segundo valor permite re-apuração sem perder inscrições já marcadas)
+ *  - classificatória rodada N≥2 → 'classificada_fase_N-1'
+ *    (apenas quem avançou da rodada anterior)
+ */
+function buildStatusPool(string $tipoFase, int $rodada): string
 {
-    if ($tipoFase === 'final') return "IN ('finalista')";
-    if ($ordemAtual <= 1) return "IN ('elegivel','classificada_fase_1','classificada_fase_2','finalista')";
-    $s = [];
-    for ($i = $ordemAtual - 1; $i <= 10; $i++) $s[] = "'classificada_fase_{$i}'";
-    $s[] = "'finalista'";
-    return 'IN (' . implode(',', $s) . ')';
+    if ($tipoFase === 'final') {
+        return "IN ('finalista')";
+    }
+
+    // Rodada 1 (primeira classificatória): pool principal são os elegíveis.
+    // Inclui também 'classificada_fase_1' para que re-apurações não percam
+    // inscrições que já foram marcadas em execuções anteriores.
+    if ($rodada <= 1) {
+        return "IN ('elegivel','classificada_fase_1')";
+    }
+
+    // Rodadas seguintes: somente quem foi classificado na rodada anterior.
+    $statusAnterior = 'classificada_fase_' . ($rodada - 1);
+    return "IN ('{$statusAnterior}')";
 }
 
 function apurarEGravar(PDO $pdo, array $fase): array
@@ -109,27 +129,37 @@ function apurarEGravar(PDO $pdo, array $fase): array
     $faseId      = (int)$fase['id'];
     $premiacaoId = (int)$fase['premiacao_id'];
     $tipoFase    = $fase['tipo_fase'] ?? 'classificatoria';
-    $ordemAtual  = (int)($fase['ordem_exibicao'] ?? 1);
-    $statusNovo  = 'classificada_fase_' . $ordemAtual;
-    $statusPool  = buildStatusPool($tipoFase, $ordemAtual);
 
-    // Coleta votos
+    // Usa 'rodada' para identificar a fase corretamente.
+    // Fases do tipo 'final' recebem rodada=null no DB; tratamos como rodada=0.
+    $rodada      = (int)($fase['rodada'] ?? 0);
+
+    // statusNovo deve corresponder ao ENUM real: 'classificada_fase_1', 'classificada_fase_2'.
+    // Para fase final, o status avançado é 'finalista'.
+    $statusNovo  = ($tipoFase === 'final') ? 'finalista' : 'classificada_fase_' . max(1, $rodada);
+
+    // Status que este pool de inscrições deve ter para ser elegível.
+    $statusPool  = buildStatusPool($tipoFase, $rodada);
+
+    // Coleta votos populares
     $vp = [];
     $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_populares WHERE fase_id=? GROUP BY inscricao_id");
     $st->execute([$faseId]);
     foreach ($st->fetchAll() as $r) $vp[(int)$r['inscricao_id']] = (int)$r['v'];
 
+    // Coleta votos técnicos
     $vt = [];
     $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_tecnicos WHERE fase_id=? GROUP BY inscricao_id");
     $st->execute([$faseId]);
     foreach ($st->fetchAll() as $r) $vt[(int)$r['inscricao_id']] = (int)$r['v'];
 
+    // Coleta votos de júri
     $vj = [];
     $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_juri WHERE fase_id=? GROUP BY inscricao_id");
     $st->execute([$faseId]);
     foreach ($st->fetchAll() as $r) $vj[(int)$r['inscricao_id']] = (int)$r['v'];
 
-    // Categorias
+    // Categorias da premiação
     $cats = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id=? ORDER BY ordem");
     $cats->execute([$premiacaoId]);
 
@@ -137,23 +167,30 @@ function apurarEGravar(PDO $pdo, array $fase): array
     $pdo->beginTransaction();
 
     try {
+        // Limpa classificados anteriores desta fase
         $pdo->prepare("DELETE FROM premiacao_classificados WHERE fase_id=?")->execute([$faseId]);
 
-        $statusProtegidos = ['finalista'];
-        for ($i = $ordemAtual + 1; $i <= 10; $i++) $statusProtegidos[] = 'classificada_fase_' . $i;
+        // Status que não devem ser rebaixados (fases futuras já concluídas)
+        $statusProtegidos = ['finalista', 'vencedora'];
+        // Protege classificadas de rodadas superiores à atual
+        for ($i = max(1, $rodada) + 1; $i <= 10; $i++) {
+            $statusProtegidos[] = 'classificada_fase_' . $i;
+        }
 
         foreach ($cats->fetchAll() as $cat) {
             $catId   = (int)$cat['id'];
             $catNome = $cat['nome'];
 
+            // Busca inscrições elegíveis para esta fase/categoria
             $stPool = $pdo->prepare("SELECT id FROM premiacao_inscricoes WHERE premiacao_id=? AND categoria=? AND status $statusPool");
             $stPool->execute([$premiacaoId, $catNome]);
             $pool = array_map(fn($r) => (int)$r['id'], $stPool->fetchAll());
+
             if (empty($pool)) continue;
 
             $topPop  = (int)($fase['qtd_classificados_popular'] ?? 10);
             $topTec  = (int)($fase['qtd_classificados_tecnica'] ?? 10);
-            $totalCl = min(count($pool), $topPop + $topTec);
+            $totalCl = $topPop + $topTec; // máximo de classificados esperado
 
             if ($tipoFase === 'final') {
                 $poolSet = array_flip($pool);
@@ -172,30 +209,48 @@ function apurarEGravar(PDO $pdo, array $fase): array
                 $poolSet = array_flip($pool);
                 $vpF = array_filter($vp, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
                 $vtF = array_filter($vt, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
+
                 arsort($vpF); $selPop = array_slice(array_keys($vpF), 0, $topPop, true);
                 arsort($vtF); $selTec = array_slice(array_keys($vtF), 0, $topTec, true);
+
                 $sel = [];
-                foreach ($selPop as $id) $sel[$id] = ['origem' => 'popular', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
-                foreach ($selTec as $id) {
-                    if (!isset($sel[$id])) $sel[$id] = ['origem' => 'tecnica', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
-                    else $sel[$id]['origem'] = 'ambos';
+                foreach ($selPop as $id) {
+                    $sel[$id] = ['origem' => 'popular', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
                 }
+                foreach ($selTec as $id) {
+                    if (!isset($sel[$id])) {
+                        $sel[$id] = ['origem' => 'tecnica', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                    } else {
+                        $sel[$id]['origem'] = 'ambos';
+                    }
+                }
+
+                // Complemento: preenche com mais inscrições se não atingiu o mínimo
                 if (count($sel) < $totalCl) {
                     $todos = $pool;
                     usort($todos, fn($a, $b) => ($vpF[$b] ?? 0) <=> ($vpF[$a] ?? 0));
                     foreach ($todos as $id) {
                         if (count($sel) >= $totalCl) break;
-                        if (!isset($sel[$id])) $sel[$id] = ['origem' => 'complemento', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                        if (!isset($sel[$id])) {
+                            $sel[$id] = ['origem' => 'complemento', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                        }
                     }
                 }
+
                 $ord = ['ambos' => 0, 'popular' => 1, 'tecnica' => 2, 'complemento' => 3];
-                uasort($sel, fn($a, $b) => ($ord[$a['origem']] ?? 9) <=> ($ord[$b['origem']] ?? 9) ?: $b['pop'] <=> $a['pop'] ?: $b['tec'] <=> $a['tec']);
+                uasort($sel, fn($a, $b) =>
+                    ($ord[$a['origem']] ?? 9) <=> ($ord[$b['origem']] ?? 9)
+                    ?: $b['pop'] <=> $a['pop']
+                    ?: $b['tec'] <=> $a['tec']
+                );
                 $resultado = $sel;
             }
 
             $pos      = 1;
             $idsClass = [];
+
             foreach ($resultado as $inscId => $dados) {
+                // Obtém o negocio_id correspondente à inscrição
                 $stNeg = $pdo->prepare("SELECT negocio_id FROM premiacao_inscricoes WHERE id=?");
                 $stNeg->execute([$inscId]);
                 $negId = (int)$stNeg->fetchColumn();
@@ -205,24 +260,31 @@ function apurarEGravar(PDO $pdo, array $fase): array
                     VALUES (?, ?, ?, ?, ?, NOW())
                     ON DUPLICATE KEY UPDATE posicao=VALUES(posicao), origem=VALUES(origem), apurado_em=NOW()
                 ")->execute([$faseId, $catId, $negId, $pos, $dados['origem']]);
+
                 $totalGravados++;
                 $idsClass[] = $inscId;
 
+                // Avança status da inscrição (respeita status mais avançados)
                 $stSt = $pdo->prepare("SELECT status FROM premiacao_inscricoes WHERE id=?");
                 $stSt->execute([$inscId]);
                 $stAtual = $stSt->fetchColumn();
+
                 if (!in_array($stAtual, $statusProtegidos, true)) {
                     $pdo->prepare("UPDATE premiacao_inscricoes SET status=?, updated_at=NOW() WHERE id=?")
                         ->execute([$statusNovo, $inscId]);
                 }
+
                 $pos++;
             }
 
-            // Rebaixa não-classificados
+            // Rebaixa não-classificados desta categoria de volta para 'elegivel'
             if (!empty($idsClass)) {
                 $ph = implode(',', array_fill(0, count($idsClass), '?'));
-                $pdo->prepare("UPDATE premiacao_inscricoes SET status='elegivel', updated_at=NOW() WHERE premiacao_id=? AND categoria=? AND status $statusPool AND id NOT IN ($ph)")
-                    ->execute(array_merge([$premiacaoId, $catNome], $idsClass));
+                $pdo->prepare("
+                    UPDATE premiacao_inscricoes
+                    SET status='elegivel', updated_at=NOW()
+                    WHERE premiacao_id=? AND categoria=? AND status $statusPool AND id NOT IN ($ph)
+                ")->execute(array_merge([$premiacaoId, $catNome], $idsClass));
             }
         }
 
