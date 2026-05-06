@@ -61,21 +61,22 @@ if ($inscricaoId <= 0 || $faseId <= 0) {
     jsonErro('Dados inválidos.');
 }
 
-// ── Valida fase ────────────────────────────────────────────────────────────────────
+// ── Valida fase: deve existir e permitir avaliação técnica
+// O status 'em_andamento' NÃO é checado aqui — a fase pode estar com status
+// desatualizado no banco. A janela real é validada pelo intervalo de datas abaixo.
 $stmtFase = $pdo->prepare("
     SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim,
            pf.tipo_fase, pf.rodada
     FROM premiacao_fases pf
     WHERE pf.id = ?
       AND pf.permite_avaliacao_tecnica = 1
-      AND pf.status = 'em_andamento'
     LIMIT 1
 ");
 $stmtFase->execute([$faseId]);
 $fase = $stmtFase->fetch(PDO::FETCH_ASSOC);
 
 if (!$fase) {
-    jsonErro('Fase de votação técnica não encontrada ou encerrada.');
+    jsonErro('Fase de votação técnica não encontrada ou sem avaliação técnica habilitada.');
 }
 
 $agora = time();

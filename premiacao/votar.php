@@ -50,21 +50,22 @@ if ($inscricaoId <= 0 || $faseId <= 0) {
     jsonErro('Dados inválidos.');
 }
 
-// ── Valida fase: deve existir, estar em_andamento e permitir voto popular ─────
+// ── Valida fase: deve existir e permitir voto popular
+// O status 'em_andamento' NÃO é checado aqui — a fase pode estar com status
+// desatualizado no banco. A janela real é validada pelo intervalo de datas abaixo.
 $stmtFase = $pdo->prepare("
     SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim,
            pf.tipo_fase, pf.rodada
     FROM premiacao_fases pf
     WHERE pf.id = ?
       AND pf.permite_voto_popular = 1
-      AND pf.status = 'em_andamento'
     LIMIT 1
 ");
 $stmtFase->execute([$faseId]);
 $fase = $stmtFase->fetch(PDO::FETCH_ASSOC);
 
 if (!$fase) {
-    jsonErro('Fase de votação não encontrada ou encerrada.');
+    jsonErro('Fase de votação não encontrada ou sem voto popular habilitado.');
 }
 
 $agora = time();
@@ -75,8 +76,6 @@ if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
 }
 
 // ── Determina quais status de inscrição são válidos para esta fase ─────────────
-// Fase final aceita 'finalista'; classificatórias aceitam 'elegivel' e
-// 'classificada_fase_N' de acordo com a rodada; rodada 1 aceita ambos.
 $tipoFase = $fase['tipo_fase'] ?? 'classificatoria';
 $rodada   = (int)($fase['rodada'] ?? 1);
 
