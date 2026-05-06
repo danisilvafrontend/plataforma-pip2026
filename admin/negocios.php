@@ -54,7 +54,7 @@ try {
         $where[] = "n.status_vitrine = 'indeferido'";
     }
 
-    // ── Premiação ativa ────────────────────────────────────────────────────────
+    // ── Premiação ativa ──────────────────────────────────────────────
     $stmtPremAtiva = $pdo->query("
         SELECT id
         FROM premiacoes
@@ -67,13 +67,14 @@ try {
     ");
     $premiacaoAtualId = (int) ($stmtPremAtiva->fetchColumn() ?: 0);
 
-    // ── Fase ativa por role (busca rodada e tipo_fase para pool dinâmico) ──────
+    // ── Fase ativa por role + dados de rodada/tipo ─────────────────────
     $faseAtiva      = null;
     $faseAtivaDados = null;
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
         $colFase = is_tecnica() ? 'permite_avaliacao_tecnica' : 'permite_juri_final';
         $stmtFaseRole = $pdo->prepare("
-            SELECT id, tipo_fase, rodada FROM premiacao_fases
+            SELECT id, tipo_fase, rodada, qtd_classificados_tecnica
+            FROM premiacao_fases
             WHERE premiacao_id = ?
               AND status = 'em_andamento'
               AND {$colFase} = 1
@@ -84,7 +85,7 @@ try {
         $faseAtiva      = $faseAtivaDados ? (int)$faseAtivaDados['id'] : null;
     }
 
-    // ── Pool de status dinâmico baseado na rodada da fase ──────────────────────
+    // ── Pool de status dinâmico: elegivel + classificada_fase_(rodada-1) ──────
     function buildStatusPoolAdmin(?array $fase): array
     {
         if (!$fase) return ['elegivel'];
@@ -93,6 +94,8 @@ try {
         if ($tipo === 'final') {
             return ['finalista'];
         }
+        // Fase 1: apenas elegivel
+        // Fase 2+: elegivel e classificados da fase anterior
         if ($rodada <= 1) {
             return ['elegivel'];
         }
@@ -102,7 +105,7 @@ try {
     $statusPoolArr = buildStatusPoolAdmin($faseAtivaDados);
     $statusPoolIn  = implode(',', array_map(fn($s) => "'$s'", $statusPoolArr));
 
-    // ── Filtro de listagem para técnica/júri: mostra só negócios da fase ativa ─
+    // ── Filtro SQL: técnica/júri vê apenas negócios inscritos e no pool certo ─
     if (is_juri_ou_tecnica() && $premiacaoAtualId > 0) {
         if ($faseAtiva) {
             $where[] = "EXISTS (
@@ -114,7 +117,7 @@ try {
             )";
             $params[] = $premiacaoAtualId;
         } else {
-            $where[] = "1 = 0";
+            $where[] = "1 = 0"; // nenhuma fase ativa para este role
         }
     }
 
@@ -165,7 +168,7 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // ── Inscrições da premiação ativa: mapa negocio_id => inscricao_id ────────
+    // ── Inscrições: mapa negocio_id => inscricao_id (respeitando pool dinâmico) ──
     $inscricoesPorNegocio = [];
     if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
         $negIds = array_column($negocios, 'id');
@@ -185,7 +188,7 @@ try {
         }
     }
 
-    // ── Votos já dados pelo usuário logado nesta fase ─────────────────────────
+    // ── Votos já dados pelo usuário logado nesta fase ─────────────────────
     $votosJaDados = [];
     if ($faseAtiva) {
         require_once __DIR__ . '/../app/helpers/premiacao_auth.php';
@@ -290,9 +293,72 @@ include __DIR__ . '/../app/views/admin/header.php';
 <!-- Cabeçalho -->
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
   <div>
-    <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios Cadastrados</h4>
-    <small style="color:#6c8070; font-size:.82rem;">Acompanhe o andamento de todos os negócios inscritos na plataforma</small>
+    <?php
+    $roleAtual = current_user_role();
+    $isAdmin   = in_array($roleAtual, ['admin', 'superadmin']);
+
+    if (!$isAdmin && $premiacaoAtualId > 0):
+        $stmtHeader = $pdo->prepare("
+            SELECT p.ano, pf.qtd_classificados_tecnica
+            FROM premiacoes p
+            LEFT JOIN premiacao_fases pf
+                  ON pf.premiacao_id = p.id
+                  AND pf.status = 'em_andamento'
+            WHERE p.id = ?
+            ORDER BY pf.data_inicio ASC
+            LIMIT 1
+        ");
+        $stmtHeader->execute([$premiacaoAtualId]);
+        $headerInfo = $stmtHeader->fetch(PDO::FETCH_ASSOC);
+        $anoHeader  = $headerInfo['ano']                       ?? date('Y');
+        $qtdTecnica = (int)($headerInfo['qtd_classificados_tecnica'] ?? 0);
+    endif;
+    ?>
+
+    <?php if ($isAdmin): ?>
+
+      <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios Cadastrados</h4>
+      <small style="color:#6c8070; font-size:.82rem;">
+        Acompanhe o andamento de todos os negócios inscritos na plataforma
+      </small>
+
+    <?php elseif (is_tecnica()): ?>
+
+      <h4 class="fw-bold mb-0" style="color:#1E3425;">
+        Negócios da Premiação <?= htmlspecialchars((string)($anoHeader ?? date('Y'))) ?>
+      </h4>
+      <small style="color:#6c8070; font-size:.82rem;">
+        Avalie os negócios inscritos e registre seus votos como membro da Bancada Técnica.
+        <?php if (!empty($qtdTecnica)): ?>
+          Nesta fase, você pode votar em até
+          <strong><?= $qtdTecnica ?> negócio<?= $qtdTecnica > 1 ? 's' : '' ?></strong>
+          por categoria.
+        <?php else: ?>
+          Consulte o regulamento para verificar a quantidade de votos disponíveis nesta fase.
+        <?php endif; ?>
+      </small>
+
+    <?php elseif (is_juri()): ?>
+
+      <h4 class="fw-bold mb-0" style="color:#1E3425;">
+        Negócios da Premiação <?= htmlspecialchars((string)($anoHeader ?? date('Y'))) ?>
+      </h4>
+      <small style="color:#6c8070; font-size:.82rem;">
+        Você está na <strong>Fase Final</strong>. Como membro do Júri, vote em
+        <strong>1 negócio por categoria</strong>. Seu voto é decisivo para eleger
+        o vencedor de cada categoria.
+      </small>
+
+    <?php else: ?>
+
+      <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios da Premiação</h4>
+      <small style="color:#6c8070; font-size:.82rem;">
+        Visualize os negócios inscritos na premiação.
+      </small>
+
+    <?php endif; ?>
   </div>
+
   <div class="d-flex gap-2 flex-wrap">
     <?php if (can_see_admin_shortcuts()): ?>
     <a href="/admin/recalcular_scores.php" class="hd-btn outline">
@@ -394,7 +460,7 @@ include __DIR__ . '/../app/views/admin/header.php';
   </form>
 </div>
 
-<!-- Tabela -->
+<!-- Tabela (layout completo: 11 colunas para todos os roles) -->
 <div class="card section-card mb-4">
   <div class="table-responsive">
     <table class="emp-table neg-table">
@@ -652,7 +718,6 @@ include __DIR__ . '/../app/views/admin/header.php';
 </div>
 
 <style>
-/* Toast de voto */
 .voto-toast {
   pointer-events:auto;
   min-width:280px; max-width:380px;
@@ -667,9 +732,7 @@ include __DIR__ . '/../app/views/admin/header.php';
   box-shadow:0 4px 18px rgba(0,0,0,.13);
   animation: toastIn .22s cubic-bezier(.16,1,.3,1) both;
 }
-.voto-toast.saindo {
-  animation: toastOut .2s ease-in forwards;
-}
+.voto-toast.saindo { animation: toastOut .2s ease-in forwards; }
 .voto-toast i { flex-shrink:0; font-size:1rem; margin-top:.05rem; }
 .voto-toast.ok  { background:#f0faf3; color:#1a6b38; border:1px solid #b6e0c4; }
 .voto-toast.err { background:#fff4f4; color:#9b1c2a; border:1px solid #f5c0c5; }
@@ -684,7 +747,6 @@ function abrirModalNotificacao(id, nome) {
     new bootstrap.Modal(document.getElementById('modalNotificacao')).show();
 }
 
-// ── Toast helper ─────────────────────────────────────────
 function mostrarToastVoto(tipo, msg) {
     const wrap = document.getElementById('voto-toast-wrap');
     const t = document.createElement('div');
@@ -701,7 +763,6 @@ function mostrarToastVoto(tipo, msg) {
     }, dur);
 }
 
-// ── Voto técnico via AJAX (delegation) ──────────────────────
 document.addEventListener('click', async function(e) {
     const btn = e.target.closest('.btn-votar-tecnico');
     if (!btn) return;
