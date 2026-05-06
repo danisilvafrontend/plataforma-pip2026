@@ -41,6 +41,9 @@ if (!empty($premiacaoAtiva['id'])) {
         foreach ($fases as $fase) {
             $faseId = (int)$fase['id'];
 
+            // Subquery garante uma única inscrição por negócio (a de maior id),
+            // evitando duplicatas quando o mesmo negócio tem mais de uma inscrição
+            // na premiação. Filtra também pelos status classificados.
             $stCl = $pdo->prepare("
                 SELECT
                     pc.posicao,
@@ -55,10 +58,19 @@ if (!empty($premiacaoAtiva['id'])) {
                 FROM premiacao_classificados pc
                 INNER JOIN premiacao_categorias  cat ON cat.id = pc.categoria_id
                 INNER JOIN negocios              n   ON n.id   = pc.negocio_id
-                INNER JOIN premiacao_inscricoes  pi  ON pi.negocio_id = pc.negocio_id
-                                                    AND pi.premiacao_id = ?
+                INNER JOIN (
+                    SELECT negocio_id, empreendedor_id
+                    FROM premiacao_inscricoes
+                    WHERE premiacao_id = ?
+                      AND status IN (
+                          'classificada_fase_1','classificada_fase_2',
+                          'classificada_fase_3','classificada_fase_4',
+                          'classificada_fase_5','finalista','vencedora'
+                      )
+                    GROUP BY negocio_id, empreendedor_id
+                ) pi ON pi.negocio_id = pc.negocio_id
                 INNER JOIN empreendedores        e   ON e.id   = pi.empreendedor_id
-                LEFT  JOIN negocio_apresentacao  na  ON na.negocio_id  = n.id
+                LEFT  JOIN negocio_apresentacao  na  ON na.negocio_id = n.id
                 WHERE pc.fase_id = ?
                 ORDER BY cat.ordem ASC, pc.posicao ASC
             ");
