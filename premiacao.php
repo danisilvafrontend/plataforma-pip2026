@@ -12,6 +12,16 @@ $pdo = new PDO(
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
 );
 
+// ── URL atual com filtros preservados (usada no redirect pós-voto) ────────────
+$filtrosAtivos = array_filter([
+    'categoria' => $_GET['categoria'] ?? '',
+    'estado'    => $_GET['estado']    ?? '',
+    'municipio' => $_GET['municipio'] ?? '',
+    'eixo'      => $_GET['eixo']      ?? '',
+    'ods'       => $_GET['ods']       ?? '',
+]);
+$redirectComFiltros = '/premiacao.php' . (!empty($filtrosAtivos) ? '?' . http_build_query($filtrosAtivos) : '');
+
 // ── 1. Premiação ativa ────────────────────────────────────────────────────────
 $premiacao = $pdo->query("
     SELECT id, nome, slug, ano, status,
@@ -56,9 +66,6 @@ if ($faseAtiva) {
 $votacaoAberta = $faseAtiva && $votacaoAbertaPorData;
 
 // ── Determina o pool de status elegíveis para a fase ativa ───────────────────
-// Rodada 1 (ou inscricoes): elegivel
-// Rodada 2+: classificada_fase_(rodada-1)
-// Fase final: finalista
 function buildStatusPoolPublic(?array $fase): string
 {
     if (!$fase) return "'elegivel'";
@@ -75,7 +82,6 @@ function buildStatusPoolPublic(?array $fase): string
 }
 
 $statusPool = buildStatusPoolPublic($faseAtiva);
-// Remove duplicatas da string (caso existam) para SQL limpo
 $statusPoolArr = array_unique(array_map('trim', explode(',', str_replace("'", '', $statusPool))));
 $statusPoolIn  = implode(',', array_map(fn($s) => "'$s'", $statusPoolArr));
 
@@ -129,11 +135,11 @@ $params = [
     ':fid_count' => (int)($faseAtiva['id'] ?? 0),
 ];
 
-if (!empty($_GET['categoria'])) { $sql .= " AND n.categoria = :categoria";        $params[':categoria'] = $_GET['categoria']; }
-if (!empty($_GET['estado']))    { $sql .= " AND n.estado = :estado";              $params[':estado']    = $_GET['estado'];    }
-if (!empty($_GET['municipio'])) { $sql .= " AND n.municipio = :municipio";        $params[':municipio'] = $_GET['municipio']; }
-if (!empty($_GET['eixo']))      { $sql .= " AND n.eixo_principal_id = :eixo";     $params[':eixo']      = $_GET['eixo'];      }
-if (!empty($_GET['ods']))       { $sql .= " AND n.ods_prioritaria_id = :ods";     $params[':ods']       = $_GET['ods'];       }
+if (!empty($_GET['categoria'])) { $sql .= " AND n.categoria = :categoria";       $params[':categoria'] = $_GET['categoria']; }
+if (!empty($_GET['estado']))    { $sql .= " AND n.estado = :estado";             $params[':estado']    = $_GET['estado'];    }
+if (!empty($_GET['municipio'])) { $sql .= " AND n.municipio = :municipio";       $params[':municipio'] = $_GET['municipio']; }
+if (!empty($_GET['eixo']))      { $sql .= " AND n.eixo_principal_id = :eixo";    $params[':eixo']      = $_GET['eixo'];      }
+if (!empty($_GET['ods']))       { $sql .= " AND n.ods_prioritaria_id = :ods";    $params[':ods']       = $_GET['ods'];       }
 
 $sql .= " ORDER BY n.nome_fantasia";
 $stmt = $pdo->prepare($sql);
@@ -253,6 +259,11 @@ include __DIR__ . '/app/views/public/header_public.php';
                         <i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i> Votação aberta
                     </span>
                 <?php endif; ?>
+                <?php if (!empty($filtrosAtivos)): ?>
+                    <span class="badge text-bg-warning px-3 py-2 rounded-pill ms-2">
+                        <i class="bi bi-funnel-fill me-1"></i> <?= count($filtrosAtivos) ?> filtro(s) ativo(s)
+                    </span>
+                <?php endif; ?>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-outline-primary vitrine-filtros-toggle"
@@ -266,7 +277,7 @@ include __DIR__ . '/app/views/public/header_public.php';
     </div>
 
     <!-- Painel de filtros -->
-    <div class="collapse mb-4" id="painelFiltros">
+    <div class="collapse<?= !empty($filtrosAtivos) ? ' show' : '' ?> mb-4" id="painelFiltros">
         <form method="GET" class="vitrine-filtros-collapse">
             <div class="row g-3">
                 <div class="col-md-6 col-xl-2">
@@ -425,7 +436,7 @@ include __DIR__ . '/app/views/public/header_public.php';
                             </button>
 
                         <?php elseif (!$usuarioLogado): ?>
-                            <a href="/login.php?redirect=<?= urlencode('/premiacao.php') ?>"
+                            <a href="/login.php?redirect=<?= urlencode($redirectComFiltros) ?>"
                                class="btn btn-primary">
                                 <i class="bi bi-trophy me-1"></i> Votar
                             </a>
@@ -439,7 +450,7 @@ include __DIR__ . '/app/views/public/header_public.php';
                             <form method="POST" action="/premiacao/votar.php" class="d-inline">
                                 <input type="hidden" name="inscricao_id" value="<?= (int)$n['inscricao_id'] ?>">
                                 <input type="hidden" name="fase_id"      value="<?= (int)$faseAtiva['id'] ?>">
-                                <input type="hidden" name="redirect"     value="/premiacao.php">
+                                <input type="hidden" name="redirect"     value="<?= htmlspecialchars($redirectComFiltros) ?>">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-trophy me-1"></i> Votar
                                 </button>
