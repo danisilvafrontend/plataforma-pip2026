@@ -98,6 +98,11 @@ function labelTipoFase(string $tipo): string
 /**
  * Retorna a cláusula SQL "IN (...)" com os status elegíveis para entrar
  * no pool de uma determinada fase.
+ *
+ * Fase final        → apenas 'finalista'
+ * Classificatória 1 → 'elegivel' OU 'classificada_fase_1' (permite re-apuração)
+ * Classificatória N → 'classificada_fase_(N-1)' OU 'classificada_fase_N'
+ *                     (o segundo cobre re-apurações da mesma rodada)
  */
 function buildStatusPool(string $tipoFase, int $rodada): string
 {
@@ -105,11 +110,15 @@ function buildStatusPool(string $tipoFase, int $rodada): string
         return "IN ('finalista')";
     }
     if ($rodada <= 1) {
-        // Rodada 1: inclui 'elegivel' e 'classificada_fase_1' para re-apuração
+        // Rodada 1: aceita quem ainda está como elegível E quem já foi
+        // marcado como classificada_fase_1 (re-apuração)
         return "IN ('elegivel','classificada_fase_1')";
     }
+    // Rodadas 2+: aceita quem veio da fase anterior (N-1) E quem já foi
+    // classificado nesta mesma rodada por apuração anterior (re-apuração)
     $statusAnterior = 'classificada_fase_' . ($rodada - 1);
-    return "IN ('{$statusAnterior}')";
+    $statusAtual    = 'classificada_fase_' . $rodada;
+    return "IN ('{$statusAnterior}','{$statusAtual}')";
 }
 
 function apurarEGravar(PDO $pdo, array $fase): array
@@ -256,7 +265,6 @@ function apurarEGravar(PDO $pdo, array $fase): array
             }
 
             // ── Marca como 'eliminada' quem estava no pool mas NÃO foi classificado ──
-            // Não rebaixamos mais para 'elegivel': quem não passou foi eliminado.
             if (!empty($idsClass)) {
                 $ph = implode(',', array_fill(0, count($idsClass), '?'));
                 $pdo->prepare("
