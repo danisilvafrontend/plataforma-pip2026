@@ -156,10 +156,10 @@ foreach ($fases as $fase) {
             (SELECT COUNT(*) FROM premiacao_votos_tecnicos vt WHERE vt.inscricao_id = pi.id AND vt.fase_id = pc.fase_id) AS votos_tec,
             -- votos juri nesta fase
             (SELECT COUNT(*) FROM premiacao_votos_juri     vj WHERE vj.inscricao_id = pi.id AND vj.fase_id = pc.fase_id) AS votos_juri,
-            -- publicado?
+            -- publicado? (join via inscricao_id, pois premiacao_resultados_finais não tem coluna negocio_id direta no WHERE)
             COALESCE(
                 (SELECT prf.publicar_resultado FROM premiacao_resultados_finais prf
-                 WHERE prf.negocio_id = pc.negocio_id AND prf.premiacao_id = ? LIMIT 1), 0
+                 WHERE prf.inscricao_id = pi.id AND prf.premiacao_id = ? LIMIT 1), 0
             ) AS publicado
         FROM premiacao_classificados pc
         INNER JOIN premiacao_categorias cat ON cat.id = pc.categoria_id
