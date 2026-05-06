@@ -110,17 +110,23 @@ function buildStatusPool(string $tipoFase, int $rodada): string
         return "IN ('finalista')";
     }
     if ($rodada <= 1) {
-        // Rodada 1: aceita quem ainda está como elegível E quem já foi
-        // marcado como classificada_fase_1 (re-apuração)
         return "IN ('elegivel','classificada_fase_1')";
     }
-    // Rodadas 2+: aceita quem veio da fase anterior (N-1) E quem já foi
-    // classificado nesta mesma rodada por apuração anterior (re-apuração)
     $statusAnterior = 'classificada_fase_' . ($rodada - 1);
     $statusAtual    = 'classificada_fase_' . $rodada;
     return "IN ('{$statusAnterior}','{$statusAtual}')";
 }
 
+/**
+ * Apuração e gravação dos classificados de uma fase.
+ *
+ * ORDEM DE CLASSIFICAÇÃO (classificatória):
+ *   1º origem: ambos → tecnica → popular → complemento
+ *   2º desempate: mais votos técnicos
+ *   3º desempate: mais votos populares
+ *   4º desempate: score_geral (scores_negocios) — maior vence
+ *   5º desempate: inscricao_id ASC (data de inscrição, quem se inscreveu primeiro)
+ */
 function apurarEGravar(PDO $pdo, array $fase): array
 {
     $faseId      = (int)$fase['id'];
@@ -131,25 +137,34 @@ function apurarEGravar(PDO $pdo, array $fase): array
     $statusNovo  = ($tipoFase === 'final') ? 'finalista' : 'classificada_fase_' . max(1, $rodada);
     $statusPool  = buildStatusPool($tipoFase, $rodada);
 
-    // Coleta votos populares
+    // ── Coleta votos populares ──────────────────────────────────────────────────
     $vp = [];
     $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_populares WHERE fase_id=? GROUP BY inscricao_id");
     $st->execute([$faseId]);
     foreach ($st->fetchAll() as $r) $vp[(int)$r['inscricao_id']] = (int)$r['v'];
 
-    // Coleta votos técnicos
+    // ── Coleta votos técnicos ────────────────────────────────────────────────────
     $vt = [];
     $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_tecnicos WHERE fase_id=? GROUP BY inscricao_id");
     $st->execute([$faseId]);
     foreach ($st->fetchAll() as $r) $vt[(int)$r['inscricao_id']] = (int)$r['v'];
 
-    // Coleta votos de júri
+    // ── Coleta votos de júri ─────────────────────────────────────────────────────
     $vj = [];
     $st = $pdo->prepare("SELECT inscricao_id, COUNT(*) AS v FROM premiacao_votos_juri WHERE fase_id=? GROUP BY inscricao_id");
     $st->execute([$faseId]);
     foreach ($st->fetchAll() as $r) $vj[(int)$r['inscricao_id']] = (int)$r['v'];
 
-    // Categorias da premiação
+    // ── Coleta score_geral de scores_negocios (chave: negocio_id) ────────────────
+    // Lemos todos de uma vez para evitar N+1 dentro do loop de categorias.
+    // A chave do array será negocio_id — precisaremos mapear inscricao → negocio_id.
+    $scoreMap = [];
+    $st = $pdo->query("SELECT negocio_id, score_geral FROM scores_negocios");
+    foreach ($st->fetchAll() as $r) {
+        $scoreMap[(int)$r['negocio_id']] = (float)$r['score_geral'];
+    }
+
+    // ── Categorias da premiação ──────────────────────────────────────────────────
     $cats = $pdo->prepare("SELECT id, nome FROM premiacao_categorias WHERE premiacao_id=? ORDER BY ordem");
     $cats->execute([$premiacaoId]);
 
@@ -170,17 +185,25 @@ function apurarEGravar(PDO $pdo, array $fase): array
             $catId   = (int)$cat['id'];
             $catNome = $cat['nome'];
 
-            // Busca inscrições elegíveis para esta fase/categoria
-            $stPool = $pdo->prepare("SELECT id FROM premiacao_inscricoes WHERE premiacao_id=? AND categoria=? AND status $statusPool");
+            // Busca inscrições elegíveis com negocio_id para lookup do score
+            $stPool = $pdo->prepare("SELECT id, negocio_id FROM premiacao_inscricoes WHERE premiacao_id=? AND categoria=? AND status $statusPool");
             $stPool->execute([$premiacaoId, $catNome]);
-            $pool = array_map(fn($r) => (int)$r['id'], $stPool->fetchAll());
+            $poolRows = $stPool->fetchAll();
 
-            if (empty($pool)) continue;
+            if (empty($poolRows)) continue;
+
+            // Mapeia inscricao_id → negocio_id para lookup do score
+            $inscToNeg = [];
+            foreach ($poolRows as $row) {
+                $inscToNeg[(int)$row['id']] = (int)$row['negocio_id'];
+            }
+            $pool = array_keys($inscToNeg);
 
             $topPop  = (int)($fase['qtd_classificados_popular'] ?? 10);
             $topTec  = (int)($fase['qtd_classificados_tecnica'] ?? 10);
             $totalCl = $topPop + $topTec;
 
+            // ── Fase final ────────────────────────────────────────────────────
             if ($tipoFase === 'final') {
                 $poolSet = array_flip($pool);
                 $vpPool  = array_filter($vp, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
@@ -188,59 +211,118 @@ function apurarEGravar(PDO $pdo, array $fase): array
                 $maxPop  = !empty($vpPool) ? max($vpPool) : 0;
                 $resultado = [];
                 foreach ($pool as $id) {
-                    $pop  = $vpPool[$id] ?? 0;
-                    $juri = $vjPool[$id] ?? 0;
-                    $pp   = ($maxPop > 0 && $pop === $maxPop) ? 1 : 0;
-                    $resultado[$id] = ['origem' => 'juri', 'total' => $pp + $juri, 'pop' => $pop, 'juri' => $juri];
+                    $pop   = $vpPool[$id] ?? 0;
+                    $juri  = $vjPool[$id] ?? 0;
+                    $pp    = ($maxPop > 0 && $pop === $maxPop) ? 1 : 0;
+                    $negId = $inscToNeg[$id] ?? 0;
+                    $score = $scoreMap[$negId] ?? 0.0;
+                    $resultado[$id] = [
+                        'origem' => 'juri',
+                        'total'  => $pp + $juri,
+                        'pop'    => $pop,
+                        'juri'   => $juri,
+                        'score'  => $score,
+                    ];
                 }
-                uasort($resultado, fn($a, $b) => $b['total'] <=> $a['total'] ?: $b['juri'] <=> $a['juri'] ?: $b['pop'] <=> $a['pop']);
+                uasort($resultado, fn($a, $b) =>
+                    $b['total']  <=> $a['total']
+                    ?: $b['juri']  <=> $a['juri']
+                    ?: $b['pop']   <=> $a['pop']
+                    ?: $b['score'] <=> $a['score']
+                    ?: array_search(array_keys($resultado)[0], $pool) <=> 0
+                );
+
+            // ── Fase classificatória ─────────────────────────────────────────
             } else {
                 $poolSet = array_flip($pool);
                 $vpF = array_filter($vp, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
                 $vtF = array_filter($vt, fn($id) => isset($poolSet[$id]), ARRAY_FILTER_USE_KEY);
 
+                // Seleciona top por votos populares e top por votos técnicos
                 arsort($vpF); $selPop = array_slice(array_keys($vpF), 0, $topPop, true);
                 arsort($vtF); $selTec = array_slice(array_keys($vtF), 0, $topTec, true);
 
+                // Monta conjunto com origem
                 $sel = [];
                 foreach ($selPop as $id) {
-                    $sel[$id] = ['origem' => 'popular', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                    $negId = $inscToNeg[$id] ?? 0;
+                    $sel[$id] = [
+                        'origem' => 'popular',
+                        'pop'    => $vpF[$id] ?? 0,
+                        'tec'    => $vtF[$id] ?? 0,
+                        'score'  => $scoreMap[$negId] ?? 0.0,
+                        'insc'   => $id,
+                    ];
                 }
                 foreach ($selTec as $id) {
+                    $negId = $inscToNeg[$id] ?? 0;
                     if (!isset($sel[$id])) {
-                        $sel[$id] = ['origem' => 'tecnica', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                        $sel[$id] = [
+                            'origem' => 'tecnica',
+                            'pop'    => $vpF[$id] ?? 0,
+                            'tec'    => $vtF[$id] ?? 0,
+                            'score'  => $scoreMap[$negId] ?? 0.0,
+                            'insc'   => $id,
+                        ];
                     } else {
+                        // Está nos dois pools → origem ambos
                         $sel[$id]['origem'] = 'ambos';
                     }
                 }
 
+                // Complemento: preenche vagas restantes (ordenado por votos técnicos DESC)
                 if (count($sel) < $totalCl) {
                     $todos = $pool;
-                    usort($todos, fn($a, $b) => ($vpF[$b] ?? 0) <=> ($vpF[$a] ?? 0));
+                    // Ordena por votos técnicos DESC, desempate por votos populares DESC
+                    usort($todos, fn($a, $b) =>
+                        ($vtF[$b] ?? 0) <=> ($vtF[$a] ?? 0)
+                        ?: ($vpF[$b] ?? 0) <=> ($vpF[$a] ?? 0)
+                    );
                     foreach ($todos as $id) {
                         if (count($sel) >= $totalCl) break;
                         if (!isset($sel[$id])) {
-                            $sel[$id] = ['origem' => 'complemento', 'pop' => $vpF[$id] ?? 0, 'tec' => $vtF[$id] ?? 0];
+                            $negId = $inscToNeg[$id] ?? 0;
+                            $sel[$id] = [
+                                'origem' => 'complemento',
+                                'pop'    => $vpF[$id] ?? 0,
+                                'tec'    => $vtF[$id] ?? 0,
+                                'score'  => $scoreMap[$negId] ?? 0.0,
+                                'insc'   => $id,
+                            ];
                         }
                     }
                 }
 
-                $ord = ['ambos' => 0, 'popular' => 1, 'tecnica' => 2, 'complemento' => 3];
+                // ── Ordenação final (posições no ranking) ─────────────────────
+                // 1º origem: ambos(0) → tecnica(1) → popular(2) → complemento(3)
+                // 2º desempate: votos técnicos DESC
+                // 3º desempate: votos populares DESC
+                // 4º desempate: score_geral DESC
+                // 5º desempate: inscricao_id ASC (quem se inscreveu primeiro)
+                $ord = ['ambos' => 0, 'tecnica' => 1, 'popular' => 2, 'complemento' => 3];
                 uasort($sel, fn($a, $b) =>
                     ($ord[$a['origem']] ?? 9) <=> ($ord[$b['origem']] ?? 9)
-                    ?: $b['pop'] <=> $a['pop']
-                    ?: $b['tec'] <=> $a['tec']
+                    ?: $b['tec']   <=> $a['tec']
+                    ?: $b['pop']   <=> $a['pop']
+                    ?: $b['score'] <=> $a['score']
+                    ?: $a['insc']  <=> $b['insc']
                 );
                 $resultado = $sel;
             }
 
+            // ── Grava classificados e atualiza status das inscrições ──────────
             $pos      = 1;
             $idsClass = [];
 
             foreach ($resultado as $inscId => $dados) {
-                $stNeg = $pdo->prepare("SELECT negocio_id FROM premiacao_inscricoes WHERE id=?");
-                $stNeg->execute([$inscId]);
-                $negId = (int)$stNeg->fetchColumn();
+                $negId = $inscToNeg[$inscId] ?? 0;
+
+                // fallback caso inscricao_id não esteja no mapa (fase final pode chegar por caminho diferente)
+                if ($negId === 0) {
+                    $stNeg = $pdo->prepare("SELECT negocio_id FROM premiacao_inscricoes WHERE id=?");
+                    $stNeg->execute([$inscId]);
+                    $negId = (int)$stNeg->fetchColumn();
+                }
 
                 $pdo->prepare("
                     INSERT INTO premiacao_classificados (fase_id, categoria_id, negocio_id, posicao, origem, apurado_em)
@@ -276,7 +358,6 @@ function apurarEGravar(PDO $pdo, array $fase): array
                       AND id NOT IN ($ph)
                 ")->execute(array_merge([$premiacaoId, $catNome], $idsClass));
             } else {
-                // Pool não vazio mas nenhum foi classificado: elimina todos do pool
                 $pdo->prepare("
                     UPDATE premiacao_inscricoes
                     SET status = 'eliminada', updated_at = NOW()
@@ -304,7 +385,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $acao = $_POST['acao'] ?? '';
 
     try {
-        // ── SALVAR FASE ────────────────────────────────────────────────────────
+        // ── SALVAR FASE ──────────────────────────────────────────────────────────────────────
         if ($acao === 'salvar_fase') {
             $faseId                  = (int)($_POST['fase_id'] ?? 0);
             $premiacaoId             = (int)($_POST['premiacao_id'] ?? 0);
@@ -375,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // ── RECALCULAR STATUS + APURAÇÃO AUTOMÁTICA ────────────────────────────
+        // ── RECALCULAR STATUS + APURAÇÃO AUTOMÁTICA ───────────────────────────────────────────
         if ($acao === 'recalcular_status') {
             $faseId = (int)($_POST['fase_id'] ?? 0);
             $stmt   = $pdo->prepare("SELECT * FROM premiacao_fases WHERE id=? LIMIT 1");
@@ -400,7 +481,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // ── FORÇAR RE-APURAÇÃO (fase já apurada) ──────────────────────────────
+        // ── FORÇAR RE-APURAÇÃO (fase já apurada) ───────────────────────────────────────────
         if ($acao === 'forcar_reapuracao') {
             $faseId = (int)($_POST['fase_id'] ?? 0);
             $stmt   = $pdo->prepare("SELECT * FROM premiacao_fases WHERE id=? LIMIT 1");
@@ -633,8 +714,12 @@ require_once $appBase . '/views/admin/header.php';
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label">Critério de desempate</label>
-                            <input type="text" name="criterio_desempate" class="form-control" value="<?= h($faseEdicao['criterio_desempate'] ?? '') ?>">
+                            <label class="form-label">Critério de desempate
+                                <small class="text-muted">(informativo — o desempate automático é: votos técnicos → votos populares → score_geral → inscrição mais antiga)</small>
+                            </label>
+                            <input type="text" name="criterio_desempate" class="form-control"
+                                   placeholder="Ex.: score_geral, inscricao_mais_antiga"
+                                   value="<?= h($faseEdicao['criterio_desempate'] ?? '') ?>">
                         </div>
                     </div>
 
