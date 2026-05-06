@@ -23,6 +23,17 @@ try {
     die('Erro na conexão com o banco: ' . $e->getMessage());
 }
 
+// ── Garante que o enum aceita todos os valores usados pelo código ─────────────
+try {
+    $pdo->exec("
+        ALTER TABLE premiacao_classificados
+        MODIFY COLUMN origem ENUM('popular','tecnica','complemento','ambos','juri')
+        COLLATE utf8mb4_unicode_ci NOT NULL
+    ");
+} catch (PDOException $e) {
+    // Ignora se já foi aplicado anteriormente
+}
+
 $pageTitle = 'Premiação - Períodos';
 $mensagem  = '';
 $erro      = '';
@@ -36,7 +47,7 @@ function formatDatetimeLocal(?string $value): string
 {
     if (empty($value) || $value === '0000-00-00' || $value === '0000-00-00 00:00:00') return '';
     $ts = strtotime($value);
-    return $ts ? date('Y-m-d\TH:i', $ts) : '';
+    return $ts ? date('Y-m-d\\TH:i', $ts) : '';
 }
 
 function dataBr(?string $dt): string
@@ -47,7 +58,6 @@ function dataBr(?string $dt): string
 
 function calcularStatusAutomatico(string $inicio, string $fim, string $statusAtual = 'rascunho'): string
 {
-    if ($statusAtual === 'apurada') return 'apurada';
     if ($statusAtual === 'rascunho') return 'rascunho';
     $agora      = new DateTime('now');
     $dataInicio = new DateTime($inicio);
@@ -312,7 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fase = $stmt->fetch();
             if (!$fase) throw new Exception('Fase não encontrada.');
 
-            $novoStatus = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], $fase['status']);
+            // Recalcula desconsiderando o status 'apurada' salvo
+            $novoStatus = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], 'agendada');
             $pdo->prepare("UPDATE premiacao_fases SET status=?,updated_at=NOW() WHERE id=?")->execute([$novoStatus, $faseId]);
 
             $msgExtra = '';
@@ -326,6 +337,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             header('Location: premiacao_periodos.php?premiacao_id=' . (int)$fase['premiacao_id'] . '&ok=' . urlencode('Status recalculado.' . $msgExtra));
+            exit;
+        }
+
+        // ── FORÇAR RE-APURAÇÃO (fase já apurada) ──────────────────────────────
+        if ($acao === 'forcar_reapuracao') {
+            $faseId = (int)($_POST['fase_id'] ?? 0);
+            $stmt   = $pdo->prepare("SELECT * FROM premiacao_fases WHERE id=? LIMIT 1");
+            $stmt->execute([$faseId]);
+            $fase = $stmt->fetch();
+            if (!$fase) throw new Exception('Fase não encontrada.');
+
+            $tipoApuravel = in_array($fase['tipo_fase'], ['classificatoria', 'final'], true);
+            if (!$tipoApuravel) throw new Exception('Este tipo de fase não possui apuração de classificados.');
+
+            $res = apurarEGravar($pdo, $fase);
+            $pdo->prepare("UPDATE premiacao_fases SET status='apurada',updated_at=NOW() WHERE id=?")->execute([$faseId]);
+
+            header('Location: premiacao_periodos.php?premiacao_id=' . (int)$fase['premiacao_id'] . '&ok=' . urlencode('Re-apuração concluída: ' . $res['gravados'] . ' classificados gravados.'));
             exit;
         }
 
@@ -580,7 +609,11 @@ require_once $appBase . '/views/admin/header.php';
                             </thead>
                             <tbody>
                             <?php foreach ($fases as $fase): ?>
-                                <?php $statusAuto = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], $fase['status']); ?>
+                                <?php
+                                $statusAuto   = calcularStatusAutomatico($fase['data_inicio'], $fase['data_fim'], $fase['status']);
+                                $jaApurada    = ($fase['status'] === 'apurada');
+                                $tipoApuravel = in_array($fase['tipo_fase'], ['classificatoria', 'final'], true);
+                                ?>
                                 <tr>
                                     <td>
                                         <strong><?= h($fase['nome']) ?></strong><br>
@@ -610,11 +643,15 @@ require_once $appBase . '/views/admin/header.php';
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge text-bg-secondary"><?= h(labelStatus($statusAuto)) ?></span><br>
+                                        <span class="badge <?= $jaApurada ? 'text-bg-success' : 'text-bg-secondary' ?>">
+                                            <?= h($jaApurada ? 'Apurada' : labelStatus($statusAuto)) ?>
+                                        </span><br>
                                         <small class="text-muted">Salvo: <?= h((string)$fase['status']) ?></small>
                                     </td>
                                     <td class="d-flex gap-2 flex-wrap">
                                         <a href="premiacao_periodos.php?premiacao_id=<?= (int)$edicaoSelecionada ?>&editar=<?= (int)$fase['id'] ?>" class="btn btn-sm btn-outline-primary">Editar</a>
+
+                                        <?php if (!$jaApurada): ?>
                                         <form method="post" class="d-inline">
                                             <input type="hidden" name="acao" value="recalcular_status">
                                             <input type="hidden" name="fase_id" value="<?= (int)$fase['id'] ?>">
@@ -623,6 +660,18 @@ require_once $appBase . '/views/admin/header.php';
                                                 Recalcular status
                                             </button>
                                         </form>
+                                        <?php endif; ?>
+
+                                        <?php if ($tipoApuravel): ?>
+                                        <form method="post" class="d-inline">
+                                            <input type="hidden" name="acao" value="forcar_reapuracao">
+                                            <input type="hidden" name="fase_id" value="<?= (int)$fase['id'] ?>">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                onclick="return confirm('Re-apurar agora? Os classificados anteriores serão substituídos.')">
+                                                <?= $jaApurada ? 'Re-apurar' : 'Apurar agora' ?>
+                                            </button>
+                                        </form>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
