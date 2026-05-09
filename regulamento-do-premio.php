@@ -290,55 +290,229 @@ include __DIR__ . '/app/views/public/header_public.php';
           </div>
         </section>
 
-        <!-- 5. Votação -->
+        <!-- ═══════════════════════════════════════
+             5. VOTAÇÃO
+        ════════════════════════════════════════ -->
         <section id="sec-votacao" class="reg-section">
           <div class="d-flex align-items-start gap-3 mb-3">
             <span class="reg-section-num">5</span>
             <h2 class="reg-section-title mb-0">Votação</h2>
           </div>
-          <p>A classificação dos negócios inscritos será realizada por meio de <strong>3 fases</strong>:</p>
+          <p>A classificação dos negócios inscritos será realizada por meio de <strong>3 fases classificatórias</strong>, sendo elas:</p>
 
-          <div class="row g-4 mb-4 mt-1">
-            <div class="col-md-4">
-              <div class="reg-fase-card">
-                <span class="reg-fase-badge">Fase 1</span>
-                <div class="reg-fase-periodo mt-3">
-                  <i class="bi bi-calendar3"></i> 30/07 a 14/08/2026
-                </div>
-                <p class="mb-2">Votação aberta ao público em <a href="https://www.impactospositivos.com" target="_blank" rel="noopener" class="reg-ext-link">impactospositivos.com</a>. 1 voto por negócio, podendo votar em vários.</p>
-                <p>Resultado: <strong>TOP 20</strong> por categoria (10 mais votados + 10 da Bancada Técnica), totalizando <strong>80 negócios</strong>.</p>
-              </div>
+          <!-- FASE 1 -->
+          <div class="reg-fase-bloco mt-4">
+            <div class="reg-fase-header">
+              <span class="reg-fase-badge-lg">Fase 1 <span class="reg-fase-badge-sub">Classificatória 1</span></span>
+              <span class="reg-fase-periodo-lg"><i class="bi bi-calendar3 me-1"></i> 30/07/2026 a 14/08/2026</span>
             </div>
-            <div class="col-md-4">
-              <div class="reg-fase-card">
-                <span class="reg-fase-badge">Fase 2</span>
-                <div class="reg-fase-periodo mt-3">
-                  <i class="bi bi-calendar3"></i> 24/08 a 04/09/2026
+
+            <div class="reg-fase-body">
+
+              <h5 class="reg-fase-subtitulo"><i class="bi bi-diagram-2 me-2"></i>Processo</h5>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <div class="reg-pool-card reg-pool-card--popular">
+                    <div class="reg-pool-icon"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                      <strong>Voto Popular</strong>
+                      <p>Aberto ao público cadastrado em <a href="https://www.impactospositivos.com" target="_blank" rel="noopener" class="reg-ext-link">impactospositivos.com</a>. Cada usuário vota 1 vez por negócio, podendo votar em múltiplos negócios.</p>
+                    </div>
+                  </div>
                 </div>
-                <p class="mb-2">Segunda votação aberta, restrita aos <strong>TOP 20</strong> de cada categoria.</p>
-                <p>Resultado: <strong>TOP 6</strong> por categoria (3 mais votados + 3 da Bancada), totalizando <strong>24 finalistas</strong>.</p>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="reg-fase-card reg-fase-card--final">
-                <span class="reg-fase-badge reg-fase-badge--final">Fase 3 — Final</span>
-                <div class="reg-fase-periodo mt-3">
-                  <i class="bi bi-calendar3"></i> 07/09 a 18/09/2026
+                <div class="col-md-6">
+                  <div class="reg-pool-card reg-pool-card--tecnico">
+                    <div class="reg-pool-icon"><i class="bi bi-patch-check-fill"></i></div>
+                    <div>
+                      <strong>Avaliação Técnica</strong>
+                      <p>A Bancada Técnica seleciona <strong>10 negócios por categoria</strong> com base nos critérios de avaliação.</p>
+                    </div>
+                  </div>
                 </div>
-                <p class="mb-2">Votação para os <strong>TOP 6 finalistas</strong>. Cada finalista recebe 1 ponto por categoria de jurado (4 pontos) + 1 ponto do público.</p>
-                <p>Cerimônia: <strong>24/09/2026</strong>, formato híbrido, com transmissão em <a href="https://www.impactospositivos.com" target="_blank" rel="noopener" class="reg-ext-link">impactospositivos.com</a>.</p>
               </div>
+
+              <h5 class="reg-fase-subtitulo"><i class="bi bi-trophy me-2"></i>Classificação — TOP 20 por categoria</h5>
+              <div class="reg-article mb-2">
+                <span class="reg-article-num">→</span>
+                10 mais votados pelo público <span class="reg-origem-badge reg-origem-badge--popular">origem: popular</span>
+              </div>
+              <div class="reg-article mb-2">
+                <span class="reg-article-num">→</span>
+                10 selecionados pela Bancada Técnica <span class="reg-origem-badge reg-origem-badge--tecnico">origem: técnica</span>
+              </div>
+
+              <h5 class="reg-fase-subtitulo mt-3"><i class="bi bi-intersect me-2"></i>Origens combinadas</h5>
+              <div class="reg-article mb-2">
+                Negócios selecionados nos <strong>dois pools</strong> (popular e técnico) recebem a origem <span class="reg-origem-badge reg-origem-badge--ambos">ambos</span> e têm <strong>prioridade máxima</strong> na classificação.
+              </div>
+              <div class="reg-article mb-2">
+                Caso necessário, o complemento é preenchido pelos próximos negócios em ordem de votos técnicos.
+              </div>
+
+              <h5 class="reg-fase-subtitulo mt-3"><i class="bi bi-sort-down me-2"></i>Critérios de desempate (cascata)</h5>
+              <div class="reg-desempate-lista">
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">1°</span>
+                  <span><strong>Origem:</strong> <span class="reg-origem-badge reg-origem-badge--ambos">ambos</span> &gt; <span class="reg-origem-badge reg-origem-badge--tecnico">técnica</span> &gt; <span class="reg-origem-badge reg-origem-badge--popular">popular</span> &gt; complemento</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">2°</span>
+                  <span>Votos técnicos (maior vence)</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">3°</span>
+                  <span>Votos populares (maior vence)</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">4°</span>
+                  <span>Score geral do negócio — tabela <code>scores_negocios</code> (maior vence)</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">5°</span>
+                  <span>Data de inscrição (inscrição mais antiga vence)</span>
+                </div>
+              </div>
+
+              <div class="reg-fase-resultado mt-3">
+                <i class="bi bi-check2-circle me-2"></i>
+                <strong>Resultado:</strong> <strong>80 negócios elegíveis</strong> (20 por categoria: Ideação, Tração, Operação, Dinamizador do Ecossistema) avançam para a Fase 2.
+              </div>
+
             </div>
           </div>
 
-          <h4 class="reg-subsection-title" id="sec-lisura">5.4 Da lisura das votações</h4>
+          <!-- FASE 2 -->
+          <div class="reg-fase-bloco mt-4">
+            <div class="reg-fase-header">
+              <span class="reg-fase-badge-lg">Fase 2 <span class="reg-fase-badge-sub">Classificatória 2</span></span>
+              <span class="reg-fase-periodo-lg"><i class="bi bi-calendar3 me-1"></i> 24/08/2026 a 04/09/2026</span>
+            </div>
+
+            <div class="reg-fase-body">
+
+              <h5 class="reg-fase-subtitulo"><i class="bi bi-diagram-2 me-2"></i>Processo</h5>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <div class="reg-pool-card reg-pool-card--popular">
+                    <div class="reg-pool-icon"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                      <strong>Voto Popular</strong>
+                      <p>Votação aberta apenas nos <strong>TOP 20 da Fase 1</strong> por categoria.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="reg-pool-card reg-pool-card--tecnico">
+                    <div class="reg-pool-icon"><i class="bi bi-patch-check-fill"></i></div>
+                    <div>
+                      <strong>Avaliação Técnica</strong>
+                      <p>A Bancada Técnica seleciona <strong>3 negócios por categoria</strong>.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h5 class="reg-fase-subtitulo"><i class="bi bi-trophy me-2"></i>Classificação — TOP 6 por categoria</h5>
+              <div class="reg-article mb-2">
+                <span class="reg-article-num">→</span>
+                3 mais votados pelo público <span class="reg-origem-badge reg-origem-badge--popular">origem: popular</span>
+              </div>
+              <div class="reg-article mb-2">
+                <span class="reg-article-num">→</span>
+                3 selecionados pela Bancada Técnica <span class="reg-origem-badge reg-origem-badge--tecnico">origem: técnica</span>
+              </div>
+
+              <div class="reg-article mt-2">
+                Origens combinadas e critérios de desempate seguem os mesmos critérios estabelecidos na Fase 1.
+              </div>
+
+              <div class="reg-fase-resultado mt-3">
+                <i class="bi bi-check2-circle me-2"></i>
+                <strong>Resultado:</strong> <strong>24 negócios elegíveis</strong> (6 por categoria) avançam para a Fase 3.
+              </div>
+
+            </div>
+          </div>
+
+          <!-- FASE 3 -->
+          <div class="reg-fase-bloco reg-fase-bloco--final mt-4">
+            <div class="reg-fase-header">
+              <span class="reg-fase-badge-lg reg-fase-badge-lg--final">Fase 3 <span class="reg-fase-badge-sub">Final</span></span>
+              <span class="reg-fase-periodo-lg"><i class="bi bi-calendar3 me-1"></i> 07/09/2026 a 18/09/2026</span>
+            </div>
+
+            <div class="reg-fase-body">
+
+              <h5 class="reg-fase-subtitulo"><i class="bi bi-diagram-2 me-2"></i>Processo</h5>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <div class="reg-pool-card reg-pool-card--popular">
+                    <div class="reg-pool-icon"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                      <strong>Voto Popular</strong>
+                      <p>Aberto ao público nos <strong>TOP 6 finalistas</strong> por categoria.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="reg-pool-card reg-pool-card--juri">
+                    <div class="reg-pool-icon"><i class="bi bi-stars"></i></div>
+                    <div>
+                      <strong>Júri Final</strong>
+                      <p>4 jurados votam em 1 negócio por categoria, adicionando <strong>+1 voto de peso</strong> cada.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h5 class="reg-fase-subtitulo"><i class="bi bi-trophy-fill me-2"></i>Classificação final</h5>
+              <div class="reg-article mb-2">
+                1 vencedor por categoria — soma de <strong>votos populares + votos do júri</strong>.
+              </div>
+              <div class="reg-article mb-3">
+                <i class="bi bi-broadcast me-1" style="color:#CDDE00;"></i>
+                <strong>Evento híbrido:</strong> <strong>24/09/2026</strong> — divulgação dos ganhadores com transmissão ao vivo.
+              </div>
+
+              <h5 class="reg-fase-subtitulo"><i class="bi bi-sort-down me-2"></i>Critérios de desempate</h5>
+              <div class="reg-desempate-lista">
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">1°</span>
+                  <span>Total de votos (popular + júri)</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">2°</span>
+                  <span>Votos do júri</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">3°</span>
+                  <span>Votos populares</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">4°</span>
+                  <span>Score geral — tabela <code>scores_negocios</code> (maior vence)</span>
+                </div>
+                <div class="reg-desempate-item">
+                  <span class="reg-desempate-num">5°</span>
+                  <span>Data de inscrição (inscrição mais antiga vence)</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <!-- /FASES -->
+
+          <!-- Lisura -->
+          <h4 class="reg-subsection-title mt-5" id="sec-lisura">5.4 Da lisura das votações</h4>
           <div class="reg-article">Fica <strong>vedado o uso de meios automatizados</strong> (robôs ou similares) para inflar votos. Em caso de identificação, a organização comunicará o inscrito, retirará os votos irregulares e, em caso de reincidência, desclassificará o competidor.</div>
           <div class="reg-article">Não serão aceitos e-mails secundários criados artificialmente, temporários, falsos, não verificáveis ou que impeçam o contato direto com o votante.</div>
           <div class="reg-article">A organização poderá realizar auditorias e análises para garantir a integridade do processo.</div>
 
           <h4 class="reg-subsection-title">5.5 Substituição em caso de desclassificação</h4>
           <div class="reg-article">No caso de desclassificação durante a votação, o projeto subsequente com maior quantidade de votos será automaticamente classificado para assumir a posição, de forma imediata.</div>
+
         </section>
+        <!-- /VOTAÇÃO -->
 
         <!-- 6. Júri -->
         <section id="sec-juri" class="reg-section">
