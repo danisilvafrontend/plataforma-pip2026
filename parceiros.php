@@ -36,7 +36,6 @@ $sql = "
         pp.perfil_publicado,
         pp.logo_url AS logo_perfil_url,
         c.logo_url AS logo_contrato_url,
-        c.contrato_url,
         pi.eixos_interesse,
         pi.setores_interesse,
         pi.perfil_impacto
@@ -250,14 +249,10 @@ include __DIR__ . '/app/views/public/header_public.php';
         <div class="row g-4">
             <?php foreach ($parceiros as $p): ?>
                 <?php
-                $nome           = $p['nome_fantasia'] ?: ($p['razao_social'] ?? 'Parceiro');
-                $logo           = $p['logo_perfil_url'] ?: ($p['logo_contrato_url'] ?? '');
-                $capa           = $p['imagem_capa_url'] ?? '';
+                $nome            = $p['nome_fantasia'] ?: ($p['razao_social'] ?? 'Parceiro');
+                $logo            = $p['logo_perfil_url'] ?: ($p['logo_contrato_url'] ?? '');
+                $capa            = $p['imagem_capa_url'] ?? '';
                 $perfilPublicado = !empty($p['perfil_publicado']);
-                // Se não tem capa e não tem perfil publicado, usa contrato_url como imagem de capa
-                if (empty($capa) && !$perfilPublicado && !empty($p['contrato_url'])) {
-                    $capa = $p['contrato_url'];
-                }
                 ?>
                 <div class="col-md-6 col-xl-4">
                     <article class="vitrine-card parceiro-card-publico h-100">
