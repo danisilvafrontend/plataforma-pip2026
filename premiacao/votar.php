@@ -28,7 +28,7 @@ function jsonOk(string $msg, array $extra = []): never {
     exit;
 }
 
-// ── Validações básicas ───────────────────────────────────────────────────────────────────────────
+// ── Validações básicas
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonErro('Método não permitido.', 405);
 }
@@ -51,6 +51,8 @@ if ($inscricaoId <= 0 || $faseId <= 0) {
 }
 
 // ── Valida fase: deve existir e permitir voto popular
+// O status 'em_andamento' NÃO é checado aqui — a fase pode estar com status
+// desatualizado no banco. A janela real é validada pelo intervalo de datas abaixo.
 $stmtFase = $pdo->prepare("
     SELECT pf.id, pf.premiacao_id, pf.data_inicio, pf.data_fim,
            pf.tipo_fase, pf.rodada
@@ -74,19 +76,18 @@ if (!$ini || !$fim || $agora < $ini || $agora > $fim) {
 }
 
 // ── Determina quais status de inscrição são válidos para esta fase
-// IMPORTANTE: os status no banco usam formato SEM underscore
-// ex: 'elegivel', 'classificadafase1', 'classificadafase2', 'finalista'
+// Status no banco usam formato COM underscore: classificada_fase_1, classificada_fase_2
 $tipoFase = $fase['tipo_fase'] ?? 'classificatoria';
 $rodada   = (int)($fase['rodada'] ?? 1);
 
 if ($tipoFase === 'final') {
     // Fase final aceita finalistas e classificados na fase 2
-    $statusValidos = "IN ('finalista', 'classificadafase2')";
+    $statusValidos = "IN ('finalista', 'classificada_fase_2')";
 } else {
     // Rodada classificatória: monta lista acumulativa de status
     $lista = ["'elegivel'"];
     for ($r = 1; $r < $rodada; $r++) {
-        $lista[] = "'classificadafase{$r}'";
+        $lista[] = "'classificada_fase_{$r}'";
     }
     $statusValidos = 'IN (' . implode(', ', $lista) . ')';
 }
