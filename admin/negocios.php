@@ -54,73 +54,6 @@ try {
         $where[] = "n.status_vitrine = 'indeferido'";
     }
 
-    // ── Premiação ativa ──────────────────────────────────────────────
-    $stmtPremAtiva = $pdo->query("
-        SELECT id
-        FROM premiacoes
-        WHERE status IN ('ativa', 'planejada')
-        ORDER BY
-            CASE WHEN status = 'ativa' THEN 0 ELSE 1 END,
-            ano DESC,
-            id DESC
-        LIMIT 1
-    ");
-    $premiacaoAtualId = (int) ($stmtPremAtiva->fetchColumn() ?: 0);
-
-    // ── Fase ativa por role + dados de rodada/tipo ─────────────────────
-    $faseAtiva      = null;
-    $faseAtivaDados = null;
-    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
-        $colFase = is_tecnica() ? 'permite_avaliacao_tecnica' : 'permite_juri_final';
-        $stmtFaseRole = $pdo->prepare("
-            SELECT id, tipo_fase, rodada, qtd_classificados_tecnica
-            FROM premiacao_fases
-            WHERE premiacao_id = ?
-              AND status = 'em_andamento'
-              AND {$colFase} = 1
-            ORDER BY rodada ASC LIMIT 1
-        ");
-        $stmtFaseRole->execute([$premiacaoAtualId]);
-        $faseAtivaDados = $stmtFaseRole->fetch(PDO::FETCH_ASSOC) ?: null;
-        $faseAtiva      = $faseAtivaDados ? (int)$faseAtivaDados['id'] : null;
-    }
-
-    // ── Pool de status dinâmico: elegivel + classificada_fase_(rodada-1) ──────
-    function buildStatusPoolAdmin(?array $fase): array
-    {
-        if (!$fase) return ['elegivel'];
-        $tipo   = $fase['tipo_fase'] ?? 'classificatoria';
-        $rodada = (int)($fase['rodada'] ?? 1);
-        if ($tipo === 'final') {
-            return ['finalista'];
-        }
-        // Fase 1: apenas elegivel
-        // Fase 2+: elegivel e classificados da fase anterior
-        if ($rodada <= 1) {
-            return ['elegivel'];
-        }
-        return ['elegivel', 'classificada_fase_' . ($rodada - 1)];
-    }
-
-    $statusPoolArr = buildStatusPoolAdmin($faseAtivaDados);
-    $statusPoolIn  = implode(',', array_map(fn($s) => "'$s'", $statusPoolArr));
-
-    // ── Filtro SQL: técnica/júri vê apenas negócios inscritos e no pool certo ─
-    if (is_juri_ou_tecnica() && $premiacaoAtualId > 0) {
-        if ($faseAtiva) {
-            $where[] = "EXISTS (
-                SELECT 1
-                FROM premiacao_inscricoes pi
-                WHERE pi.negocio_id = n.id
-                  AND pi.premiacao_id = ?
-                  AND pi.status IN ({$statusPoolIn})
-            )";
-            $params[] = $premiacaoAtualId;
-        } else {
-            $where[] = "1 = 0"; // nenhuma fase ativa para este role
-        }
-    }
-
     $sql = "SELECT n.id, n.nome_fantasia, n.categoria, n.etapa_atual, n.inscricao_completa,
                    n.status_operacional, n.status_vitrine, n.publicado_vitrine,
                    CONCAT(TRIM(e.nome), ' ', TRIM(e.sobrenome)) AS empreendedor,
@@ -167,57 +100,6 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $negocios = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // ── Inscrições: mapa negocio_id => inscricao_id (respeitando pool dinâmico) ──
-    $inscricoesPorNegocio = [];
-    if ($premiacaoAtualId > 0 && is_juri_ou_tecnica()) {
-        $negIds = array_column($negocios, 'id');
-        if (!empty($negIds)) {
-            $placeholders = implode(',', array_fill(0, count($negIds), '?'));
-            $stmtInsc = $pdo->prepare("
-                SELECT negocio_id, id AS inscricao_id
-                FROM premiacao_inscricoes
-                WHERE premiacao_id = ?
-                  AND negocio_id IN ({$placeholders})
-                  AND status IN ({$statusPoolIn})
-            ");
-            $stmtInsc->execute(array_merge([$premiacaoAtualId], $negIds));
-            foreach ($stmtInsc->fetchAll() as $row) {
-                $inscricoesPorNegocio[(int)$row['negocio_id']] = (int)$row['inscricao_id'];
-            }
-        }
-    }
-
-    // ── Votos já dados pelo usuário logado nesta fase ─────────────────────
-    $votosJaDados = [];
-    if ($faseAtiva) {
-        require_once __DIR__ . '/../app/helpers/premiacao_auth.php';
-        $actor = premiacao_current_actor();
-        if ($actor) {
-            $currentUserId = (int)$actor['id'];
-            $inscIds = array_values($inscricoesPorNegocio);
-            if (!empty($inscIds)) {
-                $phVotos     = implode(',', array_fill(0, count($inscIds), '?'));
-                $tabelaVotos = is_tecnica()
-                    ? 'premiacao_votos_tecnicos'
-                    : 'premiacao_votos_juri';
-                $stmtVotos = $pdo->prepare("
-                    SELECT inscricao_id
-                    FROM {$tabelaVotos}
-                    WHERE fase_id      = ?
-                      AND user_id      = ?
-                      AND inscricao_id IN ({$phVotos})
-                ");
-                $stmtVotos->execute(array_merge(
-                    [(int)$faseAtiva, $currentUserId],
-                    $inscIds
-                ));
-                foreach ($stmtVotos->fetchAll(PDO::FETCH_COLUMN) as $vid) {
-                    $votosJaDados[(int)$vid] = true;
-                }
-            }
-        }
-    }
 
     function linkOrdenacao($coluna) {
         $get = $_GET;
@@ -284,81 +166,14 @@ include __DIR__ . '/../app/views/admin/header.php';
   <?php unset($_SESSION['erro']); ?>
 <?php endif; ?>
 
-<!-- Toast de feedback (voto técnico AJAX) -->
-<div id="voto-toast-wrap" aria-live="polite" style="
-  position:fixed; top:1.25rem; right:1.25rem; z-index:9999;
-  display:flex; flex-direction:column; gap:.5rem; pointer-events:none;
-"></div>
-
 <!-- Cabeçalho -->
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
   <div>
-    <?php
-    $roleAtual = current_user_role();
-    $isAdmin   = in_array($roleAtual, ['admin', 'superadmin']);
-
-    if (!$isAdmin && $premiacaoAtualId > 0):
-        $stmtHeader = $pdo->prepare("
-            SELECT p.ano, pf.qtd_classificados_tecnica
-            FROM premiacoes p
-            LEFT JOIN premiacao_fases pf
-                  ON pf.premiacao_id = p.id
-                  AND pf.status = 'em_andamento'
-            WHERE p.id = ?
-            ORDER BY pf.data_inicio ASC
-            LIMIT 1
-        ");
-        $stmtHeader->execute([$premiacaoAtualId]);
-        $headerInfo = $stmtHeader->fetch(PDO::FETCH_ASSOC);
-        $anoHeader  = $headerInfo['ano']                       ?? date('Y');
-        $qtdTecnica = (int)($headerInfo['qtd_classificados_tecnica'] ?? 0);
-    endif;
-    ?>
-
-    <?php if ($isAdmin): ?>
-
-      <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios Cadastrados</h4>
-      <small style="color:#6c8070; font-size:.82rem;">
-        Acompanhe o andamento de todos os negócios inscritos na plataforma
-      </small>
-
-    <?php elseif (is_tecnica()): ?>
-
-      <h4 class="fw-bold mb-0" style="color:#1E3425;">
-        Negócios da Premiação <?= htmlspecialchars((string)($anoHeader ?? date('Y'))) ?>
-      </h4>
-      <small style="color:#6c8070; font-size:.82rem;">
-        Avalie os negócios inscritos e registre seus votos como membro da Bancada Técnica.
-        <?php if (!empty($qtdTecnica)): ?>
-          Nesta fase, você pode votar em até
-          <strong><?= $qtdTecnica ?> negócio<?= $qtdTecnica > 1 ? 's' : '' ?></strong>
-          por categoria.
-        <?php else: ?>
-          Consulte o regulamento para verificar a quantidade de votos disponíveis nesta fase.
-        <?php endif; ?>
-      </small>
-
-    <?php elseif (is_juri()): ?>
-
-      <h4 class="fw-bold mb-0" style="color:#1E3425;">
-        Negócios da Premiação <?= htmlspecialchars((string)($anoHeader ?? date('Y'))) ?>
-      </h4>
-      <small style="color:#6c8070; font-size:.82rem;">
-        Você está na <strong>Fase Final</strong>. Como membro do Júri, vote em
-        <strong>1 negócio por categoria</strong>. Seu voto é decisivo para eleger
-        o vencedor de cada categoria.
-      </small>
-
-    <?php else: ?>
-
-      <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios da Premiação</h4>
-      <small style="color:#6c8070; font-size:.82rem;">
-        Visualize os negócios inscritos na premiação.
-      </small>
-
-    <?php endif; ?>
+    <h4 class="fw-bold mb-0" style="color:#1E3425;">Negócios Cadastrados</h4>
+    <small style="color:#6c8070; font-size:.82rem;">
+      Acompanhe o andamento de todos os negócios inscritos na plataforma
+    </small>
   </div>
-
   <div class="d-flex gap-2 flex-wrap">
     <?php if (can_see_admin_shortcuts()): ?>
     <a href="/admin/recalcular_scores.php" class="hd-btn outline">
@@ -460,7 +275,7 @@ include __DIR__ . '/../app/views/admin/header.php';
   </form>
 </div>
 
-<!-- Tabela (layout completo: 11 colunas para todos os roles) -->
+<!-- Tabela -->
 <div class="card section-card mb-4">
   <div class="table-responsive">
     <table class="emp-table neg-table">
@@ -489,12 +304,7 @@ include __DIR__ . '/../app/views/admin/header.php';
           </tr>
         <?php else: ?>
           <?php foreach ($negocios as $n): ?>
-            <?php
-              $nid         = (int)$n['id'];
-              $inscricaoId = $inscricoesPorNegocio[$nid] ?? null;
-              $jaVotou     = $inscricaoId && isset($votosJaDados[$inscricaoId]);
-              $redirectUrl = urlencode('/admin/negocios.php?' . http_build_query($_GET));
-            ?>
+            <?php $nid = (int)$n['id']; ?>
             <tr>
               <td style="color:#9aab9d; font-size:.78rem; font-family:monospace;">
                 #<?= htmlspecialchars((string)$n['id']) ?>
@@ -554,49 +364,11 @@ include __DIR__ . '/../app/views/admin/header.php';
               <td class="text-center">
                 <div class="d-flex gap-1 justify-content-center flex-wrap">
 
-                  <!-- Ver detalhes -->
                   <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>" class="act-btn edit" title="Ver detalhes do negócio"
                      style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;">
                     <i class="bi bi-eye"></i>
                     <span>Ver Detalhes</span>
                   </a>
-
-                  <?php if (is_tecnica() && $inscricaoId && $faseAtiva): ?>
-                    <?php if ($jaVotou): ?>
-                      <button type="button" class="act-btn" title="Voto técnico já registrado para este negócio" disabled
-                              style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
-                        <i class="bi bi-check-circle-fill"></i>
-                        <span>Voto Registrado</span>
-                      </button>
-                    <?php else: ?>
-                      <button type="button"
-                              class="act-btn btn-votar-tecnico"
-                              title="Registrar voto técnico para este negócio"
-                              data-inscricao="<?= $inscricaoId ?>"
-                              data-fase="<?= (int)$faseAtiva ?>"
-                              style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(25,135,84,.12);color:#198754;">
-                        <i class="bi bi-clipboard2-check"></i>
-                        <span>Votar (Técnico)</span>
-                      </button>
-                    <?php endif; ?>
-
-                  <?php elseif (is_juri() && $inscricaoId && $faseAtiva): ?>
-                    <?php if ($jaVotou): ?>
-                      <button type="button" class="act-btn" title="Voto de júri já registrado para este negócio" disabled
-                              style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;">
-                        <i class="bi bi-award-fill"></i>
-                        <span>Voto Registrado</span>
-                      </button>
-                    <?php else: ?>
-                      <a href="/admin/premiacao_juri.php?inscricao_id=<?= $inscricaoId ?>&fase_id=<?= (int)$faseAtiva ?>&redirect=<?= $redirectUrl ?>"
-                         class="act-btn"
-                         title="Registrar voto de júri para este negócio"
-                         style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(102,51,153,.12);color:#6633cc;">
-                        <i class="bi bi-star-half"></i>
-                        <span>Votar (Júri)</span>
-                      </a>
-                    <?php endif; ?>
-                  <?php endif; ?>
 
                   <?php if (can_see_admin_shortcuts()): ?>
                     <a href="/admin/recalcular_score.php?id=<?= $nid ?>" class="act-btn" title="Recalcular score deste negócio"
@@ -717,97 +489,12 @@ include __DIR__ . '/../app/views/admin/header.php';
   </div>
 </div>
 
-<style>
-.voto-toast {
-  pointer-events:auto;
-  min-width:280px; max-width:380px;
-  padding:.75rem 1rem;
-  border-radius:10px;
-  font-size:.875rem;
-  font-weight:500;
-  line-height:1.4;
-  display:flex;
-  align-items:flex-start;
-  gap:.6rem;
-  box-shadow:0 4px 18px rgba(0,0,0,.13);
-  animation: toastIn .22s cubic-bezier(.16,1,.3,1) both;
-}
-.voto-toast.saindo { animation: toastOut .2s ease-in forwards; }
-.voto-toast i { flex-shrink:0; font-size:1rem; margin-top:.05rem; }
-.voto-toast.ok  { background:#f0faf3; color:#1a6b38; border:1px solid #b6e0c4; }
-.voto-toast.err { background:#fff4f4; color:#9b1c2a; border:1px solid #f5c0c5; }
-@keyframes toastIn  { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
-@keyframes toastOut { from{opacity:1;transform:none} to{opacity:0;transform:translateY(-6px)} }
-</style>
-
 <script>
 function abrirModalNotificacao(id, nome) {
     document.getElementById('notif_negocio_id').value = id;
     document.getElementById('notif_nome_negocio').textContent = nome;
     new bootstrap.Modal(document.getElementById('modalNotificacao')).show();
 }
-
-function mostrarToastVoto(tipo, msg) {
-    const wrap = document.getElementById('voto-toast-wrap');
-    const t = document.createElement('div');
-    t.className = 'voto-toast ' + tipo;
-    const icone = tipo === 'ok'
-        ? '<i class="bi bi-check-circle-fill"></i>'
-        : '<i class="bi bi-exclamation-circle-fill"></i>';
-    t.innerHTML = icone + '<span>' + msg + '</span>';
-    wrap.appendChild(t);
-    const dur = tipo === 'err' ? 7000 : 4000;
-    setTimeout(() => {
-        t.classList.add('saindo');
-        t.addEventListener('animationend', () => t.remove(), { once: true });
-    }, dur);
-}
-
-document.addEventListener('click', async function(e) {
-    const btn = e.target.closest('.btn-votar-tecnico');
-    if (!btn) return;
-
-    e.preventDefault();
-    btn.disabled = true;
-    btn.style.opacity = '.55';
-    btn.querySelector('i').className = 'bi bi-hourglass-split';
-
-    const inscricaoId = btn.dataset.inscricao;
-    const faseId      = btn.dataset.fase;
-
-    const body = new URLSearchParams();
-    body.append('inscricao_id', inscricaoId);
-    body.append('fase_id',      faseId);
-
-    try {
-        const res  = await fetch('/premiacao/votar_tecnico.php', {
-            method:  'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            body:    body,
-        });
-        const data = await res.json();
-
-        if (data.ok) {
-            btn.classList.remove('btn-votar-tecnico');
-            btn.removeAttribute('data-inscricao');
-            btn.removeAttribute('data-fase');
-            btn.title = 'Voto técnico já registrado para este negócio';
-            btn.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;background:rgba(108,117,125,.10);color:#adb5bd;cursor:not-allowed;opacity:.65;';
-            btn.querySelector('i').className = 'bi bi-check-circle-fill';
-            btn.querySelector('span').textContent = 'Voto Registrado';
-            mostrarToastVoto('ok', 'Voto técnico registrado com sucesso!');
-        } else {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            btn.querySelector('i').className = 'bi bi-clipboard2-check';
-            mostrarToastVoto('err', data.erro || 'Não foi possível registrar o voto.');
-        }
-    } catch {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.querySelector('i').className = 'bi bi-clipboard2-check';
-        mostrarToastVoto('err', 'Erro de conexão. Tente novamente.');
-    }
-});
 </script>
+
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
