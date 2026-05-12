@@ -73,7 +73,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                         Dica
                     </div>
                     <p class="mb-0">
-                        Se sua organização oferece mais de um tipo de apoio, selecione todas as frentes relevantes e marque a natureza “Múltipla” quando fizer sentido.
+                        Se sua organização oferece mais de um tipo de apoio, selecione todas as frentes relevantes e marque a natureza "Múltipla" quando fizer sentido.
                     </p>
                 </div>
             </aside>
@@ -113,19 +113,55 @@ include __DIR__ . '/../app/views/public/header_public.php';
                             <div class="row g-3">
                                 <?php 
                                 $tipos_opcoes = [
-                                    "Patrocinador Institucional",
-                                    "Patrocinador Estratégico de Impacto",
-                                    "Apoiador Institucional",
-                                    "Apoiador Estratégico de Impacto",
-                                    "Investidor de Ecossistema",
-                                    "Doador de Impacto",
-                                    "Mentor",
-                                    "Embaixador",
-                                    "Voluntário"
+                                    [
+                                        "titulo"  => "Patrocinador Institucional",
+                                        "desc1"   => "Organizações que desejam investir para fortalecer institucionalmente o movimento Impactos Positivos, ampliando sua presença e associação à nova economia, sustentabilidade e inovação com propósito.",
+                                        "desc2"   => "Ideal para marcas, empresas e instituições que buscam visibilidade e posicionamento institucional de impacto.",
+                                    ],
+                                    [
+                                        "titulo"  => "Patrocinador Estratégico de Impacto",
+                                        "desc1"   => "Parceiros que desejam investir no fomento de iniciativas específicas, programas, eventos, premiações, conteúdos ou projetos estratégicos de transformação socioambiental.",
+                                        "desc2"   => "Foco em geração de impacto mensurável, inovação e construção de legado.",
+                                    ],
+                                    [
+                                        "titulo"  => "Apoiador Institucional",
+                                        "desc1"   => "Instituições, organizações ou entidades que desejam apoiar/engajar e fortalecer o ecossistema por meio de conexões, divulgação, articulação ou colaboração institucional.",
+                                        "desc2"   => "Contribui para ampliar alcance, legitimidade e mobilização coletiva.",
+                                    ],
+                                    [
+                                        "titulo"  => "Parceiro de Permuta & Contribuição de Impacto",
+                                        "desc1"   => "Empresas, profissionais e organizações que apoiam a premiação e as iniciativas Impactos Positivos por meio da oferta de produtos, serviços, experiências, consultorias, cursos, mentorias, espaços, tecnologia, mídia ou outras contribuições estratégicas.",
+                                        "desc2"   => "Uma forma colaborativa de fortalecer o ecossistema, gerar valor compartilhado e ampliar o alcance das ações de impacto positivo.",
+                                    ],
+                                    [
+                                        "titulo"  => "Investidor de Ecossistema",
+                                        "desc1"   => "Investidores, fundos, family offices ou parceiros financeiros interessados em fomentar negócios de impacto, inovação regenerativa e empreendedorismo com propósito.",
+                                        "desc2"   => "Conexão com oportunidades da nova economia e fortalecimento do ecossistema de impacto.",
+                                    ],
+                                    [
+                                        "titulo"  => "Doador de Impacto",
+                                        "desc1"   => "Pessoas, empresas ou instituições que desejam contribuir financeiramente para apoiar iniciativas, programas, bolsas, conteúdos e ações de impacto positivo.",
+                                        "desc2"   => "Toda contribuição fortalece a expansão do movimento e das soluções transformadoras.",
+                                    ],
+                                    [
+                                        "titulo"  => "Mentor",
+                                        "desc1"   => "Profissionais, especialistas e lideranças que desejam compartilhar conhecimento, experiência e orientação estratégica com empreendedores e iniciativas de impacto.",
+                                        "desc2"   => "Apoio ao desenvolvimento de negócios, lideranças e soluções inovadoras.",
+                                    ],
+                                    [
+                                        "titulo"  => "Embaixador",
+                                        "desc1"   => "Pessoas que desejam representar, divulgar e conectar o movimento Impactos Positivos em suas comunidades, redes ou áreas de atuação.",
+                                        "desc2"   => "Atuam como agentes de mobilização, inspiração e expansão do ecossistema.",
+                                    ],
+                                    [
+                                        "titulo"  => "Voluntário",
+                                        "desc1"   => "Pessoas interessadas em colaborar com tempo, habilidades e dedicação em ações, eventos, conteúdos e iniciativas da plataforma.",
+                                        "desc2"   => "Uma oportunidade de participar ativamente da construção da nova economia.",
+                                    ],
                                 ];
 
                                 foreach ($tipos_opcoes as $tipo): 
-                                    $checked = in_array($tipo, $tipos_salvos) ? 'checked' : '';
+                                    $checked = in_array($tipo['titulo'], $tipos_salvos) ? 'checked' : '';
                                 ?>
                                     <div class="col-md-6">
                                         <div class="parceiro-choice-card">
@@ -134,12 +170,14 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                                     class="form-check-input parceiro-choice-input"
                                                     type="checkbox"
                                                     name="tipos_parceria[]"
-                                                    value="<?= htmlspecialchars($tipo) ?>"
-                                                    id="tipo_<?= md5($tipo) ?>"
+                                                    value="<?= htmlspecialchars($tipo['titulo']) ?>"
+                                                    id="tipo_<?= md5($tipo['titulo']) ?>"
                                                     <?= $checked ?>
                                                 >
-                                                <label class="form-check-label parceiro-choice-label" for="tipo_<?= md5($tipo) ?>">
-                                                    <span class="parceiro-choice-title"><?= htmlspecialchars($tipo) ?></span>
+                                                <label class="form-check-label parceiro-choice-label" for="tipo_<?= md5($tipo['titulo']) ?>">
+                                                    <span class="parceiro-choice-title"><?= htmlspecialchars($tipo['titulo']) ?></span>
+                                                    <span class="parceiro-choice-desc"><?= htmlspecialchars($tipo['desc1']) ?></span>
+                                                    <span class="parceiro-choice-desc parceiro-choice-desc-highlight"><?= htmlspecialchars($tipo['desc2']) ?></span>
                                                 </label>
                                             </div>
                                         </div>
