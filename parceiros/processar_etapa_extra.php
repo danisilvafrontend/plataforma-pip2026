@@ -31,7 +31,7 @@ $interesse_proposta  = $_POST['interesse_proposta']  ?? [];
 $observacoes         = trim($_POST['observacoes']         ?? '');
 $declara_interesse   = isset($_POST['declara_interesse']) ? 1 : 0;
 
-// Validação mínima
+// Validação
 if (empty($objetivo_parceria) && empty($objetivo_outro)) {
     $_SESSION['erro_etapa_extra'] = 'Selecione ao menos um objetivo da parceria.';
     header('Location: etapa_extra_patrocinadores.php');
@@ -50,7 +50,6 @@ if (!$declara_interesse) {
     exit;
 }
 
-// Encodifica arrays
 $objetivo_json  = json_encode($objetivo_parceria,  JSON_UNESCAPED_UNICODE);
 $modalidade_json = json_encode($modalidade,         JSON_UNESCAPED_UNICODE);
 $proposta_json  = json_encode($interesse_proposta,  JSON_UNESCAPED_UNICODE);
@@ -58,18 +57,11 @@ $proposta_json  = json_encode($interesse_proposta,  JSON_UNESCAPED_UNICODE);
 try {
     $pdo->beginTransaction();
 
-    $sql = "
+    $pdo->prepare("
         INSERT INTO parceiro_etapa_extra (
-            parceiro_id,
-            objetivo_parceria,
-            objetivo_outro,
-            modalidade,
-            modalidade_outro,
-            faixa_apoio,
-            interesse_proposta,
-            observacoes,
-            declara_interesse,
-            atualizado_em
+            parceiro_id, objetivo_parceria, objetivo_outro,
+            modalidade, modalidade_outro, faixa_apoio,
+            interesse_proposta, observacoes, declara_interesse, atualizado_em
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
@@ -82,31 +74,24 @@ try {
             observacoes        = VALUES(observacoes),
             declara_interesse  = VALUES(declara_interesse),
             atualizado_em      = NOW()
-    ";
-
-    $pdo->prepare($sql)->execute([
-        $parceiro_id,
-        $objetivo_json,
-        $objetivo_outro,
-        $modalidade_json,
-        $modalidade_outro,
-        $faixa_apoio,
-        $proposta_json,
-        $observacoes,
-        $declara_interesse,
+    ")->execute([
+        $parceiro_id, $objetivo_json, $objetivo_outro,
+        $modalidade_json, $modalidade_outro, $faixa_apoio,
+        $proposta_json, $observacoes, $declara_interesse,
     ]);
 
-    // Marca etapa extra como concluída na tabela de progresso do parceiro
+    // Marca etapa extra como concluída e avança progresso para etapa 6
     $pdo->prepare("
         UPDATE parceiros
-        SET etapa_extra_concluida = 1
+        SET etapa_extra_concluida = 1,
+            etapa_atual = GREATEST(etapa_atual, 6)
         WHERE id = ?
     ")->execute([$parceiro_id]);
 
     $pdo->commit();
 
-    $_SESSION['sucesso_etapa_extra'] = 'Informações enviadas com sucesso! Nossa equipe entrará em contato em breve para os próximos passos.';
-    header('Location: etapa_extra_patrocinadores.php');
+    // Avança para etapa6_juridico.php
+    header('Location: etapa6_juridico.php');
     exit;
 
 } catch (PDOException $e) {

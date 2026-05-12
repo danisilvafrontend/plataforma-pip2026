@@ -15,15 +15,13 @@ if (!isset($_SESSION['parceiro_id'])) {
 
 $parceiro_id = $_SESSION['parceiro_id'];
 
-// Verifica se a carta-acordo foi assinada
-$stmt_carta = $pdo->prepare("
-    SELECT id FROM parceiro_carta_acordo
-    WHERE parceiro_id = ? AND assinada = 1
-    LIMIT 1
-");
-$stmt_carta->execute([$parceiro_id]);
-if (!$stmt_carta->fetch()) {
-    header("Location: assinar_acordo.php?msg=assine_primeiro");
+// Verifica se o parceiro chegou até aqui pelo fluxo correto (etapa 5 concluída)
+$stmt_check = $pdo->prepare("SELECT etapa_atual FROM parceiros WHERE id = ? LIMIT 1");
+$stmt_check->execute([$parceiro_id]);
+$check = $stmt_check->fetch(PDO::FETCH_ASSOC);
+
+if (!$check || $check['etapa_atual'] < 5) {
+    header("Location: etapa5_plataforma.php");
     exit;
 }
 
@@ -92,7 +90,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                         Próximos passos
                     </div>
                     <p class="mb-0">
-                        Após o envio, a equipe da Impactos Positivos entrará em contato para alinhamentos estratégicos, reuniões, propostas institucionais e demais informações necessárias para a continuidade da parceria.
+                        Após preencher esta etapa, você irá para a área jurídica para finalizar seu cadastro e assinar a Carta-Acordo.
                     </p>
                 </div>
             </aside>
@@ -240,10 +238,10 @@ include __DIR__ . '/../app/views/public/header_public.php';
 
                             <?php
                             $faixas = [
-                                'Ate 10k'           => 'Até R$ 10 mil',
-                                '10k a 50k'         => 'R$ 10 mil a R$ 50 mil',
-                                '50k a 100k'        => 'R$ 50 mil a R$ 100 mil',
-                                'Acima de 100k'     => 'Acima de R$ 100 mil',
+                                'Ate 10k'             => 'Até R$ 10 mil',
+                                '10k a 50k'           => 'R$ 10 mil a R$ 50 mil',
+                                '50k a 100k'          => 'R$ 50 mil a R$ 100 mil',
+                                'Acima de 100k'       => 'Acima de R$ 100 mil',
                                 'Alinhar diretamente' => 'Prefiro alinhar diretamente com a equipe',
                             ];
                             ?>
@@ -351,11 +349,12 @@ include __DIR__ . '/../app/views/public/header_public.php';
 
                         <!-- AÇÕES -->
                         <div class="parceiro-step-actions">
-                            <a href="dashboard.php" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-left me-2"></i>Voltar ao Painel
+                            <a href="etapa5_plataforma.php" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Voltar
                             </a>
-                            <button type="submit" class="btn btn-warning btn-lg px-4 fw-bold text-white">
-                                <i class="bi bi-send-check me-2"></i>Enviar e Concluir
+                            <button type="submit" class="btn-reg-submit">
+                                Salvar e avançar
+                                <i class="bi bi-arrow-right"></i>
                             </button>
                         </div>
 
@@ -368,7 +367,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Match cards: radio
     document.querySelectorAll('.match-radio').forEach(function (radio) {
         const activate = function (r) {
             const name = r.getAttribute('name');
@@ -383,7 +381,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (radio.checked) activate(radio);
     });
 
-    // Match cards: checkbox
     document.querySelectorAll('.match-check').forEach(function (check) {
         check.addEventListener('change', function () {
             const card = this.closest('.match-card');
@@ -395,7 +392,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Toggle genérico: pares chk_X / div_X / inp_X
     document.querySelectorAll('[id^="chk_"]').forEach(function (chk) {
         const suffix = chk.id.replace('chk_', '');
         const div    = document.getElementById('div_' + suffix);
@@ -408,7 +404,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Contador de caracteres textarea
     const ta = document.getElementById('observacoes');
     if (ta) {
         const hint = ta.nextElementSibling;
