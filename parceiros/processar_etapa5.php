@@ -17,29 +17,52 @@ $parceiro_id = $_SESSION['parceiro_id'];
 
 // Captura os dados
 $deseja_publicar = $_POST['deseja_publicar'] ?? [];
-$rede_impacto = $_POST['rede_impacto'] ?? 'avaliar_depois'; // Padrão se nada vier
+$rede_impacto    = $_POST['rede_impacto']    ?? 'avaliar_depois';
 
-// Codifica os arrays simples para JSON
 $publicar_json = json_encode($deseja_publicar, JSON_UNESCAPED_UNICODE);
 
 try {
     // Atualiza a tabela parceiro_contrato
-    $sql_contrato = "UPDATE parceiro_contrato SET 
-                     deseja_publicar = ?, 
-                     rede_impacto = ?
-                     WHERE parceiro_id = ?";
-                     
-    $stmt = $pdo->prepare($sql_contrato);
-    $stmt->execute([$publicar_json, $rede_impacto, $parceiro_id]);
+    $pdo->prepare("
+        UPDATE parceiro_contrato
+        SET deseja_publicar = ?, rede_impacto = ?
+        WHERE parceiro_id = ?
+    ")->execute([$publicar_json, $rede_impacto, $parceiro_id]);
 
-    // Atualiza o progresso (Vai para a Etapa 6 que é o Upload Jurídico)
-    $sql_progresso = "UPDATE parceiros SET etapa_atual = GREATEST(etapa_atual, 6) WHERE id = ?";
-    $pdo->prepare($sql_progresso)->execute([$parceiro_id]);
+    // Atualiza progresso
+    $pdo->prepare("UPDATE parceiros SET etapa_atual = GREATEST(etapa_atual, 6) WHERE id = ?")
+        ->execute([$parceiro_id]);
 
-    // Redireciona para a Etapa 6 (Área Jurídica e Uploads)
+    // --- Define destino ---
     $from = $_POST['from'] ?? '';
-    $destino = ($from === 'confirmacao') ? 'confirmacao.php' : 'etapa6_juridico.php';
-    header("Location: " . $destino);
+
+    if ($from === 'confirmacao') {
+        header("Location: confirmacao.php");
+        exit;
+    }
+
+    // Verifica se o tipo de parceria exige etapa extra
+    $stmt = $pdo->prepare("SELECT tipos_parceria FROM parceiro_contrato WHERE parceiro_id = ? LIMIT 1");
+    $stmt->execute([$parceiro_id]);
+    $contrato = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $tipos = !empty($contrato['tipos_parceria']) ? json_decode($contrato['tipos_parceria'], true) : [];
+    if (!is_array($tipos)) $tipos = [];
+
+    $tipos_com_etapa_extra = [
+        'Patrocinador Institucional',
+        'Patrocinador Estratégico de Impacto',
+        'Investidor de Ecossistema',
+        'Doador de Impacto',
+    ];
+
+    $precisa_etapa_extra = count(array_intersect($tipos, $tipos_com_etapa_extra)) > 0;
+
+    if ($precisa_etapa_extra) {
+        header("Location: etapa_extra_patrocinadores.php");
+    } else {
+        header("Location: etapa6_juridico.php");
+    }
     exit;
 
 } catch (PDOException $e) {
