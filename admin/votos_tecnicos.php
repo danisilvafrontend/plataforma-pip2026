@@ -24,7 +24,6 @@ try {
     $where  = [];
     $params = [];
 
-    // Filtros
     $filtro_nome = trim($_GET['nome'] ?? '');
     if ($filtro_nome !== '') {
         $where[]  = "n.nome_fantasia LIKE ?";
@@ -70,7 +69,6 @@ try {
     $pagina_atual = max(1, (int)($_GET['pagina'] ?? 1));
     $offset       = ($pagina_atual - 1) * $por_pagina;
 
-    // Count total
     $sqlCount = "
         SELECT COUNT(*)
         FROM negocios n
@@ -84,19 +82,18 @@ try {
     $total_registros = (int)$stmtCount->fetchColumn();
     $total_paginas   = (int)ceil($total_registros / $por_pagina);
 
-    // Query principal
     $sql = "
         SELECT
             n.id,
             n.nome_fantasia,
             n.categoria,
             s.score_geral,
-            o.id          AS ods_id,
-            o.n_ods       AS ods_numero,
-            o.nome        AS ods_nome,
-            o.icone_url   AS ods_icone,
-            et.id         AS eixo_id,
-            et.nome       AS eixo_nome
+            o.id        AS ods_id,
+            o.n_ods     AS ods_numero,
+            o.nome      AS ods_nome,
+            o.icone_url AS ods_icone,
+            et.id       AS eixo_id,
+            et.nome     AS eixo_nome
         FROM negocios n
         LEFT JOIN scores_negocios s  ON n.id = s.negocio_id
         LEFT JOIN ods o              ON o.id = n.ods_prioritaria_id
@@ -109,7 +106,6 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll();
 
-    // Opções para os filtros
     $categorias_disponiveis = $pdo->query(
         "SELECT DISTINCT categoria FROM negocios
          WHERE categoria IS NOT NULL AND categoria != '' AND inscricao_completa = 1
@@ -132,7 +128,6 @@ try {
          ORDER BY et.nome ASC"
     )->fetchAll();
 
-    // Helpers de ordenação
     function linkOrdenacaoVotos(string $coluna): string {
         $get = $_GET;
         $dir_atual = $get['dir']   ?? 'ASC';
@@ -156,7 +151,6 @@ try {
     die("Erro no banco de dados: " . $e->getMessage());
 }
 
-// Rótulo e URL do botão de voto conforme role
 $voto_label = $role === 'juri' ? 'Votar (Júri)'    : 'Votar (Técnica)';
 $voto_url   = $role === 'juri' ? '/premiacao/votar_juri.php' : '/premiacao/votar_tecnico.php';
 $voto_icon  = $role === 'juri' ? 'bi-star-fill'     : 'bi-clipboard2-check-fill';
@@ -191,7 +185,6 @@ include __DIR__ . '/../app/views/admin/header.php';
 <div class="filter-card card p-3 mb-4">
   <form method="GET" class="row g-2 align-items-end">
 
-    <!-- Nome Fantasia -->
     <div class="col-12 col-sm-6 col-lg-3">
       <label class="form-label">Nome Fantasia</label>
       <div class="search-bar">
@@ -202,7 +195,6 @@ include __DIR__ . '/../app/views/admin/header.php';
       </div>
     </div>
 
-    <!-- Categoria -->
     <div class="col-12 col-sm-6 col-lg-2">
       <label class="form-label">Categoria</label>
       <select name="categoria" class="form-select">
@@ -216,7 +208,6 @@ include __DIR__ . '/../app/views/admin/header.php';
       </select>
     </div>
 
-    <!-- ODS Prioritária -->
     <div class="col-12 col-sm-6 col-lg-3">
       <label class="form-label">ODS Prioritária</label>
       <select name="ods" class="form-select">
@@ -224,13 +215,12 @@ include __DIR__ . '/../app/views/admin/header.php';
         <?php foreach ($ods_disponiveis as $ods): ?>
           <option value="<?= (int)$ods['id'] ?>"
             <?= (string)$filtro_ods === (string)$ods['id'] ? 'selected' : '' ?>>
-            ODS <?= (int)$ods['n_ods'] ?> — <?= htmlspecialchars($ods['nome']) ?>
+            ODS <?= htmlspecialchars((string)$ods['n_ods']) ?> — <?= htmlspecialchars($ods['nome']) ?>
           </option>
         <?php endforeach; ?>
       </select>
     </div>
 
-    <!-- Eixo Temático -->
     <div class="col-12 col-sm-6 col-lg-2">
       <label class="form-label">Eixo Temático</label>
       <select name="eixo" class="form-select">
@@ -244,7 +234,6 @@ include __DIR__ . '/../app/views/admin/header.php';
       </select>
     </div>
 
-    <!-- Botões -->
     <div class="col-12 col-sm-6 col-lg-2 d-flex gap-2">
       <button type="submit" class="hd-btn primary w-100">
         <i class="bi bi-funnel-fill"></i> Filtrar
@@ -257,7 +246,6 @@ include __DIR__ . '/../app/views/admin/header.php';
   </form>
 </div>
 
-<!-- Contagem de resultados -->
 <?php if ($total_registros > 0): ?>
 <p class="text-muted small mb-2">
   Exibindo <strong><?= number_format(min($offset + 1, $total_registros)) ?></strong>
@@ -299,49 +287,51 @@ include __DIR__ . '/../app/views/admin/header.php';
           </tr>
         <?php else: ?>
           <?php foreach ($negocios as $neg): ?>
-            <?php $nid = (int)$neg['id']; ?>
+            <?php
+              $nid        = (int)$neg['id'];
+              $ods_numero = trim((string)($neg['ods_numero'] ?? ''));
+              $ods_nome   = trim((string)($neg['ods_nome']   ?? ''));
+              $ods_icone  = trim((string)($neg['ods_icone']  ?? ''));
+              $tem_ods    = ($neg['ods_id'] ?? null) !== null;
+            ?>
             <tr>
 
-              <!-- ID -->
               <td class="col-id" style="color:#9aab9d; font-size:.78rem; font-family:monospace;">
                 #<?= $nid ?>
               </td>
 
-              <!-- Nome Fantasia -->
               <td class="col-nome">
                 <strong><?= htmlspecialchars($neg['nome_fantasia']) ?></strong>
               </td>
 
-              <!-- Categoria -->
               <td class="col-cat">
                 <span class="neg-cat-badge">
                   <?= htmlspecialchars($neg['categoria'] ?: '—') ?>
                 </span>
               </td>
 
-              <!-- ODS Prioritária (ícone + número) -->
+              <!-- ODS Prioritária — usa ods_id como guard, não n_ods -->
               <td>
-                <?php if (!empty($neg['ods_icone'])): ?>
+                <?php if ($tem_ods && $ods_icone !== ''): ?>
                   <div class="d-flex align-items-center gap-2">
-                    <img src="<?= htmlspecialchars($neg['ods_icone']) ?>"
-                         alt="ODS <?= (int)$neg['ods_numero'] ?>"
-                         title="ODS <?= (int)$neg['ods_numero'] ?> — <?= htmlspecialchars($neg['ods_nome'] ?? '') ?>"
+                    <img src="<?= htmlspecialchars($ods_icone) ?>"
+                         alt="ODS <?= htmlspecialchars($ods_numero) ?>"
+                         title="ODS <?= htmlspecialchars($ods_numero) ?> — <?= htmlspecialchars($ods_nome) ?>"
                          style="width:36px;height:36px;object-fit:contain;border-radius:4px;flex-shrink:0;">
                     <span style="font-size:.82rem;color:#4a5e4f;line-height:1.2;">
-                      <strong>ODS <?= (int)$neg['ods_numero'] ?></strong><br>
+                      <strong>ODS <?= htmlspecialchars($ods_numero) ?></strong><br>
                       <span style="font-size:.75rem;color:#6c8070;">
-                        <?= htmlspecialchars(mb_strimwidth($neg['ods_nome'] ?? '', 0, 40, '…')) ?>
+                        <?= htmlspecialchars(mb_strimwidth($ods_nome, 0, 40, '…')) ?>
                       </span>
                     </span>
                   </div>
-                <?php elseif (!empty($neg['ods_numero'])): ?>
-                  <span class="neg-cat-badge">ODS <?= (int)$neg['ods_numero'] ?></span>
+                <?php elseif ($tem_ods): ?>
+                  <span class="neg-cat-badge">ODS <?= htmlspecialchars($ods_numero) ?></span>
                 <?php else: ?>
                   <span style="color:#b0bdb3;">—</span>
                 <?php endif; ?>
               </td>
 
-              <!-- Eixo Temático -->
               <td>
                 <?php if (!empty($neg['eixo_nome'])): ?>
                   <span style="font-size:.84rem;color:#1E3425;">
@@ -352,7 +342,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                 <?php endif; ?>
               </td>
 
-              <!-- Score Geral -->
               <td class="col-score text-center">
                 <?php if ($neg['score_geral'] !== null): ?>
                   <span class="neg-score-geral"><?= number_format((float)$neg['score_geral'], 1, ',', '') ?></span>
@@ -363,22 +352,20 @@ include __DIR__ . '/../app/views/admin/header.php';
 
               <!-- Ações -->
               <td class="col-acoes text-center">
-                <div class="acoes-col-stack align-items-center">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:.4rem;">
 
-                  <!-- Ver Detalhes -->
                   <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>"
                      class="act-btn edit"
                      title="Visualizar detalhes do negócio"
-                     style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;">
+                     style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;width:100%;justify-content:center;">
                     <i class="bi bi-eye"></i>
                     <span>Ver Detalhes</span>
                   </a>
 
-                  <!-- Votar -->
                   <a href="<?= $voto_url ?>?negocio_id=<?= $nid ?>"
                      class="act-btn"
                      title="<?= htmlspecialchars($voto_label) ?>"
-                     style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;<?= $voto_style ?>">
+                     style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;width:100%;justify-content:center;<?= $voto_style ?>">
                     <i class="bi <?= $voto_icon ?>"></i>
                     <span><?= htmlspecialchars($voto_label) ?></span>
                   </a>
