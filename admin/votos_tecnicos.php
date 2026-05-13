@@ -7,11 +7,8 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/../app/helpers/auth.php';
 
 // Apenas juri e tecnica acessam esta página
-$role = $_SESSION['admin_role'] ?? '';
-if (!in_array($role, ['juri', 'tecnica'])) {
-    header('Location: /admin/dashboard.php');
-    exit;
-}
+require_admin_login(['juri', 'tecnica']);
+$role = $_SESSION['user_role'] ?? '';
 
 $config = require __DIR__ . '/../app/config/db.php';
 $dsn    = "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}";
