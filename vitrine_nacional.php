@@ -261,7 +261,7 @@ if ($faseVotoAtiva && !empty($negocios)) {
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div>
                 <span class="badge text-bg-light px-3 py-2 rounded-pill border">
-                    <?= count($negocios) ?> resultado(s)
+                    <?= count($parceiros ?? $negocios ?? []) ?> resultado(s)
                 </span>
             </div>
 
