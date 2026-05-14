@@ -248,12 +248,32 @@ if ($faseVotoAtiva && !empty($negocios)) {
 
 <div class="container vitrine-nacional-page">
     <div class="vitrine-nacional-hero mb-4">
+
+        <!-- Bolinhas decorativas -->
+        <span class="vitrine-hero-dot vitrine-hero-dot--1" aria-hidden="true"></span>
+        <span class="vitrine-hero-dot vitrine-hero-dot--2" aria-hidden="true"></span>
+        <span class="vitrine-hero-dot vitrine-hero-dot--3" aria-hidden="true"></span>
+        <span class="vitrine-hero-dot vitrine-hero-dot--4" aria-hidden="true"></span>
+        <span class="vitrine-hero-dot vitrine-hero-dot--5" aria-hidden="true"></span>
+
         <div class="vitrine-nacional-hero-content">
-            <span class="vitrine-kicker">Ecossistema</span>
-            <h1 class="vitrine-title mb-2">Vitrine Nacional</h1>
+
+            <h1 class="vitrine-title mb-2">
+                <em>vitrine</em> <small>de</small><br>
+                <em>negócios</em><br>
+                <small>de</small> <em>impactos</em>
+            </h1>
+
             <p class="vitrine-subtitle mb-0">
-                Conheça negócios de impacto publicados na vitrine, explore por filtros e descubra iniciativas em diferentes territórios, eixos e ODS.
+                Conheça os negócios de impacto que estão transformando a nova economia. Explore por
+                categorias, territórios, fase de implementação, ODS e áreas de atuação. Descubra
+                soluções, conexões e oportunidades em todo o Brasil.
             </p>
+
+            <a href="/sobre_o_ecossistema.php" class="btn-vitrine-cta mt-3">
+                QUERO MINHA VITRINE
+            </a>
+
         </div>
     </div>
 
