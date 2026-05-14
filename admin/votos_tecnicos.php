@@ -21,8 +21,6 @@ try {
     $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
 
     // ── Fase ativa para este role ─────────────────────────────────────────
-    // Júri  → permite_juri_final = 1
-    // Técnica → permite_voto_tecnico = 1
     $campoPerm = $role === 'juri' ? 'permite_juri_final' : 'permite_voto_tecnico';
     $stmtFase  = $pdo->prepare("
         SELECT pf.*
@@ -50,8 +48,9 @@ try {
     if ($fase) {
         $faseId      = (int)$fase['id'];
         $premiacaoId = (int)$fase['premiacao_id'];
-        $isFaseFinal = (int)($fase['permite_juri_final'] ?? 0) === 1;
-        $limiteVotos = $role === 'juri'
+        // isFaseFinal: fase onde o júri vota (permite_juri_final = 1)
+        $isFaseFinal = ((int)($fase['permite_juri_final'] ?? 0) === 1);
+        $limiteVotos = ($role === 'juri')
             ? 1
             : (int)($fase['qtd_classificados_tecnica'] ?: 5);
         $ini           = strtotime($fase['data_inicio']);
@@ -62,51 +61,61 @@ try {
 
     // ── Filtros ────────────────────────────────────────────────────────────
     $filtro_nome      = trim($_GET['nome']      ?? '');
-    $filtro_categoria = $_GET['categoria']      ?? '';
-    $filtro_ods       = $_GET['ods']            ?? '';
-    $filtro_eixo      = $_GET['eixo']           ?? '';
+    $filtro_categoria = (string)($_GET['categoria'] ?? '');
+    $filtro_ods       = (string)($_GET['ods']       ?? '');
+    $filtro_eixo      = (string)($_GET['eixo']      ?? '');
 
-    // ── Query base: fonte de dados depende do tipo de fase ────────────────
+    // ── Query base ───────────────────────────────────────────────────────────────
     //
-    // Fase final (permite_juri_final=1):
-    //   Os finalistas estão em premiacao_inscricoes com status='classificada_fase2'
-    //   A tabela premiacao_classificados NÃO tem registros para esta fase.
-    //
-    // Fases classificatórias (técnica):
-    //   Os classificados estão em premiacao_classificados com fase_id.
+    // Fase final: finalistas em premiacao_inscricoes (status classificada_fase2)
+    //             A tabela premiacao_classificados NAO tem dados desta fase.
+    // Fases classificatórias: usa premiacao_classificados com fase_id.
     //
     if ($faseId > 0 && $isFaseFinal) {
-        // Fase final: usa premiacao_inscricoes como fonte dos finalistas
-        $whereBase = "pi.premiacao_id = {$premiacaoId} AND pi.status IN ('classificada_fase2','finalista','vencedora')";
-        $fromBase  = "
+
+        $whereBase = "pi.premiacao_id = {$premiacaoId}
+            AND pi.status IN ('classificada_fase2', 'finalista', 'vencedora')";
+
+        $fromBase = "
             FROM premiacao_inscricoes pi
-            INNER JOIN negocios n          ON n.id  = pi.negocio_id
-            INNER JOIN premiacao_categorias pc ON pc.nome = pi.categoria AND pc.premiacao_id = pi.premiacao_id
-            LEFT  JOIN scores_negocios s   ON n.id  = s.negocio_id
-            LEFT  JOIN ods o               ON o.id  = n.ods_prioritaria_id
-            LEFT  JOIN eixos_tematicos et  ON et.id = n.eixo_principal_id
+            INNER JOIN negocios n ON n.id = pi.negocio_id
+            INNER JOIN premiacao_categorias pc
+                ON pc.premiacao_id = pi.premiacao_id
+               AND pc.nome COLLATE utf8mb4_unicode_ci = pi.categoria COLLATE utf8mb4_unicode_ci
+            LEFT JOIN scores_negocios s  ON s.negocio_id = n.id
+            LEFT JOIN ods o              ON o.id = n.ods_prioritaria_id
+            LEFT JOIN eixos_tematicos et ON et.id = n.eixo_principal_id
         ";
+
         $colPosicao  = 'NULL';
         $colOrigem   = 'NULL';
         $ordemPadrao = 'pc.nome ASC, n.nome_fantasia ASC';
+
     } elseif ($faseId > 0) {
-        // Fases classificatórias: usa premiacao_classificados
+
         $whereBase = "cl.fase_id = {$faseId}";
-        $fromBase  = "
+
+        $fromBase = "
             FROM premiacao_classificados cl
-            INNER JOIN negocios n          ON n.id  = cl.negocio_id
+            INNER JOIN negocios n ON n.id = cl.negocio_id
             INNER JOIN premiacao_categorias pc ON pc.id = cl.categoria_id
-            LEFT  JOIN scores_negocios s   ON n.id  = s.negocio_id
-            LEFT  JOIN ods o               ON o.id  = n.ods_prioritaria_id
-            LEFT  JOIN eixos_tematicos et  ON et.id = n.eixo_principal_id
+            LEFT JOIN scores_negocios s  ON s.negocio_id = n.id
+            LEFT JOIN ods o              ON o.id = n.ods_prioritaria_id
+            LEFT JOIN eixos_tematicos et ON et.id = n.eixo_principal_id
         ";
+
         $colPosicao  = 'cl.posicao';
         $colOrigem   = 'cl.origem';
         $ordemPadrao = 'cl.posicao ASC';
+
     } else {
-        // Sem fase ativa
+
         $whereBase   = '1 = 0';
-        $fromBase    = 'FROM negocios n LEFT JOIN scores_negocios s ON n.id = s.negocio_id LEFT JOIN premiacao_categorias pc ON 1=0 LEFT JOIN ods o ON 1=0 LEFT JOIN eixos_tematicos et ON 1=0';
+        $fromBase    = 'FROM negocios n
+            LEFT JOIN premiacao_categorias pc ON 1 = 0
+            LEFT JOIN scores_negocios s  ON 1 = 0
+            LEFT JOIN ods o              ON 1 = 0
+            LEFT JOIN eixos_tematicos et ON 1 = 0';
         $colPosicao  = 'NULL';
         $colOrigem   = 'NULL';
         $ordemPadrao = 'n.nome_fantasia ASC';
@@ -134,18 +143,22 @@ try {
 
     $whereSQL = 'WHERE ' . implode(' AND ', $where);
 
-    // Ordenação
-    $colunas_permitidas  = ['nome' => 'n.nome_fantasia', 'categoria' => 'pc.nome'];
+    // Ordenação — compativel com PHP 7+
+    $colunas_permitidas = ['nome' => 'n.nome_fantasia', 'categoria' => 'pc.nome'];
     if (!$isFaseFinal) {
         $colunas_permitidas['posicao'] = 'cl.posicao';
     }
     $direcoes_permitidas = ['ASC', 'DESC'];
-    $coluna_ordem  = $colunas_permitidas[$_GET['ordem'] ?? ''] ?? $ordemPadrao;
-    $direcao_ordem = in_array(strtoupper($_GET['dir'] ?? ''), $direcoes_permitidas)
-        ? strtoupper($_GET['dir'])
-        : 'ASC';
-    // Se a ordem for composta (padrão), não adicionar direção
-    $orderSQL = str_contains($coluna_ordem, ',') ? $coluna_ordem : "{$coluna_ordem} {$direcao_ordem}";
+    $dir_req = strtoupper((string)($_GET['dir'] ?? ''));
+    $ord_req = (string)($_GET['ordem'] ?? '');
+
+    if (isset($colunas_permitidas[$ord_req])) {
+        $coluna_ordem  = $colunas_permitidas[$ord_req];
+        $direcao_ordem = in_array($dir_req, $direcoes_permitidas, true) ? $dir_req : 'ASC';
+        $orderSQL      = "{$coluna_ordem} {$direcao_ordem}";
+    } else {
+        $orderSQL = $ordemPadrao;
+    }
 
     // Paginação
     $por_pagina   = 50;
@@ -162,8 +175,8 @@ try {
         SELECT
             n.id,
             n.nome_fantasia,
-            pc.nome     AS categoria,
-            pc.id       AS categoria_id,
+            pc.nome   AS categoria,
+            pc.id     AS categoria_id,
             {$colPosicao} AS posicao_classificado,
             {$colOrigem}  AS origem_classificado,
             s.score_geral,
@@ -182,11 +195,11 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll();
 
-    // ── Votos já feitos por este usuário, agrupados por categoria ─────────
+    // ── Votos já feitos por este usuário ────────────────────────────────────────
     $votosPorCategoria = [];
     $negociosVotados   = [];
     if ($faseId && $userId) {
-        $tabelaVotos = $role === 'juri' ? 'premiacao_votos_juri' : 'premiacao_votos_tecnicos';
+        $tabelaVotos = ($role === 'juri') ? 'premiacao_votos_juri' : 'premiacao_votos_tecnicos';
         $stmtVotos = $pdo->prepare("
             SELECT pc2.nome AS categoria_nome, COUNT(*) AS total
             FROM {$tabelaVotos} v
@@ -199,7 +212,6 @@ try {
             $votosPorCategoria[$row['categoria_nome']] = (int)$row['total'];
         }
 
-        // IDs de negócios já votados (via inscricao_id → negocio_id)
         $stmtVotadosIds = $pdo->prepare("
             SELECT pi2.negocio_id
             FROM {$tabelaVotos} v
@@ -210,13 +222,19 @@ try {
         $negociosVotados = array_flip($stmtVotadosIds->fetchAll(PDO::FETCH_COLUMN));
     }
 
-    // ── Filtros select ────────────────────────────────────────────────────
+    // ── Filtros select (dropdown) ──────────────────────────────────────────────
+    $categorias_disponiveis = [];
+    $ods_disponiveis        = [];
+    $eixos_disponiveis      = [];
+
     if ($faseId > 0 && $isFaseFinal) {
-        // Fase final: categorias dos finalistas em premiacao_inscricoes
+
         $stmtCats = $pdo->prepare("
             SELECT DISTINCT pc3.nome
             FROM premiacao_inscricoes pi3
-            JOIN premiacao_categorias pc3 ON pc3.nome = pi3.categoria AND pc3.premiacao_id = pi3.premiacao_id
+            INNER JOIN premiacao_categorias pc3
+                ON pc3.premiacao_id = pi3.premiacao_id
+               AND pc3.nome COLLATE utf8mb4_unicode_ci = pi3.categoria COLLATE utf8mb4_unicode_ci
             WHERE pi3.premiacao_id = ?
               AND pi3.status IN ('classificada_fase2','finalista','vencedora')
             ORDER BY pc3.nome
@@ -247,8 +265,9 @@ try {
         ");
         $stmtEixos->execute([$premiacaoId]);
         $eixos_disponiveis = $stmtEixos->fetchAll();
+
     } elseif ($faseId > 0) {
-        // Fases classificatórias: categorias via premiacao_classificados
+
         $stmtCats = $pdo->prepare("
             SELECT DISTINCT pc3.nome
             FROM premiacao_classificados cl2
@@ -280,42 +299,36 @@ try {
         ");
         $stmtEixos->execute([$faseId]);
         $eixos_disponiveis = $stmtEixos->fetchAll();
-    } else {
-        $categorias_disponiveis = [];
-        $ods_disponiveis        = [];
-        $eixos_disponiveis      = [];
     }
 
     function linkOrd(string $col): string {
         $g = $_GET;
-        $g['dir']   = (($g['ordem'] ?? '') === $col && ($g['dir'] ?? 'ASC') === 'ASC') ? 'DESC' : 'ASC';
+        $g['dir']   = (($g['ordem'] ?? '') === $col && strtoupper($g['dir'] ?? 'ASC') === 'ASC') ? 'DESC' : 'ASC';
         $g['ordem'] = $col;
         unset($g['pagina']);
         return '?' . http_build_query($g);
     }
     function iconOrd(string $col): string {
         if (($_GET['ordem'] ?? '') !== $col) return '';
-        return ($_GET['dir'] ?? 'ASC') === 'ASC' ? ' ▲' : ' ▼';
+        return strtoupper($_GET['dir'] ?? 'ASC') === 'ASC' ? ' ▲' : ' ▼';
     }
 
 } catch (PDOException $e) {
     die('Erro no banco de dados: ' . $e->getMessage());
 }
 
-// Labels dinâmicos conforme role
-$isjuri     = $role === 'juri';
+$isjuri     = ($role === 'juri');
 $titulo     = $isjuri ? 'Votação — Bancada de Júri'    : 'Votação — Bancada Técnica';
 $subtitulo  = $isjuri
     ? 'Avalie e vote nos negócios finalistas como membro do júri.'
     : 'Avalie e vote nos negócios classificados como membro da bancada técnica.';
 $voto_url   = $isjuri ? '/premiacao/votar_juri.php' : '/premiacao/votar_tecnico.php';
-$voto_icon  = $isjuri ? 'bi-star-fill'     : 'bi-clipboard2-check-fill';
-$voto_label = $isjuri ? 'Votar (Júri)'     : 'Votar (Técnica)';
+$voto_icon  = $isjuri ? 'bi-star-fill'   : 'bi-clipboard2-check-fill';
+$voto_label = $isjuri ? 'Votar (Júri)' : 'Votar (Técnica)';
 
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
 
-<!-- Cabeçalho -->
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <div>
     <h4 class="fw-bold mb-0" style="color:#1E3425;"><?= $titulo ?></h4>
@@ -326,7 +339,6 @@ include __DIR__ . '/../app/views/admin/header.php';
   </a>
 </div>
 
-<!-- ── Banner da fase ativa ─────────────────────────────────────── -->
 <?php if ($fase): ?>
   <?php
     $ini_fmt = date('d/m/Y \u00e0\s H:i', strtotime($fase['data_inicio']));
@@ -335,11 +347,12 @@ include __DIR__ . '/../app/views/admin/header.php';
                 : ($faseEncerrada ? 'border-danger bg-danger bg-opacity-10'
                 : 'border-warning bg-warning bg-opacity-10');
     $bannerIcon  = $faseAtiva ? 'bi-unlock-fill text-success'
-                : ($faseEncerrada ? 'bi-lock-fill text-danger'
-                : 'bi-clock text-warning');
-    $bannerStatus = $faseAtiva ? '<span class="badge bg-success">Aberta</span>'
-                  : ($faseEncerrada ? '<span class="badge bg-danger">Encerrada</span>'
-                  : '<span class="badge bg-warning text-dark">Aguardando início</span>');
+                : ($faseEncerrada ? 'bi-lock-fill text-danger' : 'bi-clock text-warning');
+    $bannerStatus = $faseAtiva
+        ? '<span class="badge bg-success">Aberta</span>'
+        : ($faseEncerrada
+            ? '<span class="badge bg-danger">Encerrada</span>'
+            : '<span class="badge bg-warning text-dark">Aguardando início</span>');
   ?>
   <div class="card mb-4 border-2 <?= $bannerClass ?>">
     <div class="card-body py-3">
@@ -351,24 +364,19 @@ include __DIR__ . '/../app/views/admin/header.php';
             <?= $bannerStatus ?>
           </div>
           <?php if (!empty($fase['descricao'])): ?>
-            <p class="mb-2 text-muted" style="font-size:.85rem;">
-              <?= nl2br(htmlspecialchars($fase['descricao'])) ?>
-            </p>
+            <p class="mb-2 text-muted" style="font-size:.85rem;"><?= nl2br(htmlspecialchars($fase['descricao'])) ?></p>
           <?php endif; ?>
           <div class="d-flex gap-4 flex-wrap" style="font-size:.82rem; color:#4a5e4f;">
             <span><i class="bi bi-calendar-event me-1"></i><strong>Início:</strong> <?= $ini_fmt ?></span>
             <span><i class="bi bi-calendar-check me-1"></i><strong>Encerramento:</strong> <?= $fim_fmt ?></span>
-            <span>
-              <i class="bi bi-award me-1"></i><strong>Votos por categoria:</strong>
-              <?= $limiteVotos ?> negócio<?= $limiteVotos > 1 ? 's' : '' ?>
-            </span>
+            <span><i class="bi bi-award me-1"></i><strong>Votos por categoria:</strong>
+              <?= $limiteVotos ?> negócio<?= $limiteVotos > 1 ? 's' : '' ?></span>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Progresso de votos por categoria -->
   <?php if (!empty($categorias_disponiveis)): ?>
   <div class="card mb-4" style="border:1px solid #dee2e6;">
     <div class="card-body py-3">
@@ -378,24 +386,20 @@ include __DIR__ . '/../app/views/admin/header.php';
       <div class="row g-2">
         <?php foreach ($categorias_disponiveis as $cat): ?>
           <?php
-            $feitos  = $votosPorCategoria[$cat] ?? 0;
-            $pct     = $limiteVotos > 0 ? min(100, round($feitos / $limiteVotos * 100)) : 0;
-            $cor     = $feitos >= $limiteVotos ? 'bg-success' : ($feitos > 0 ? 'bg-primary' : 'bg-secondary');
-            $txtCor  = $feitos >= $limiteVotos ? 'text-success' : ($feitos > 0 ? 'text-primary' : 'text-muted');
+            $feitos = $votosPorCategoria[$cat] ?? 0;
+            $pct    = $limiteVotos > 0 ? min(100, (int)round($feitos / $limiteVotos * 100)) : 0;
+            $cor    = $feitos >= $limiteVotos ? 'bg-success' : ($feitos > 0 ? 'bg-primary' : 'bg-secondary');
+            $txtCor = $feitos >= $limiteVotos ? 'text-success' : ($feitos > 0 ? 'text-primary' : 'text-muted');
           ?>
           <div class="col-12 col-sm-6 col-lg-4">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <span style="font-size:.78rem; color:#1E3425;"><?= htmlspecialchars($cat) ?></span>
               <span class="<?= $txtCor ?>" style="font-size:.78rem; font-weight:600;">
                 <?= $feitos ?>/<?= $limiteVotos ?>
-                <?php if ($feitos >= $limiteVotos): ?>
-                  <i class="bi bi-check-circle-fill ms-1"></i>
-                <?php endif; ?>
+                <?php if ($feitos >= $limiteVotos): ?><i class="bi bi-check-circle-fill ms-1"></i><?php endif; ?>
               </span>
             </div>
-            <div class="progress" style="height:5px;">
-              <div class="progress-bar <?= $cor ?>" style="width:<?= $pct ?>%"></div>
-            </div>
+            <div class="progress" style="height:5px;"><div class="progress-bar <?= $cor ?>" style="width:<?= $pct ?>%"></div></div>
           </div>
         <?php endforeach; ?>
       </div>
@@ -418,8 +422,7 @@ include __DIR__ . '/../app/views/admin/header.php';
       <label class="form-label">Nome Fantasia</label>
       <div class="search-bar">
         <i class="bi bi-search"></i>
-        <input type="text" name="nome" class="form-control"
-               placeholder="Buscar negócio…" value="<?= htmlspecialchars($filtro_nome) ?>">
+        <input type="text" name="nome" class="form-control" placeholder="Buscar negócio…" value="<?= htmlspecialchars($filtro_nome) ?>">
       </div>
     </div>
     <div class="col-12 col-sm-6 col-lg-2">
@@ -427,8 +430,7 @@ include __DIR__ . '/../app/views/admin/header.php';
       <select name="categoria" class="form-select">
         <option value="">Todas</option>
         <?php foreach ($categorias_disponiveis as $cat): ?>
-          <option value="<?= htmlspecialchars($cat) ?>"
-            <?= $filtro_categoria === $cat ? 'selected' : '' ?>>
+          <option value="<?= htmlspecialchars($cat) ?>" <?= $filtro_categoria === $cat ? 'selected' : '' ?>>
             <?= htmlspecialchars($cat) ?>
           </option>
         <?php endforeach; ?>
@@ -439,8 +441,7 @@ include __DIR__ . '/../app/views/admin/header.php';
       <select name="ods" class="form-select">
         <option value="">Todas</option>
         <?php foreach ($ods_disponiveis as $ods): ?>
-          <option value="<?= (int)$ods['id'] ?>"
-            <?= (string)$filtro_ods === (string)$ods['id'] ? 'selected' : '' ?>>
+          <option value="<?= (int)$ods['id'] ?>" <?= $filtro_ods === (string)$ods['id'] ? 'selected' : '' ?>>
             ODS <?= htmlspecialchars((string)$ods['n_ods']) ?> — <?= htmlspecialchars($ods['nome']) ?>
           </option>
         <?php endforeach; ?>
@@ -451,20 +452,15 @@ include __DIR__ . '/../app/views/admin/header.php';
       <select name="eixo" class="form-select">
         <option value="">Todos</option>
         <?php foreach ($eixos_disponiveis as $eixo): ?>
-          <option value="<?= (int)$eixo['id'] ?>"
-            <?= (string)$filtro_eixo === (string)$eixo['id'] ? 'selected' : '' ?>>
+          <option value="<?= (int)$eixo['id'] ?>" <?= $filtro_eixo === (string)$eixo['id'] ? 'selected' : '' ?>>
             <?= htmlspecialchars($eixo['nome']) ?>
           </option>
         <?php endforeach; ?>
       </select>
     </div>
     <div class="col-12 col-sm-6 col-lg-2 d-flex gap-2">
-      <button type="submit" class="hd-btn primary w-100">
-        <i class="bi bi-funnel-fill"></i> Filtrar
-      </button>
-      <a href="/admin/votos_tecnicos.php" class="hd-btn outline" title="Limpar filtros">
-        <i class="bi bi-x-lg"></i>
-      </a>
+      <button type="submit" class="hd-btn primary w-100"><i class="bi bi-funnel-fill"></i> Filtrar</button>
+      <a href="/admin/votos_tecnicos.php" class="hd-btn outline" title="Limpar filtros"><i class="bi bi-x-lg"></i></a>
     </div>
   </form>
 </div>
@@ -473,27 +469,18 @@ include __DIR__ . '/../app/views/admin/header.php';
 <p class="text-muted small mb-2">
   Exibindo <strong><?= number_format(min($offset + 1, $total_registros)) ?></strong>
   a <strong><?= number_format(min($offset + $por_pagina, $total_registros)) ?></strong>
-  de <strong><?= number_format($total_registros) ?></strong> finalista(s) nesta fase.
+  de <strong><?= number_format($total_registros) ?></strong> finalista(s).
 </p>
 <?php endif; ?>
 
-<!-- Tabela -->
 <div class="card section-card mb-4">
   <div class="neg-table-wrap">
     <table class="neg-table">
       <thead>
         <tr>
           <th class="col-id">#</th>
-          <th class="col-nome">
-            <a href="<?= linkOrd('nome') ?>" class="neg-sort-link">
-              Nome Fantasia<?= iconOrd('nome') ?>
-            </a>
-          </th>
-          <th class="col-cat">
-            <a href="<?= linkOrd('categoria') ?>" class="neg-sort-link">
-              Categoria<?= iconOrd('categoria') ?>
-            </a>
-          </th>
+          <th class="col-nome"><a href="<?= linkOrd('nome') ?>" class="neg-sort-link">Nome Fantasia<?= iconOrd('nome') ?></a></th>
+          <th class="col-cat"><a href="<?= linkOrd('categoria') ?>" class="neg-sort-link">Categoria<?= iconOrd('categoria') ?></a></th>
           <th>ODS Prioritária</th>
           <th>Eixo Temático</th>
           <th class="col-score text-center">Score</th>
@@ -517,35 +504,31 @@ include __DIR__ . '/../app/views/admin/header.php';
               $ods_nome_val  = trim((string)($neg['ods_nome']   ?? ''));
               $ods_icone_val = trim((string)($neg['ods_icone']  ?? ''));
               $tem_ods       = ($neg['ods_id'] ?? null) !== null;
-              $categoria     = $neg['categoria'] ?? '';
+              $categoria     = (string)($neg['categoria'] ?? '');
 
               $jaVotou        = isset($negociosVotados[$nid]);
               $votosNaCateg   = $votosPorCategoria[$categoria] ?? 0;
-              $limiteAtingido = ($votosNaCateg >= $limiteVotos && $limiteVotos > 0);
-              $btnDesabilitado = !$fase || !$faseAtiva || $jaVotou || $limiteAtingido;
+              $limiteAtingido = ($limiteVotos > 0 && $votosNaCateg >= $limiteVotos);
+              $btnDesabilitado = (!$fase || !$faseAtiva || $jaVotou || $limiteAtingido);
 
               if (!$fase || !$faseAtiva) {
                   $tooltip = $faseEncerrada ? 'Fase de votação encerrada' : 'Nenhuma fase de votação ativa';
               } elseif ($jaVotou) {
                   $tooltip = 'Você já votou neste negócio';
               } elseif ($limiteAtingido) {
-                  $tooltip = "Você já votou nesta categoria";
+                  $tooltip = 'Você já votou nesta categoria';
               } else {
                   $tooltip = $voto_label;
               }
 
               $urlVoto = $voto_url
-                  . '?negocio_id=' . $nid
-                  . '&fase_id='    . $faseId
-                  . '&categoria_id=' . $catId;
+                  . '?negocio_id='    . $nid
+                  . '&fase_id='       . $faseId
+                  . '&categoria_id='  . $catId;
             ?>
             <tr>
               <td class="col-id" style="color:#9aab9d; font-size:.78rem; font-family:monospace;">#<?= $nid ?></td>
-
-              <td class="col-nome">
-                <strong><?= htmlspecialchars($neg['nome_fantasia']) ?></strong>
-              </td>
-
+              <td class="col-nome"><strong><?= htmlspecialchars($neg['nome_fantasia']) ?></strong></td>
               <td class="col-cat">
                 <span class="neg-cat-badge"><?= htmlspecialchars($categoria ?: '—') ?></span>
                 <?php if ($fase && $faseAtiva && $limiteVotos > 0): ?>
@@ -554,12 +537,10 @@ include __DIR__ . '/../app/views/admin/header.php';
                   </small>
                 <?php endif; ?>
               </td>
-
               <td>
                 <?php if ($tem_ods && $ods_icone_val !== ''): ?>
                   <div class="d-flex align-items-center gap-2">
-                    <img src="<?= htmlspecialchars($ods_icone_val) ?>"
-                         alt="ODS <?= htmlspecialchars($ods_numero) ?>"
+                    <img src="<?= htmlspecialchars($ods_icone_val) ?>" alt="ODS <?= htmlspecialchars($ods_numero) ?>"
                          title="ODS <?= htmlspecialchars($ods_numero) ?> — <?= htmlspecialchars($ods_nome_val) ?>"
                          style="width:36px;height:36px;object-fit:contain;border-radius:4px;flex-shrink:0;">
                     <span style="font-size:.82rem;color:#4a5e4f;line-height:1.2;">
@@ -573,7 +554,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                   <span style="color:#b0bdb3;">—</span>
                 <?php endif; ?>
               </td>
-
               <td>
                 <?php if (!empty($neg['eixo_nome'])): ?>
                   <span style="font-size:.84rem;color:#1E3425;"><?= htmlspecialchars($neg['eixo_nome']) ?></span>
@@ -581,7 +561,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                   <span style="color:#b0bdb3;">—</span>
                 <?php endif; ?>
               </td>
-
               <td class="col-score text-center">
                 <?php if ($neg['score_geral'] !== null): ?>
                   <span class="neg-score-geral"><?= number_format((float)$neg['score_geral'], 1, ',', '') ?></span>
@@ -589,17 +568,12 @@ include __DIR__ . '/../app/views/admin/header.php';
                   <span style="color:#b0bdb3; font-size:.82rem;">—</span>
                 <?php endif; ?>
               </td>
-
               <td class="col-acoes text-center">
                 <div style="display:flex;flex-direction:column;align-items:center;gap:.4rem;">
-                  <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>"
-                     class="act-btn edit"
-                     title="Visualizar detalhes"
+                  <a href="/admin/visualizar_negocio.php?id=<?= $nid ?>" class="act-btn edit" title="Visualizar detalhes"
                      style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;width:100%;justify-content:center;">
-                    <i class="bi bi-eye"></i>
-                    <span>Ver Detalhes</span>
+                    <i class="bi bi-eye"></i><span>Ver Detalhes</span>
                   </a>
-
                   <?php if ($btnDesabilitado): ?>
                     <button type="button" class="act-btn" title="<?= htmlspecialchars($tooltip) ?>" disabled
                             style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;width:100%;justify-content:center;opacity:.45;cursor:not-allowed;
@@ -611,8 +585,7 @@ include __DIR__ . '/../app/views/admin/header.php';
                     <a href="<?= $urlVoto ?>" class="act-btn" title="<?= htmlspecialchars($tooltip) ?>"
                        style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;width:100%;justify-content:center;
                        <?= $isjuri ? 'background:rgba(111,66,193,.12);color:#6f42c1;' : 'background:rgba(3,105,161,.12);color:#0369a1;' ?>">
-                      <i class="bi <?= $voto_icon ?>"></i>
-                      <span><?= htmlspecialchars($voto_label) ?></span>
+                      <i class="bi <?= $voto_icon ?>"></i><span><?= htmlspecialchars($voto_label) ?></span>
                     </a>
                   <?php endif; ?>
                 </div>
@@ -625,7 +598,6 @@ include __DIR__ . '/../app/views/admin/header.php';
   </div>
 </div>
 
-<!-- Paginação -->
 <?php if ($total_paginas > 1): ?>
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mt-3 mb-4">
     <div class="text-muted small">
@@ -635,27 +607,24 @@ include __DIR__ . '/../app/views/admin/header.php';
     </div>
     <nav>
       <ul class="pagination pagination-sm mb-0 ip-pagination">
-        <?php
-          $get_base = $_GET; unset($get_base['pagina']);
-          $qs = http_build_query($get_base);
-          $qs_sep = $qs ? $qs . '&' : '';
-        ?>
+        <?php $get_base = $_GET; unset($get_base['pagina']); $qs = http_build_query($get_base); $qs_sep = $qs ? $qs . '&' : ''; ?>
         <li class="page-item <?= $pagina_atual <= 1 ? 'disabled' : '' ?>">
           <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $pagina_atual - 1 ?>"><i class="bi bi-chevron-left"></i></a>
         </li>
         <?php
-          $ini_p = max(1, $pagina_atual - 3); $fim_p = min($total_paginas, $pagina_atual + 3);
+          $ini_p = max(1, $pagina_atual - 3);
+          $fim_p = min($total_paginas, $pagina_atual + 3);
           if ($ini_p > 1): ?><li class="page-item"><a class="page-link" href="?<?= $qs_sep ?>pagina=1">1</a></li><?php
-          if ($ini_p > 2): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; endif; ?>
-        <?php for ($p = $ini_p; $p <= $fim_p; $p++): ?>
-          <li class="page-item <?= $p === $pagina_atual ? 'active' : '' ?>">
-            <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $p ?>"><?= $p ?></a>
-          </li>
-        <?php endfor; ?>
-        <?php if ($fim_p < $total_paginas):
-          if ($fim_p < $total_paginas - 1): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; ?>
-          <li class="page-item"><a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $total_paginas ?>"><?= $total_paginas ?></a></li>
-        <?php endif; ?>
+          if ($ini_p > 2): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; endif;
+          for ($p = $ini_p; $p <= $fim_p; $p++): ?>
+            <li class="page-item <?= $p === $pagina_atual ? 'active' : '' ?>">
+              <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $p ?>"><?= $p ?></a>
+            </li>
+          <?php endfor;
+          if ($fim_p < $total_paginas):
+            if ($fim_p < $total_paginas - 1): ?><li class="page-item disabled"><span class="page-link">…</span></li><?php endif; ?>
+            <li class="page-item"><a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $total_paginas ?>"><?= $total_paginas ?></a></li>
+          <?php endif; ?>
         <li class="page-item <?= $pagina_atual >= $total_paginas ? 'disabled' : '' ?>">
           <a class="page-link" href="?<?= $qs_sep ?>pagina=<?= $pagina_atual + 1 ?>"><i class="bi bi-chevron-right"></i></a>
         </li>
