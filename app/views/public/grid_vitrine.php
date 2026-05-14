@@ -27,12 +27,12 @@ $stmtGrid = $pdo->query("
 ");
 $negociosGrid = $stmtGrid->fetchAll();
 
-// Mapeamento de categoria → ícone PNG
+// Mapeamento de categoria → ícone PNG (caminho correto: assets/images/icons/)
 $iconesCat = [
-    'Ideação'       => '/assets/image/icons/ideacao.png',
-    'Operação'      => '/assets/image/icons/operacao.png',
-    'Tração/Escala' => '/assets/image/icons/tracao.png',
-    'Dinamizador'   => '/assets/image/icons/dinamizadores.png',
+    'Ideação'       => '/assets/images/icons/ideacao.png',
+    'Operação'      => '/assets/images/icons/operacao.png',
+    'Tração/Escala' => '/assets/images/icons/tracao.png',
+    'Dinamizador'   => '/assets/images/icons/dinamizadores.png',
 ];
 ?>
 
