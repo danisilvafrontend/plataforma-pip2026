@@ -20,7 +20,7 @@ $opts   = [
 try {
     $pdo = new PDO($dsn, $config['user'], $config['pass'], $opts);
 
-    // ── Fase ativa para este role ─────────────────────────────────────────
+    // ── Fase ativa ──────────────────────────────────────────────────────────
     $campoPerm = $role === 'juri' ? 'permite_juri_final' : 'permite_voto_tecnico';
     $stmtFase  = $pdo->prepare("
         SELECT pf.*
@@ -67,8 +67,9 @@ try {
     // ── Query base ────────────────────────────────────────────────────────────
     if ($faseId > 0 && $isFaseFinal) {
 
+        // CORRETO: classificada_fase_2 (com underline entre fase e 2)
         $whereBase = "pi.premiacao_id = {$premiacaoId}
-            AND pi.status IN ('classificada_fase2', 'finalista', 'vencedora')";
+            AND pi.status IN ('classificada_fase_2', 'finalista', 'vencedora')";
 
         $fromBase = "
             FROM premiacao_inscricoes pi
@@ -190,7 +191,7 @@ try {
     $stmt->execute($params);
     $negocios = $stmt->fetchAll();
 
-    // ── Votos já feitos ───────────────────────────────────────────────────────────
+    // ── Votos já feitos ─────────────────────────────────────────────────────────
     $votosPorCategoria = [];
     $inscricoesVotadas = [];
     if ($faseId && $userId) {
@@ -229,7 +230,7 @@ try {
                 ON pc3.premiacao_id = pi3.premiacao_id
                AND pc3.nome COLLATE utf8mb4_unicode_ci = pi3.categoria COLLATE utf8mb4_unicode_ci
             WHERE pi3.premiacao_id = ?
-              AND pi3.status IN ('classificada_fase2','finalista','vencedora')
+              AND pi3.status IN ('classificada_fase_2','finalista','vencedora')
             ORDER BY pc3.nome
         ");
         $stmtCats->execute([$premiacaoId]);
@@ -240,7 +241,7 @@ try {
             FROM premiacao_inscricoes pi4
             JOIN negocios n4 ON n4.id = pi4.negocio_id
             JOIN ods o2 ON o2.id = n4.ods_prioritaria_id
-            WHERE pi4.premiacao_id = ? AND pi4.status IN ('classificada_fase2','finalista','vencedora')
+            WHERE pi4.premiacao_id = ? AND pi4.status IN ('classificada_fase_2','finalista','vencedora')
             ORDER BY o2.n_ods ASC
         ");
         $stmtOds->execute([$premiacaoId]);
@@ -251,7 +252,7 @@ try {
             FROM premiacao_inscricoes pi5
             JOIN negocios n5 ON n5.id = pi5.negocio_id
             JOIN eixos_tematicos et2 ON et2.id = n5.eixo_principal_id
-            WHERE pi5.premiacao_id = ? AND pi5.status IN ('classificada_fase2','finalista','vencedora')
+            WHERE pi5.premiacao_id = ? AND pi5.status IN ('classificada_fase_2','finalista','vencedora')
             ORDER BY et2.nome ASC
         ");
         $stmtEixos->execute([$premiacaoId]);
@@ -315,6 +316,18 @@ $voto_label = $isjuri ? 'Votar (Júri)' : 'Votar (Técnica)';
 
 include __DIR__ . '/../app/views/admin/header.php';
 ?>
+
+<!--
+  FORM MESTRE de voto — fica FORA da tabela para evitar HTML inválido.
+  Cada botão de linha usa formaction + formmethod="post" e atualiza os
+  hidden inputs via JS antes do submit.
+-->
+<form id="form-voto" method="POST" action="<?= htmlspecialchars($voto_url) ?>" style="display:none;">
+  <input type="hidden" id="fv-inscricao"  name="inscricao_id" value="">
+  <input type="hidden" id="fv-fase"       name="fase_id"      value="<?= $faseId ?>">
+  <input type="hidden" id="fv-categoria"  name="categoria_id" value="">
+  <input type="hidden" id="fv-redirect"   name="redirect"     value="/admin/votos_tecnicos.php">
+</form>
 
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <div>
@@ -508,6 +521,10 @@ include __DIR__ . '/../app/views/admin/header.php';
               } else {
                   $tooltip = $voto_label;
               }
+
+              $btnStyle = $isjuri
+                  ? 'background:rgba(111,66,193,.12);color:#6f42c1;'
+                  : 'background:rgba(3,105,161,.12);color:#0369a1;';
             ?>
             <tr>
               <td class="col-id" style="color:#9aab9d; font-size:.78rem; font-family:monospace;">#<?= $nid ?></td>
@@ -567,22 +584,16 @@ include __DIR__ . '/../app/views/admin/header.php';
                       <span><?= $jaVotou ? 'Já votou' : ($faseEncerrada ? 'Encerrado' : $voto_label) ?></span>
                     </button>
                   <?php else: ?>
-                    <?php
-                      // FORM POST — votar_juri.php e votar_tecnico.php só aceitam POST
-                      $btnStyle = $isjuri
-                          ? 'background:rgba(111,66,193,.12);color:#6f42c1;'
-                          : 'background:rgba(3,105,161,.12);color:#0369a1;';
-                    ?>
-                    <form method="POST" action="<?= htmlspecialchars($voto_url) ?>" style="width:100%;margin:0;">
-                      <input type="hidden" name="inscricao_id" value="<?= $inscricaoId ?>">
-                      <input type="hidden" name="fase_id"      value="<?= $faseId ?>">
-                      <input type="hidden" name="categoria_id" value="<?= $catId ?>">
-                      <input type="hidden" name="redirect"     value="/admin/votos_tecnicos.php">
-                      <button type="submit" class="act-btn" title="<?= htmlspecialchars($tooltip) ?>"
-                              style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;width:100%;justify-content:center;cursor:pointer;border:none;<?= $btnStyle ?>">
-                        <i class="bi <?= $voto_icon ?>"></i><span><?= htmlspecialchars($voto_label) ?></span>
-                      </button>
-                    </form>
+                    <!--
+                      Botão usa o form#form-voto (fora da tabela).
+                      JS preenche os hidden inputs antes do submit.
+                    -->
+                    <button type="button" class="act-btn btn-votar" title="<?= htmlspecialchars($tooltip) ?>"
+                            data-inscricao="<?= $inscricaoId ?>"
+                            data-categoria="<?= $catId ?>"
+                            style="display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .7rem;font-size:.78rem;white-space:nowrap;width:100%;justify-content:center;cursor:pointer;border:none;<?= $btnStyle ?>">
+                      <i class="bi <?= $voto_icon ?>"></i><span><?= htmlspecialchars($voto_label) ?></span>
+                    </button>
                   <?php endif; ?>
 
                 </div>
@@ -629,5 +640,16 @@ include __DIR__ . '/../app/views/admin/header.php';
     </nav>
   </div>
 <?php endif; ?>
+
+<script>
+// Preenche o form mestre (fora da tabela) e faz submit como POST
+document.querySelectorAll('.btn-votar').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.getElementById('fv-inscricao').value = this.dataset.inscricao;
+        document.getElementById('fv-categoria').value = this.dataset.categoria;
+        document.getElementById('form-voto').submit();
+    });
+});
+</script>
 
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
