@@ -73,13 +73,19 @@ $votacaoAberta = $faseAtiva && $votacaoAbertaPorData;
 
 /**
  * Retorna a lista de status válidos para exibir negócios na vitrine pública.
- * IMPORTANTE: os status no banco são normalizados (sem underscore intermediário),
- * ex: 'classificadafase1', 'classificadafase2' — ver normalizarStatusPremiacao().
- * Quando não há fase ativa, exibimos todos os status que indicam participação ativa.
+ *
+ * ATENÇÃO: Os status gravados no banco (pela função statusNovoPorFase em
+ * premiacao_apuracao_gravar.php) usam formato SEM underscore intermediário:
+ *   - 'classificadafase1'  (não 'classificada_fase_1')
+ *   - 'classificadafase2'  (não 'classificada_fase_2')
+ * Confira premiacao_inscricoes.php::normalizarStatusPremiacao() como referência.
+ *
+ * A função é dinâmica: fase classificatoria rodada N inclui todos os
+ * status até classificadafase(N-1) no pool, além de 'elegivel'.
  */
 function buildStatusPoolPublic(?array $fase): array
 {
-    // Pool base: sempre mostramos elegíveis e classificados em todas as fases
+    // Pool base sempre visível independente da fase
     $poolBase = [
         'elegivel',
         'classificadafase1',
@@ -89,7 +95,8 @@ function buildStatusPoolPublic(?array $fase): array
     ];
 
     if (!$fase) {
-        // Sem fase ativa: mostra todos os negócios com inscrição ativa/aprovada
+        // Sem fase ativa: exibe todos os inscritos com status ativo
+        // (inclui 'enviada' e 'emtriagem' para não ocultar negócios recém-inscritos)
         return array_merge($poolBase, ['enviada', 'emtriagem']);
     }
 
@@ -97,16 +104,20 @@ function buildStatusPoolPublic(?array $fase): array
     $rodada = (int)($fase['rodada'] ?? 1);
 
     if ($tipo === 'final') {
+        // Fase final: mostra apenas finalistas e classificados da última fase
         return ['finalista', 'classificadafase2', 'vencedora'];
     }
 
     if ($rodada <= 1) {
+        // Fase 1: apenas elegíveis votam
         return ['elegivel'];
     }
 
+    // Fases 2, 3, ... N: pool dinâmico
+    // Rodada 2 aceita classificadafase1; rodada 3 aceita classificadafase1 e classificadafase2; etc.
     $pool = ['elegivel'];
     for ($i = 1; $i < $rodada; $i++) {
-        $pool[] = "classificadafase{$i}";
+        $pool[] = 'classificadafase' . $i;  // sem underscore, como está no banco
     }
     return $pool;
 }
@@ -136,9 +147,9 @@ if ($usuarioLogado && $faseAtiva && $usuarioId) {
 }
 
 // ── 4. Negócios inscritos e elegíveis ──────────────────────────────────
-// NOTA: removemos o filtro n.publicado_vitrine = 1 da condição obrigatória
-// e tornamos-o um critério de ordenação/preferência, para não ocultar negócios
-// inscritos que ainda não foram marcados como publicados na vitrine.
+// O filtro n.publicado_vitrine = 1 foi REMOVIDO como condição obrigatória.
+// Negócios inscritos na premiação aparecem mesmo que não estejam publicados
+// na vitrine geral. Publicados na vitrine aparecem primeiro na ordenação.
 $sql = "
     SELECT
         n.id, n.nome_fantasia, n.categoria, n.municipio, n.estado,
@@ -174,7 +185,7 @@ if (!empty($_GET['municipio'])) { $sql .= " AND n.municipio = :municipio";     $
 if (!empty($_GET['eixo']))      { $sql .= " AND n.eixo_principal_id = :eixo"; $params[':eixo']      = $_GET['eixo'];      }
 if (!empty($_GET['ods']))       { $sql .= " AND n.ods_prioritaria_id = :ods"; $params[':ods']       = $_GET['ods'];       }
 
-// Ordena: publicados na vitrine primeiro, depois pelo nome
+// Ordena: publicados na vitrine primeiro, depois por nome
 $sql .= " ORDER BY n.publicado_vitrine DESC, n.nome_fantasia";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
