@@ -11,7 +11,7 @@
 declare(strict_types=1);
 
 // ── 1. Token (só existe aqui, no servidor) ────────────────────────────────────
-define('CPFCNPJ_TOKEN', '02f7cd04ecd9b64e984dc74970f9f97b');
+define('CPFCNPJ_TOKEN', '5ae973d7a997af13f0aaf2bf60e65803');
 
 // ── Pacotes utilizados ────────────────────────────────────────────────────────
 // Pacote 4 = CNPJ A  → retorna razao_social (dados básicos)

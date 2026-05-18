@@ -2,3 +2,6 @@
 /app/config/db_hostgator.php
 /app/config/mail.php
 /app/config/db_producao.php
+/app/config/db_producao2.php
+/app/api/cpfcnpj_proxy_producao.php
+/app/api/cpfcnpj_proxy.php
