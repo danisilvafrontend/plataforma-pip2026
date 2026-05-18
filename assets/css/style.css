@@ -209,7 +209,7 @@
       --bs-btn-disabled-bg: #1E3425;
       --bs-btn-disabled-border-color: #1E3425;
   }
-
+  @import url('/assets/css/regulamento.css');
   .btn-secondary {
       --bs-btn-color: #ffffff;
       --bs-btn-bg: #97A327;
@@ -339,8 +339,8 @@
 
 /* Botão Entrar/Cadastre-se */
 .btn-header-login {
-  background: #1E3425;
-  color: #CDDE00 !important;
+  border: 2px solid #1E3425;
+  color: #1E3425 !important;
   font-weight: 700;
   border-radius: 20px;
   padding: .38rem 1.2rem;
@@ -352,7 +352,7 @@
   transition: background .15s, transform .1s;
 }
 .btn-header-login:hover {
-  background: #162a1c;
+  background: #CDDE00;
   transform: translateY(-1px);
 }
 
@@ -601,6 +601,286 @@ body {
   margin-top: .75rem;
 }
 
+/* Container principal */
+.hero-video-home {
+  position: relative;
+  left: 50%;
+  right: 50%;
+  width: 100vw;
+  margin-left: -50vw;
+  margin-right: -50vw;
+
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #0d0d0d;
+}
+
+.hero-video-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hero-bg-video {
+  position: absolute;
+  inset: 0;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+}
+
+.hero-video-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.68) 0%,
+    rgba(0, 0, 0, 0.58) 60%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+}
+
+.hero-video-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  color: #fff;
+  padding: 2rem 1.5rem;
+  max-width: 860px;
+  width: 100%;
+}
+
+.hero-video-hashtag {
+  display: inline-block;
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
+  font-weight: 600;
+  color: #d4e84a;
+  letter-spacing: 0.04em;
+  margin-bottom: 1.25rem;
+}
+
+.hero-video-title {
+  font-size: clamp(2rem, 5.5vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: 1.25rem;
+  text-wrap: balance;
+}
+
+.hero-video-sub {
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 600px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.6;
+}
+
+.hero-video-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem 1.6rem;
+  border-radius: 999px;
+  font-size: clamp(0.78rem, 1.2vw, 0.85rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.hero-btn--outline-dark {
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  color: #fff;
+}
+
+.hero-btn--outline-dark:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #fff;
+  color: #fff;
+}
+
+.hero-btn--yellow {
+  background: #d4e84a;
+  border: 2px solid #d4e84a;
+  color: #1a1a1a;
+}
+
+.hero-btn--yellow:hover {
+  background: #c6da38;
+  border-color: #c6da38;
+  color: #1a1a1a;
+}
+
+.hero-btn--outline-white {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  color: #fff;
+}
+
+.hero-btn--outline-white:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+  color: #fff;
+}
+
+@media (max-width: 576px) {
+  .hero-video-home {
+    min-height: 90vh;
+  }
+
+  .hero-video-btns {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hero-btn {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+}
+/* ════════════════════════════════════════════════
+   SEÇÃO — Apoio Institucional
+   Adicione ao seu style.css
+   
+   Funciona bem com 3, 4, 5, 6 ou 7 logos.
+   Usa CSS Grid com auto-fill para se adaptar
+   automaticamente à quantidade de itens.
+════════════════════════════════════════════════ */
+
+.apoio-institucional {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  padding: clamp(2rem, 5vw, 3rem) clamp(1rem, 4vw, 3rem);
+  background-image: url('/assets/images/background-01.png');
+  background-size: cover;
+  background-position: center center;
+  background-color: #2d4a1e; /* fallback verde escuro */
+  overflow: hidden;
+}
+
+/* Overlay sutil para melhorar contraste dos logos */
+.apoio-institucional::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 52, 37, 0.8);
+  pointer-events: none;
+}
+
+/* Wrapper interno para limitar largura do conteúdo */
+.apoio-institucional__inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Título da seção */
+.apoio-institucional__titulo {
+  text-align: center;
+  font-size: clamp(1rem, 2vw, 1.75rem);
+  font-weight: 400;
+  color: #d4e84a;
+  margin-bottom: clamp(1rem, 4vw, 2.5rem);
+  letter-spacing: 0.01em;
+  font-weight: 700;
+}
+
+/* Grid de logos:
+   - auto-fill com min 160px por coluna
+   - centraliza automaticamente 3, 4, 5, 6 ou 7 logos
+   - em telas grandes, limita a 4 colunas por linha */
+.apoio-institucional__grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(1.5rem, 2vw, 3rem) clamp(3rem, 6vw, 6rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Cada item de logo */
+.apoio-institucional__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+/* Logo em si */
+.apoio-institucional__logo {
+  display: block;
+  max-height: 100px;
+  max-width: 200px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+
+  /* Logos coloridos ficam em escala de cinza
+     e ganham cor no hover — efeito elegante */
+  filter: grayscale(30%) brightness(1.05);
+  opacity: 0.9;
+  transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+}
+
+.apoio-institucional__item:hover .apoio-institucional__logo {
+  filter: grayscale(0%) brightness(1.1);
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+/* ── Responsivo ──────────────────────────────── */
+
+/* Tablet: logos um pouco menores */
+@media (max-width: 768px) {
+  .apoio-institucional__logo {
+    max-height: 55px;
+    max-width: 140px;
+  }
+
+  .apoio-institucional__grid {
+    gap: 1.5rem 2.5rem;
+  }
+}
+
+/* Mobile: 2 colunas centralizadas */
+@media (max-width: 480px) {
+  .apoio-institucional__logo {
+    max-height: 48px;
+    max-width: 120px;
+  }
+
+  .apoio-institucional__grid {
+    gap: 1.25rem 2rem;
+  }
+}
+
+/* como participar */
 .participar-home {
   background: #fff;
   position: relative;
@@ -695,7 +975,7 @@ body {
    COMO FUNCIONA
 ════════════════════════════════ */
 .section-title {
-  font-size: 1.65rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #1E3425;
 }
@@ -887,15 +1167,6 @@ body {
 /* ════════════════════════════════
 BLOCO: VITRINE HOME
 ════════════════════════════════ */
-.vitrine-home {
-  background: #f8faf6;
-  
-  /* Quebra o container do <main> e vai até as bordas da viewport */
-  margin-left:  calc(-50vw + 50%);
-  margin-right: calc(-50vw + 50%);
-  padding-left: calc(50vw - 50%);
-  padding-right: calc(50vw - 50%);
-}
 
 /* Chamada discreta para premiação */
 .premiacao-chamada {
@@ -996,7 +1267,36 @@ BLOCO: VITRINE HOME
 .btn-vitrine-ver-todos:hover {
   background: #162a1c;
 }
+/* Badge de categoria minimalista — vitrine */
+.vitrine-card-categoria-badge {
+    position: absolute;
+    top: .75rem;
+    left: .75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(4px);
+    border: 2px solid #CDDE00;
+    border-radius: 99px;
+    padding: .28rem .65rem .28rem .4rem;
+    font-size: .72rem;
+    font-weight: 600;
+    color: #1E3425;
+    letter-spacing: .01em;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 1px 4px rgba(0,0,0,.10);
+    pointer-events: none;
+    text-transform: uppercase;
+}
 
+.vitrine-cat-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
 /* ════════════════════════════════
 BLOCO: CTA FINAL
 ════════════════════════════════ */
@@ -1435,6 +1735,7 @@ GRID DE PARCEIROS
   border-color: rgba(151, 163, 39, 0.28);
 }
 
+/* DEPOIS */
 .parceiro-card-logo-wrap {
   width: 100%;
   max-width: 140px;
@@ -1443,6 +1744,7 @@ GRID DE PARCEIROS
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;                           /* garante que nada vaze */
 }
 
 .parceiro-card-logo {
@@ -1493,7 +1795,6 @@ GRID DE PARCEIROS
     height: 68px;
     margin-bottom: 0.85rem;
   }
-
   .parceiro-card-logo {
     max-height: 68px;
   }
@@ -1519,6 +1820,9 @@ GRID DE PARCEIROS
   font-size: 0.82rem;
   font-weight: 700;
   color: #5a8a62;
+}
+.canais-parceiros{
+  font-size: small;
 }
 /* ════════════════════════════════
    ETAPA 5 — Imagem de Destaque
@@ -1670,7 +1974,54 @@ GRID DE PARCEIROS
   background: #162a1c;
   transform: translateY(-1px);
 }
+/* ═══════════════════════════════════════
+   CAPA PADRÃO — sem imagem de destaque
+═══════════════════════════════════════ */
 
+.negocio-publico-cover--padrao {
+    background-color: #f5f5f0; /* fundo neutro enquanto a imagem carrega */
+    position: relative;
+    overflow: hidden;
+    min-height: 320px; /* mesma altura da capa com imagem */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.negocio-publico-cover-fallback {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* A imagem moldura.png ocupa toda a área da capa */
+.negocio-publico-cover-moldura {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0.2;
+}
+
+/* Texto sobreposto à imagem */
+.negocio-publico-cover-texto {
+    position: relative; /* fica acima da moldura (z-index) */
+    z-index: 1;
+    color: #97A327;
+    font-size: 2.5rem;
+    font-weight: 600;
+    text-align: left;
+    line-height: 1.4;
+    max-width: 520px;
+    padding: 1rem 1.5rem;
+    /* sombra sutil para legibilidade sobre qualquer fundo */
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
 .negocio-publico-header {
     border-radius: 1rem;
     background: #fff;
@@ -2755,9 +3106,202 @@ GRID DE PARCEIROS
 .negocio-rede-pill span {
     white-space: nowrap;
 }
+/* ════════════════════════════════════════════════
+   HERO — Vitrine Nacional
+   Adicione ao seu style.css
+════════════════════════════════════════════════ */
+
+.vitrine-nacional-hero {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: #f5f5f0; /* fallback claro */
+  padding: clamp(3rem, 6vw, 5rem) clamp(1.5rem, 5vw, 3rem);
+}
+
+/* Elementos decorativos — círculos/bolhas no fundo (puro CSS, sem imagem) */
+.vitrine-nacional-hero::before,
+.vitrine-nacional-hero::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Bolha grande — canto esquerdo */
+.vitrine-nacional-hero::before {
+  width: clamp(260px, 35vw, 480px);
+  height: clamp(260px, 35vw, 480px);
+  left: -8%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle, #9ab83a 0%, #6d8f1a 60%, transparent 100%);
+  opacity: 0.18;
+}
+
+/* Bolha menor — canto direito */
+.vitrine-nacional-hero::after {
+  width: clamp(160px, 22vw, 320px);
+  height: clamp(160px, 22vw, 320px);
+  right: -4%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle, #b5d435 0%, #8aab1a 60%, transparent 100%);
+  opacity: 0.22;
+}
+
+/* Bolhas extras via pseudo-element em spans internos (opcional via JS) */
+
+/* Wrapper do conteúdo */
+.vitrine-nacional-hero-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 760px;
+  width: 100%;
+}
+
+/* Título principal — tipografia grande, itálico+bold nas palavras destaque */
+.vitrine-nacional-hero-content .vitrine-title {
+  font-size: clamp(2.8rem, 8vw, 6.5rem);
+  font-weight: 800;
+  line-height: 1.0;
+  color: #97A327;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+/* Palavras em itálico dentro do título (ex: "vitrine", "negócios", "impactos") */
+.vitrine-nacional-hero-content .vitrine-title em {
+  font-style: italic;
+  font-weight: 800;
+}
+
+/* Palavras menores / artigos (ex: "de") */
+.vitrine-nacional-hero-content .vitrine-title small {
+  font-size: 0.55em;
+  font-weight: 400;
+  font-style: normal;
+  vertical-align: middle;
+}
+
+/* Kicker (opcional) */
+.vitrine-nacional-hero-content .vitrine-kicker {
+  display: none; /* oculto no design da imagem */
+}
+
+/* Subtítulo / descrição */
+.vitrine-nacional-hero-content .vitrine-subtitle {
+  font-size: clamp(0.9rem, 1.8vw, 1.05rem);
+  color: #3a3a3a;
+  margin: 1rem auto 1.75rem;
+  line-height: 1.65;
+  font-weight: 500;
+}
+
+/* Botão CTA */
+.vitrine-nacional-hero-content .btn-vitrine-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.75rem 2rem;
+  background: #1E3425;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  border: 2px solid #102015;
+  border-radius: 25px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.vitrine-nacional-hero-content .btn-vitrine-cta:hover,
+.vitrine-nacional-hero-content .btn-vitrine-cta:focus-visible {
+  background: #CDDE00;
+  border-color: #dfe980;
+  color: #1E3425;
+}
+
+/* Decoração: bolinhas espalhadas (CSS shapes) */
+.vitrine-hero-dot {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+}
+
+.vitrine-hero-dot--1 {
+  width: 18px; height: 18px;
+  background: #d4e84a;
+  top: 18%; left: 12%;
+}
+
+.vitrine-hero-dot--2 {
+  width: 12px; height: 12px;
+  border: 3px solid #4a7c1f;
+  background: transparent;
+  top: 72%; left: 8%;
+}
+
+.vitrine-hero-dot--3 {
+  width: 22px; height: 22px;
+  background: #d4e84a;
+  top: 25%; right: 14%;
+}
+
+.vitrine-hero-dot--4 {
+  width: 14px; height: 14px;
+  border: 3px solid #9ab83a;
+  background: transparent;
+  bottom: 20%; right: 10%;
+}
+
+.vitrine-hero-dot--5 {
+  width: 10px; height: 10px;
+  background: #4a7c1f;
+  top: 55%; left: 22%;
+  opacity: 0.35;
+}
+
+/* ── Responsivo ──────────────────────────────── */
+@media (max-width: 768px) {
+  .vitrine-nacional-hero {
+    min-height: 320px;
+  }
+
+  .vitrine-nacional-hero-content .vitrine-title {
+    font-size: clamp(2.2rem, 11vw, 3.5rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .vitrine-hero-dot { display: none; }
+
+  .vitrine-nacional-hero-content .vitrine-subtitle {
+    font-size: 0.9rem;
+  }
+}
+.vitrine-home {
+  background: #f8faf6;
+  
+  /* Quebra o container do <main> e vai até as bordas da viewport */
+  margin-left:  calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
 
 /* VITRINE NACIONAL */
-.vitrine-nacional-page {
+/* .vitrine-nacional-page {
     padding-bottom: 2rem;    
 }
 
@@ -2796,7 +3340,7 @@ GRID DE PARCEIROS
 .vitrine-nacional-hero .vitrine-subtitle {
     position: relative;
     z-index: 1;
-}
+} */
 
 @media (max-width: 767.98px) {
     .vitrine-nacional-hero {
@@ -2973,7 +3517,7 @@ GRID DE PARCEIROS
 }
 
 .vitrine-chip-eixo {
-    background: #eef4df;
+    background: rgba(223, 233, 128, 0.5);
     color: #4f5f00;
 }
 
@@ -2992,7 +3536,7 @@ GRID DE PARCEIROS
     margin: 0;
     padding-left: 0.9rem;
     border-left: 3px solid #CDDE00;
-    color: #475467;
+    color: #1E3425;
     font-size: 0.95rem;
     line-height: 1.65;
     font-style: italic;
@@ -3706,12 +4250,26 @@ GRID DE PARCEIROS
 }
 
 .parceiro-choice-label {
-  display: flex;
+  display: block;
   width: 100%;
   cursor: pointer;
   margin: 0;
 }
 
+.parceiro-choice-desc,  .parceiro-radio-dica {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #4a6357;
+  margin-top: 0.35rem;
+  font-weight: 400;
+}
+
+.parceiro-choice-desc-highlight, .parceiro-radio-dica {
+  color: #6b7c36;
+  font-style: italic;
+  margin-top: 0.2rem;
+}
 .parceiro-choice-title {
   display: block;
   font-size: 0.96rem;
@@ -4526,7 +5084,7 @@ GRID DE PARCEIROS
 
 .cadastro-card__top {
     padding: 2rem 2rem 1.5rem;
-    background: linear-gradient(135deg, #026874 0%, #0c7c89 100%);
+    background: linear-gradient(135deg, #1E3425 0%, #102015 100%);
     color: #fff;
 }
 
@@ -4591,7 +5149,7 @@ GRID DE PARCEIROS
 
 .cadastro-progress-bar .progress-bar {
     border-radius: 999px;
-    background: linear-gradient(90deg, #026874 0%, #94A604 100%);
+    background: linear-gradient(90deg, #1E3425 0%, #CDDE00 100%);
     transition: width .35s ease;
 }
 
@@ -4622,7 +5180,7 @@ GRID DE PARCEIROS
     align-items: center;
     justify-content: center;
     background: #dce5ec;
-    color: #36505d;
+    color: #1E3425;
     font-weight: 800;
     font-size: .95rem;
 }
@@ -4637,18 +5195,18 @@ GRID DE PARCEIROS
 }
 
 .cadastro-step-dot.is-active {
-    background: rgba(2, 104, 116, 0.08);
-    border-color: rgba(2, 104, 116, 0.25);
-    box-shadow: 0 10px 24px rgba(2, 104, 116, 0.08);
+    background: rgba(151, 163, 39, 0.08);
+    border-color: rgba(197, 211, 110, 0.25);
+    box-shadow: 0 10px 24px rgba(197, 211, 110, 0.08);
 }
 
 .cadastro-step-dot.is-active span {
-    background: #026874;
+    background: #1E3425;
     color: #fff;
 }
 
 .cadastro-step-dot.is-active small {
-    color: #026874;
+    color: #97A327;
 }
 
 .cadastro-step-dot.is-complete {
@@ -4704,7 +5262,7 @@ GRID DE PARCEIROS
 .cadastro-step-kicker {
     display: inline-block;
     margin-bottom: .55rem;
-    color: #026874;
+    color: #1E3425;
     font-size: .8rem;
     font-weight: 800;
     text-transform: uppercase;
@@ -4950,12 +5508,12 @@ GRID DE PARCEIROS
 }
 
 .cadastro-login-link {
-    color: #026874;
+    color: #102015;
     font-weight: 700;
 }
 
 .cadastro-login-link:hover {
-    color: #014e57;
+    color: #dfe980;
 }
 
 /* Botões */
@@ -4967,14 +5525,14 @@ GRID DE PARCEIROS
 }
 
 .cadastro-civil-page .btn-primary {
-    background: #026874;
-    border-color: #026874;
+    background: #97A327;
+    border-color: #c5d36e;
 }
 
 .cadastro-civil-page .btn-primary:hover,
 .cadastro-civil-page .btn-primary:focus {
-    background: #015762;
-    border-color: #015762;
+    background: #1E3425;
+    border-color: #102015;
 }
 
 .cadastro-civil-page .btn-success {

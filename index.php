@@ -24,7 +24,7 @@ try {
         LEFT JOIN eixos_tematicos e ON e.id = n.eixo_principal_id
         WHERE n.publicado_vitrine = 1
         ORDER BY RAND()
-        LIMIT 9";
+        LIMIT 6";
     $negociosDestaque = $pdo->query($sqlNegocios)->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
@@ -49,45 +49,187 @@ $parceirosGrid = $pdo->query($sqlParceiros)->fetchAll(PDO::FETCH_ASSOC);
 
 include __DIR__ . '/app/views/public/header_public.php';
 ?>
+<!-- ═══════════════════════════════════════════════
+     HERO — Vídeo YouTube
+════════════════════════════════════════════════ -->
+<section class="hero-video-home">
+
+  <div class="hero-video-overlay" aria-hidden="true"></div>
+
+  <div class="hero-video-bg" aria-hidden="true">
+    <video 
+      class="hero-bg-video" 
+      autoplay 
+      muted 
+      loop 
+      playsinline 
+      preload="auto"
+      poster="/assets/image/encontro2026.webp">
+      <source src="/assets/video/encontro_2022.mp4" type="video/mp4">
+      Seu navegador não suporta vídeo em HTML5.
+    </video>
+  </div>
+
+  <div class="hero-video-content">
+    <span class="hero-video-hashtag">#ImpactosPositivos</span>
+
+    <h1 class="hero-video-title">
+      Juntos, ampliamos o que o mundo tem de melhor.
+    </h1>
+
+    <p class="hero-video-sub">
+      Conectamos negócios, parceiros e pessoas que estão transformando a economia por meio do Impacto Positivo
+    </p>
+
+    <div class="hero-video-btns">
+      <a href="/empreendedores/register.php" class="hero-btn hero-btn--yellow">
+        CADASTRAR MEU NEGÓCIO <i class="bi bi-chevron-right"></i>
+      </a>
+      <a href="/parceiros/cadastro.php" class="hero-btn hero-btn--outline-white">
+        QUERO SER PARCEIRO <i class="bi bi-chevron-right"></i>
+      </a>
+    </div>
+  </div>
+
+</section>
 
 <!-- ═══════════════════════════════════════════════
-     HERO
+     HERO — Imagem Background
 ════════════════════════════════════════════════ -->
-<section class="hero-home hero-home--nova">
-  <div class="container">
-    <div class="row align-items-center g-4">
-      <div class="col-lg-7">
-        <span class="hero-badge mb-3">Plataforma de Impacto no Brasil</span>
-        <h1 class="hero-title mb-3">
-          Conectamos negócios de impacto, parceiros e sociedade civil em uma plataforma de visibilidade, reconhecimento e transformação.
-        </h1>
-        <p class="hero-sub mb-4">
-          A Impactos Positivos fortalece o ecossistema de impacto no Brasil ao reunir iniciativas transformadoras, organizações parceiras e pessoas que querem acompanhar, apoiar e ampliar resultados positivos nos territórios.
-        </p>
+<!-- <section class="hero-video-home">
 
-        <div class="d-flex flex-wrap gap-2">
-          <a href="/empreendedores/register.php" class="btn-hero-primary">Cadastrar negócio</a>
-          <a href="/parceiros/cadastro.php" class="btn-hero-outline">Quero ser parceiro</a>
-          <a href="vitrine_nacional.php" class="btn-hero-link">Explorar iniciativas</a>
-        </div>
-      </div>
+  <div class="hero-video-overlay" aria-hidden="true"></div>
 
-      <div class="col-lg-5">
-        <div class="hero-panel-novo">
-          <span class="hero-panel-kicker">Impactos Positivos</span>
-          <ul class="hero-panel-list">
-            <li>Visibilidade para iniciativas transformadoras</li>
-            <li>Conexões entre negócios, parceiros e comunidade</li>
-            <li>Reconhecimento e fortalecimento do ecossistema</li>
-            <li>Atuação alinhada aos ODS</li>
-          </ul>
-        </div>
-      </div>
+  <div class="hero-video-content">
+    <span class="hero-video-hashtag">A maior vitrine de negócios de impacto do Brasil</span>
+
+    <h1 class="hero-video-title">
+      Juntos, ampliamos o que o mundo tem de melhor.
+    </h1>
+
+    <p class="hero-video-sub">
+      Conectamos negócios, parceiros e pessoas que estão transformando a economia por meio do Impacto Positivo
+    </p>
+
+    <div class="hero-video-btns">
+      <a href="/empreendedores/register.php" class="hero-btn hero-btn--yellow">
+        CADASTRAR MEU NEGÓCIO <i class="bi bi-chevron-right"></i>
+      </a>
+      <a href="/parceiros/cadastro.php" class="hero-btn hero-btn--outline-dark">
+        QUERO SER PARCEIRO <i class="bi bi-chevron-right"></i>
+      </a>
     </div>
+  </div>
+
+</section> -->
+
+<!-- ════════════════════════════════════════════════
+     SEÇÃO — Apoio Institucional
+     Cole no index.php no local desejado.
+     
+     Para adicionar/remover logos: basta adicionar
+     ou remover um <li class="apoio-institucional__item">
+     O layout se ajusta automaticamente.
+════════════════════════════════════════════════ -->
+<section class="apoio-institucional">
+  <div class="apoio-institucional__inner">
+
+    <h2 class="apoio-institucional__titulo">
+      Apoio Institucional
+    </h2>
+
+    <ul class="apoio-institucional__grid">
+
+      <!-- Logo 1 -->
+      <li class="apoio-institucional__item">
+        <img
+          src="/assets/images/apoio/mdic.png"
+          alt="Ministério do Desenvolvimento, Indústria, Comércio e Serviços — Governo Federal"
+          class="apoio-institucional__logo"
+          loading="lazy"
+          width="200"
+          height="100"
+        >
+      </li>
+
+      <!-- Logo 2 -->
+      <li class="apoio-institucional__item">
+        <img
+          src="/assets/images/apoio/enimpacto.webp"
+          alt="ENIMPACTO — Estratégia Nacional de Economia de Impacto"
+          class="apoio-institucional__logo"
+          loading="lazy"
+          width="200"
+          height="100"
+        >
+      </li>
+
+      <!-- Logo 3 -->
+      <li class="apoio-institucional__item">
+        <img
+          src="/assets/images/apoio/cadimpacto.png"
+          alt="CADIMPACTO — Cadastro Nacional de Empreendimentos de Impacto"
+          class="apoio-institucional__logo"
+          loading="lazy"
+          width="200"
+          height="100"
+        >
+      </li>
+
+      <!-- Logo 4 -->
+      <li class="apoio-institucional__item">
+        <img
+          src="/assets/images/apoio/yunus.webp"
+          alt="Yunus Negócios Sociais Brasil"
+          class="apoio-institucional__logo"
+          loading="lazy"
+          width="200"
+          height="100"
+        >
+      </li>
+
+      <!-- Logo 5 -->
+      <li class="apoio-institucional__item">
+        <img
+          src="/assets/images/apoio/capitalismo-consciente.webp"
+          alt="Capitalismo Consciente Brasil"
+          class="apoio-institucional__logo"
+          loading="lazy"
+          width="200"
+          height="100"
+        >
+      </li>
+
+      <!-- Logo 6 -->
+      <li class="apoio-institucional__item">
+        <img
+          src="/assets/images/apoio/alianca.webp"
+          alt="Aliança pelos Investimentos e Negócios de Impacto"
+          class="apoio-institucional__logo"
+          loading="lazy"
+          width="200"
+          height="100"
+        >
+      </li>
+
+      <!-- Logo 7 -->
+      <li class="apoio-institucional__item">
+        <img
+          src="/assets/images/apoio/devagar_tag.png"
+          alt="Parceiro institucional"
+          class="apoio-institucional__logo"
+          loading="lazy"
+          width="200"
+          height="100"
+        >
+      </li>
+
+    </ul>
   </div>
 </section>
 
-<section class="participar-home py-5">
+
+<!-- <section class="participar-home py-5">
   <div class="container">
     <div class="text-center mb-5">
       <h2 class="section-title">Cada perfil tem um papel na transformação</h2>
@@ -125,10 +267,10 @@ include __DIR__ . '/app/views/public/header_public.php';
       </div>
     </div>
   </div>
-</section>
+</section> -->
 
 <!-- ===== COMO FUNCIONA ===== -->
-<section class="como-funciona-home py-5">
+<!-- <section class="como-funciona-home py-5">
   <div class="container">
 
     <div class="text-center mb-5">
@@ -140,7 +282,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 
     <div class="row g-4">
 
-      <!-- Empreendedor -->
+      
       <div class="col-lg-4">
         <div class="como-bloco">
           <div class="como-bloco-header como-bloco-header--empreendedor">
@@ -167,7 +309,6 @@ include __DIR__ . '/app/views/public/header_public.php';
         </div>
       </div>
 
-      <!-- Parceiro -->
       <div class="col-lg-4">
         <div class="como-bloco como-bloco--destaque">
           <div class="como-bloco-header como-bloco-header--parceiro">
@@ -194,7 +335,6 @@ include __DIR__ . '/app/views/public/header_public.php';
         </div>
       </div>
 
-      <!-- Sociedade -->
       <div class="col-lg-4">
         <div class="como-bloco">
           <div class="como-bloco-header como-bloco-header--sociedade">
@@ -223,7 +363,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 
     </div>
   </div>
-</section>
+</section> -->
 
 
 <!-- ════ BLOCO: VITRINE + PREMIAÇÃO ════ -->
@@ -234,13 +374,13 @@ include __DIR__ . '/app/views/public/header_public.php';
     <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-4">
       <div>
         <span class="section-kicker section-kicker--accent">Ecossistema de impacto</span>
-        <h2 class="section-title mt-2 mb-1">Conheça as iniciativas cadastradas</h2>
+        <h2 class="section-title mt-2 mb-1">Vitrine de Negócios de Impacto</h2>
         <p class="section-sub mb-0">
           Negócios reais que geram transformação social, ambiental e econômica em todo o Brasil.
         </p>
       </div>
-      <a href="/vitrine.php" class="btn-vitrine-ver-todos">
-        Ver todas as iniciativas <i class="bi bi-arrow-right ms-1"></i>
+      <a href="/vitrine_nacional.php" class="btn-vitrine-ver-todos">
+        Ver todos os negócios <i class="bi bi-arrow-right ms-1"></i>
       </a>
     </div>
     <?php if (!empty($negociosDestaque)): ?>
@@ -299,7 +439,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 <!-- ════ FIM: PARCEIROS ════ -->
 
 <!-- ════ BLOCO: CTA FINAL ════ -->
-<section class="cta-final-home py-5">
+<!-- <section class="cta-final-home py-5">
   <div class="container">
     <div class="cta-final-inner">
 
@@ -327,8 +467,7 @@ include __DIR__ . '/app/views/public/header_public.php';
             </a>
           </div>
 
-          <div class="cta-final-card cta-final-card--destaque">
-            <!-- <div class="cta-final-card-badge">Mais popular</div> -->            
+          <div class="cta-final-card cta-final-card--destaque">    
             <i class="bi bi-rocket-takeoff-fill cta-final-card-icon"></i>
             <h4>Sou empreendedor</h4>
             <p>Cadastre seu negócio e ganhe visibilidade nacional.</p>
@@ -351,7 +490,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 
     </div>
   </div>
-</section>
+</section> -->
 <!-- ════ FIM: CTA FINAL ════ -->
 
 <?php include __DIR__ . '/app/views/public/footer_public.php'; ?>

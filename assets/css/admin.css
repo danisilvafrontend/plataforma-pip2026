@@ -280,8 +280,8 @@
     }
 @media (max-width: 991px) {
   footer {
-    margin-left: 0;
-    padding: 1rem;
+    margin-left: 0;   /* remove o deslocamento lateral */
+    padding: 1rem;    /* padding mais enxuto */
   }
 }
 
@@ -289,7 +289,7 @@
   footer {
     margin-left: 0;
     padding: .75rem;
-    flex-direction: column;
+    flex-direction: column; /* empilha os itens */
     align-items: flex-start;
     gap: .75rem;
   }
@@ -715,36 +715,13 @@
     letter-spacing: .03em;
 }
 
-/* ── Botões de ação ─────────────────────────────────────────── */
-/*
-   .act-btn é usado de dois modos:
-   1. Modo ícone (sem <span>) — quadrado 30×30 px
-   2. Modo texto (com <span> dentro) — auto-sized com padding
-   A regra base define o modo texto como padrão; o modificador
-   .icon-only força as dimensões fixas para o modo ícone.
-*/
+/* Botões de ação ícone */
 .act-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .3rem;
-    padding: .35rem .7rem;
-    border-radius: 6px;
-    font-size: .78rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
+    width: 30px; height: 30px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .8rem; border: none; cursor: pointer;
     text-decoration: none;
-    white-space: nowrap;
-    line-height: 1.3;
     transition: background .13s, color .13s;
-}
-/* Modo ícone puro: força quadrado */
-.act-btn.icon-only {
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    font-size: .8rem;
 }
 .act-btn.edit    { background: rgba(30,52,37,.08);   color: #1E3425; }
 .act-btn.edit:hover    { background: #1E3425; color: #fff; }
@@ -854,7 +831,7 @@
 
 /* Links de ordenação no thead */
 .neg-sort-link {
-    color: rgba(255,255,255,.75);
+    color: #fff;
     text-decoration: none;
     font-size: .71rem;
     font-weight: 700;
@@ -889,21 +866,8 @@
     text-align: center;
 }
 
-/* Coluna ações — empilhamento vertical */
-.neg-table .col-acoes,
-.emp-table td:last-child {
-    vertical-align: middle;
-}
-.acoes-col-stack {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-}
-
 /* Responsivo — oculta scores em telas pequenas */
 @media (max-width: 991px) {
-    .neg-table th:nth-child(6),
     .neg-table th:nth-child(7),
     .neg-table th:nth-child(8),
     .neg-table td:nth-child(6),
@@ -1118,7 +1082,8 @@ body { background: var(--c-surface); font-family: var(--font-sans); color: var(-
     background: linear-gradient(135deg, var(--c-primary) 0%, #014f59 100%);
     color: #fff;
     padding: 2rem 2rem 4rem;
-    margin: -1rem -1rem 0;
+    margin: 0 0 0;          /* ← removido margin negativo lateral */
+    border-radius: 12px;    /* ← borda arredondada ao invés de sangrar */
     position: relative;
     overflow: hidden;
 }
@@ -1156,7 +1121,7 @@ body { background: var(--c-surface); font-family: var(--font-sans); color: var(-
     gap: 1rem;
     margin-top: -2.5rem;
     position: relative; z-index: 10;
-    padding: 0 .5rem;
+    padding: 0;          /* ← removido padding lateral */
 }
 .kpi-card {
     background: var(--c-card);
@@ -1313,6 +1278,14 @@ body { background: var(--c-surface); font-family: var(--font-sans); color: var(-
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .grid-1 { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+
+/* Evita que filhos de grid ultrapassem a célula */
+.grid-2 > *,
+.grid-3 > *,
+.kpi-strip > *,
+.gauge-strip > * {
+    min-width: 0;
+}
 
 @media (max-width: 992px) {
     .kpi-strip, .gauge-strip { grid-template-columns: 1fr 1fr; }
@@ -1878,18 +1851,18 @@ body { background: var(--c-surface); font-family: var(--font-sans); color: var(-
     min-width: 150px;
 }
 
-/* ── Coluna Ações — empilhamento vertical alinhado à esquerda ─ */
+/* ── Coluna Ações — alinhada e com gap adequado ─────────────── */
 .neg-table .col-acoes {
-    width: 160px;
-    min-width: 140px;
+    width: 130px;
+    min-width: 110px;
+    text-align: right;
     white-space: nowrap;
-    padding-right: 1rem;
-    vertical-align: middle;
+    padding-right: 1.1rem;
 }
 .neg-table .col-acoes .acoes-stack {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: 4px;
 }
 .neg-table .col-acoes .acoes-row {
@@ -1965,4 +1938,183 @@ body { background: var(--c-surface); font-family: var(--font-sans); color: var(-
     .neg-table .col-emp { display: none; }
     .neg-table tbody td { padding: .7rem .75rem; }
     .neg-table thead th { padding: .75rem .75rem; }
+}
+
+/* ============================================================
+   PATCH v2 — Correção cirúrgica das colunas Ações
+   Cole no FINAL do admin.css
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   COLUNA NOME FANTASIA — largura controlada + quebra de linha
+   Aplica em .neg-table e .painel-table
+   ---------------------------------------------------------- */
+
+/* Limita a largura máxima da coluna e permite quebra natural */
+.neg-table th:nth-child(2),
+.neg-table td:nth-child(2),
+.painel-table th:nth-child(2),
+.painel-table td:nth-child(2) {
+    max-width: 200px;       /* impede que o nome domine a linha */
+    min-width: 120px;
+    white-space: normal;    /* permite quebra */
+    word-break: break-word; /* quebra palavra longa se necessário */
+    line-height: 1.35;
+}
+
+/* ----------------------------------------------------------
+   COLUNA AÇÕES — Admin (somente ícones)
+   Impede overflow, alinha e garante espaço mínimo
+   ---------------------------------------------------------- */
+
+/* Célula da coluna Ações no Admin */
+.neg-table td:last-child {
+    white-space: nowrap;     /* os ícones ficam na mesma linha */
+    text-align: right;
+    padding-right: 1rem;
+    vertical-align: middle;
+    width: 1%;               /* encolhe ao mínimo necessário */
+}
+
+/* Botões de ícone: tamanho fixo, sem texto transbordando */
+.neg-table .btn-icon,
+.neg-table .act-btn,
+.neg-table td:last-child .btn,
+.neg-table td:last-child a.btn,
+.neg-table td:last-child button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    font-size: .82rem;
+    border-radius: 7px;
+    text-decoration: none;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+/* gap entre os ícones */
+.neg-table td:last-child {
+    display: table-cell; /* garantia de não ser flex acidentalmente */
+}
+.neg-table td:last-child .btn + .btn,
+.neg-table td:last-child a + a,
+.neg-table td:last-child button + button,
+.neg-table td:last-child a + button,
+.neg-table td:last-child button + a {
+    margin-left: 4px;
+}
+
+/* ----------------------------------------------------------
+   COLUNA AÇÕES — Júri e Técnica (texto + ícone, empilhado)
+   Classes: .painel-table  (premiacao_vototecnico.php)
+            .painel-juri (caso exista variante)
+   ---------------------------------------------------------- */
+
+/* Célula de ações Júri/Técnica */
+.painel-table td:last-child {
+    width: 160px;            /* largura fixa para a coluna toda */
+    min-width: 150px;
+    vertical-align: middle;
+    padding: .6rem .85rem;
+}
+
+/* Container dos botões: coluna vertical, sem quebra dentro do botão */
+.painel-table td:last-child .acoes-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+/* Cada botão: ícone + texto, sem quebra */
+.painel-table td:last-child .acoes-col a,
+.painel-table td:last-child .acoes-col button,
+/* fallback para botões sem wrapper .acoes-col */
+.painel-table td:last-child a,
+.painel-table td:last-child button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;     /* texto não quebra dentro do botão */
+    font-size: .77rem;
+    font-weight: 600;
+    padding: .3rem .65rem;
+    border-radius: 7px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    transition: background .13s, color .13s;
+    width: 100%;             /* ocupa a largura da coluna */
+    justify-content: flex-start;
+}
+
+/* Cores dos botões Júri/Técnica */
+.painel-table td:last-child a.btn-ver,
+.painel-table td:last-child button.btn-ver {
+    color: #1E3425;
+    background: rgba(30, 52, 37, .08);
+}
+.painel-table td:last-child a.btn-ver:hover,
+.painel-table td:last-child button.btn-ver:hover {
+    background: #1E3425;
+    color: #fff;
+}
+
+.painel-table td:last-child a.btn-recalc,
+.painel-table td:last-child button.btn-recalc {
+    color: #5c6318;
+    background: rgba(151, 163, 39, .12);
+}
+.painel-table td:last-child a.btn-recalc:hover,
+.painel-table td:last-child button.btn-recalc:hover {
+    background: #97A327;
+    color: #fff;
+}
+
+.painel-table td:last-child a.btn-notif,
+.painel-table td:last-child button.btn-notif {
+    color: #3a6f82;
+    background: rgba(149, 188, 204, .18);
+}
+.painel-table td:last-child a.btn-notif:hover,
+.painel-table td:last-child button.btn-notif:hover {
+    background: #95BCCC;
+    color: #1E3425;
+}
+
+/* ----------------------------------------------------------
+   THEAD — garantir que a coluna Ações não quebre o label
+   ---------------------------------------------------------- */
+.neg-table thead th:last-child,
+.painel-table thead th:last-child {
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* ----------------------------------------------------------
+   CORREÇÃO GLOBAL — Nenhuma coluna "puxa" para branco
+   Remove qualquer white-space: nowrap que estava em td geral
+   das tabelas de negócios/painel e causava overflow
+   ---------------------------------------------------------- */
+.neg-table tbody td,
+.painel-table tbody td {
+    white-space: normal; /* permite quebra em todas as células */
+    vertical-align: middle;
+}
+
+/* Exceção: ID, scores e badges pequenos ainda ficam na mesma linha */
+.neg-table tbody td:first-child,
+.painel-table tbody td:first-child,
+.neg-cat-badge,
+.neg-score,
+.neg-score-geral,
+.score-pill,
+.score-mini,
+.pontos-pill,
+.status-badge-pub {
+    white-space: nowrap;
 }

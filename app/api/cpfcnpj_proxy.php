@@ -1,12 +1,6 @@
 <?php
 // /app/api/cpfcnpj_proxy.php
-// ─────────────────────────────────────────────────────────────────────────────
-// Proxy seguro para a API cpfcnpj.com.br
-// O token NUNCA é enviado ao navegador — fica somente neste arquivo de servidor.
-//
-// Como usar nas páginas:
-//   fetch('/app/api/cpfcnpj_proxy.php?tipo=cnpj&doc=12345678000195')
-//   fetch('/app/api/cpfcnpj_proxy.php?tipo=cpf&doc=12345678901')
+
 // ─────────────────────────────────────────────────────────────────────────────
 declare(strict_types=1);
 
