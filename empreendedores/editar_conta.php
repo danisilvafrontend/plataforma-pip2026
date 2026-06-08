@@ -18,27 +18,45 @@ $pdo = new PDO(
 );
 
 $stmt = $pdo->prepare("SELECT nome, sobrenome, cpf, email, celular, data_nascimento, genero,
-    pais, estado, cidade, regiao, cargo, eh_fundador, formacao, etnia
+    pais, estado, cidade, regiao, cargo, eh_fundador, formacao, etnia,
+    orientacao_sexual, grupo_vulneravel
     FROM empreendedores WHERE id = ?");
 $stmt->execute([$_SESSION['empreendedor_id']]);
 $empreendedor = $stmt->fetch();
 if (!$empreendedor) die("Empreendedor não encontrado.");
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email           = trim($_POST['email'] ?? '');
-    $celular         = trim($_POST['celular'] ?? '');
-    $data_nascimento = $_POST['data_nascimento'] ?? null;
-    $genero          = $_POST['genero'] ?? '';
-    $pais            = $_POST['pais'] ?? '';
-    $estado          = $_POST['estado'] ?? '';
-    $cidade          = $_POST['cidade'] ?? '';
-    $regiao          = $_POST['regiao'] ?? '';
-    $cargo           = $_POST['cargo'] ?? '';
-    $senha           = $_POST['senha'] ?? '';
-    $eh_fundador     = ($_POST['eh_fundador'] ?? '0') === '1' ? 1 : 0;
-    $formacao        = $_POST['formacao'] ?? null;
-    $etnia           = $_POST['etnia'] ?? null;
-    $forcarLimpeza   = [];
+    $email              = trim($_POST['email'] ?? '');
+    $celular            = trim($_POST['celular'] ?? '');
+    $data_nascimento    = $_POST['data_nascimento'] ?? null;
+    $genero             = $_POST['genero'] ?? '';
+    $pais               = $_POST['pais'] ?? '';
+    $estado             = $_POST['estado'] ?? '';
+    $cidade             = $_POST['cidade'] ?? '';
+    $regiao             = $_POST['regiao'] ?? '';
+    $cargo              = $_POST['cargo'] ?? '';
+    $senha              = $_POST['senha'] ?? '';
+    $eh_fundador        = ($_POST['eh_fundador'] ?? '0') === '1' ? 1 : 0;
+    $formacao           = $_POST['formacao'] ?? null;
+    $etnia              = $_POST['etnia'] ?? null;
+    $forcarLimpeza      = [];
+
+    // Novos campos de diversidade (só se for fundador principal)
+    $orientacao_sexual  = null;
+    $grupo_vulneravel   = null;
+    if ($eh_fundador === 1) {
+        // Orientação sexual: trata opção "Outra"
+        $os_base = $_POST['orientacao_sexual'] ?? null;
+        if ($os_base === 'Outra') {
+            $os_custom = trim($_POST['orientacao_sexual_outra'] ?? '');
+            $orientacao_sexual = $os_custom !== '' ? $os_custom : 'Outra';
+        } else {
+            $orientacao_sexual = $os_base !== '' ? $os_base : null;
+        }
+
+        $grupo_vulneravel = $_POST['grupo_vulneravel'] ?? null;
+        if ($grupo_vulneravel === '') $grupo_vulneravel = null;
+    }
 
     if ($pais === 'Brasil') { $regiao = null; $forcarLimpeza[] = 'regiao'; }
     else { $estado = null; $cidade = null; $forcarLimpeza[] = 'estado'; $forcarLimpeza[] = 'cidade'; }
@@ -53,9 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($estado !== '')            { $campos[] = "estado = ?";           $params[] = $estado; }
     if ($cidade !== '')            { $campos[] = "cidade = ?";           $params[] = $cidade; }
     if ($regiao !== '')            { $campos[] = "regiao = ?";           $params[] = $regiao; }
-    $campos[] = "eh_fundador = ?"; $params[] = $eh_fundador;
-    $campos[] = "formacao = ?";    $params[] = $formacao;
-    $campos[] = "etnia = ?";       $params[] = $etnia;
+    $campos[] = "eh_fundador = ?";       $params[] = $eh_fundador;
+    $campos[] = "formacao = ?";          $params[] = $formacao;
+    $campos[] = "etnia = ?";             $params[] = $etnia;
+    $campos[] = "orientacao_sexual = ?"; $params[] = $orientacao_sexual;
+    $campos[] = "grupo_vulneravel = ?";  $params[] = $grupo_vulneravel;
     if ($senha !== '') { $campos[] = "senha_hash = ?"; $params[] = password_hash($senha, PASSWORD_DEFAULT); }
     foreach ($forcarLimpeza as $c) { $campos[] = "$c = ?"; $params[] = null; }
 
@@ -271,7 +291,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
           </select>
         </div>
 
-        <!-- Extra fundador -->
+        <!-- Extra fundador: formação -->
         <div class="col-md-4 <?= (int)($empreendedor['eh_fundador'] ?? 0) !== 1 ? 'd-none' : '' ?>" id="formacao-wrapper">
           <label class="form-label fw-600">Formação</label>
           <select name="formacao" class="form-select">
@@ -281,6 +301,8 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <?php endforeach; ?>
           </select>
         </div>
+
+        <!-- Extra fundador: etnia -->
         <div class="col-md-4 <?= (int)($empreendedor['eh_fundador'] ?? 0) !== 1 ? 'd-none' : '' ?>" id="etnia-wrapper">
           <label class="form-label fw-600">Etnia / Raça</label>
           <select name="etnia" class="form-select">
@@ -290,6 +312,63 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <?php endforeach; ?>
           </select>
         </div>
+
+        <!-- Extra fundador: orientação sexual -->
+        <div class="col-12 <?= (int)($empreendedor['eh_fundador'] ?? 0) !== 1 ? 'd-none' : '' ?>" id="orientacao-wrapper">
+          <label class="form-label fw-600">Qual sua orientação sexual?</label>
+          <div class="row g-2 mt-1">
+            <?php
+              $os_atual    = $empreendedor['orientacao_sexual'] ?? '';
+              $os_opcoes   = ['Heterossexual','Homossexual','Bissexual','Assexual','Outra','Prefiro não responder'];
+              // Detecta se o valor salvo é uma opção personalizada
+              $os_ehOutra  = ($os_atual !== '' && !in_array($os_atual, $os_opcoes));
+              $os_selecionado = $os_ehOutra ? 'Outra' : $os_atual;
+            ?>
+            <?php foreach ($os_opcoes as $op): ?>
+              <div class="col-auto">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio"
+                         name="orientacao_sexual"
+                         id="os_<?= md5($op) ?>"
+                         value="<?= htmlspecialchars($op, ENT_QUOTES) ?>"
+                         <?= $os_selecionado === $op ? 'checked' : '' ?>
+                         onchange="toggleOsOutra(this)">
+                  <label class="form-check-label" for="os_<?= md5($op) ?>"><?= htmlspecialchars($op) ?></label>
+                </div>
+              </div>
+            <?php endforeach; ?>
+            <!-- Campo texto para opção Outra -->
+            <div class="col-12 mt-2 <?= $os_ehOutra ? '' : 'd-none' ?>" id="os-outra-wrapper">
+              <input type="text" name="orientacao_sexual_outra" class="form-control"
+                     placeholder="Qual a sua orientação sexual?"
+                     value="<?= $os_ehOutra ? htmlspecialchars($os_atual, ENT_QUOTES) : '' ?>">
+            </div>
+          </div>
+        </div>
+
+        <!-- Extra fundador: grupo vulnerável -->
+        <div class="col-12 <?= (int)($empreendedor['eh_fundador'] ?? 0) !== 1 ? 'd-none' : '' ?>" id="grupo-wrapper">
+          <label class="form-label fw-600">Você pertence a algum desses grupos?</label>
+          <div class="row g-2 mt-1">
+            <?php
+              $gv_atual  = $empreendedor['grupo_vulneravel'] ?? '';
+              $gv_opcoes = ['Pessoa com deficiência', 'Pessoa refugiada', 'Não'];
+            ?>
+            <?php foreach ($gv_opcoes as $op): ?>
+              <div class="col-auto">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio"
+                         name="grupo_vulneravel"
+                         id="gv_<?= md5($op) ?>"
+                         value="<?= htmlspecialchars($op, ENT_QUOTES) ?>"
+                         <?= $gv_atual === $op ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="gv_<?= md5($op) ?>"><?= htmlspecialchars($op) ?></label>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -336,16 +415,28 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
     document.getElementById('regiao-wrapper').classList.toggle('d-none', !outro);
   });
 
-  // Fundador → formação/etnia
+  // Fundador → formacão / etnia / orientação / grupo
   document.getElementById('eh_fundador').addEventListener('change', function () {
     const isFundador = this.value === '1';
-    document.getElementById('formacao-wrapper').classList.toggle('d-none', !isFundador);
-    document.getElementById('etnia-wrapper').classList.toggle('d-none', !isFundador);
+    ['formacao-wrapper','etnia-wrapper','orientacao-wrapper','grupo-wrapper']
+      .forEach(id => document.getElementById(id).classList.toggle('d-none', !isFundador));
     if (!isFundador) {
       document.querySelector('[name="formacao"]').value = '';
       document.querySelector('[name="etnia"]').value = '';
+      document.querySelectorAll('[name="orientacao_sexual"]').forEach(r => r.checked = false);
+      document.querySelector('[name="orientacao_sexual_outra"]').value = '';
+      document.getElementById('os-outra-wrapper').classList.add('d-none');
+      document.querySelectorAll('[name="grupo_vulneravel"]').forEach(r => r.checked = false);
     }
   });
+
+  // Orientação sexual → mostra/esconde campo "Outra"
+  function toggleOsOutra(radio) {
+    document.getElementById('os-outra-wrapper').classList.toggle('d-none', radio.value !== 'Outra');
+    if (radio.value !== 'Outra') {
+      document.querySelector('[name="orientacao_sexual_outra"]').value = '';
+    }
+  }
 </script>
 
 <?php include __DIR__ . '/../app/views/empreendedor/footer.php'; ?>
