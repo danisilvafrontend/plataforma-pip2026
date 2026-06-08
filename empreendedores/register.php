@@ -56,6 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'eh_fundador'             => (($_POST['eh_fundador'] ?? 'Não') === 'Sim') ? 1 : 0,
         'formacao'                => $_POST['formacao'] ?? null,
         'etnia'                   => $_POST['etnia'] ?? null,
+        'orientacao_sexual'       => $_POST['orientacao_sexual'] ?? null,
+        'orientacao_sexual_outra' => trim($_POST['orientacao_sexual_outra'] ?? ''),
+        'grupo_vulneravel'        => $_POST['grupo_vulneravel'] ?? null,
     ];
 
     if ($data['nome'] === '')                              $erros[] = 'Informe seu nome.';
@@ -67,7 +70,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$data['termos_uso'])                              $erros[] = 'É necessário concordar com os termos de uso.';
     if ($data['eh_fundador'] && empty($data['formacao']))  $erros[] = 'Informe sua formação.';
     if ($data['eh_fundador'] && empty($data['etnia']))     $erros[] = 'Informe sua etnia/raça.';
-    if (!$data['eh_fundador']) { $data['formacao'] = null; $data['etnia'] = null; }
+
+    if (!$data['eh_fundador']) {
+        $data['formacao']                = null;
+        $data['etnia']                   = null;
+        $data['orientacao_sexual']       = null;
+        $data['orientacao_sexual_outra'] = null;
+        $data['grupo_vulneravel']        = null;
+    }
+
+    // Tratar "Outra" orientação sexual
+    if ($data['orientacao_sexual'] === 'Outra') {
+        $data['orientacao_sexual'] = $data['orientacao_sexual_outra'] !== ''
+            ? 'Outra: ' . $data['orientacao_sexual_outra']
+            : 'Outra';
+    }
 
     if (empty($erros)) {
         $stmt = $pdo->prepare("SELECT id FROM empreendedores WHERE cpf = ? OR email = ? LIMIT 1");
@@ -79,11 +96,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare("INSERT INTO empreendedores
             (nome, sobrenome, cpf, email, celular, data_nascimento, genero, cidade, estado, pais,
              regiao, cargo, origem_conhecimento, consentimento_email, consentimento_whatsapp,
-             termos_uso, senha_hash, formacao, etnia, criado_em)
+             termos_uso, senha_hash, formacao, etnia, orientacao_sexual, grupo_vulneravel, criado_em)
             VALUES
             (:nome,:sobrenome,:cpf,:email,:celular,:data_nascimento,:genero,:cidade,:estado,:pais,
              :regiao,:cargo,:origem_conhecimento,:consentimento_email,:consentimento_whatsapp,
-             :termos_uso,:senha_hash,:formacao,:etnia,CURRENT_TIMESTAMP)")
+             :termos_uso,:senha_hash,:formacao,:etnia,:orientacao_sexual,:grupo_vulneravel,CURRENT_TIMESTAMP)")
         ->execute([
             ':nome'                   => $data['nome'],
             ':sobrenome'              => $data['sobrenome'],
@@ -104,6 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':senha_hash'             => password_hash($data['senha'], PASSWORD_DEFAULT),
             ':formacao'               => $data['formacao'],
             ':etnia'                  => $data['etnia'],
+            ':orientacao_sexual'      => $data['orientacao_sexual'],
+            ':grupo_vulneravel'       => $data['grupo_vulneravel'],
         ]);
 
         $_SESSION['empreendedor_id']    = (int)$pdo->lastInsertId();
@@ -359,7 +378,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
             </select>
           </div>
 
-          <!-- Fundador extra -->
+          <!-- Campos exclusivos para fundadores -->
           <div class="col-md-6 d-none" id="formacao-wrapper">
             <label class="form-label fw-600">Formação *</label>
             <select name="formacao" id="formacao" class="form-select">
@@ -369,6 +388,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
               <?php endforeach; ?>
             </select>
           </div>
+
           <div class="col-md-6 d-none" id="etnia-wrapper">
             <label class="form-label fw-600">Etnia / Raça *</label>
             <select name="etnia" id="etnia" class="form-select">
@@ -378,6 +398,80 @@ include __DIR__ . '/../app/views/public/header_public.php';
               <?php endforeach; ?>
             </select>
           </div>
+
+          <!-- ── NOVO: Orientação Sexual ── -->
+          <div class="col-12 d-none" id="orientacao-wrapper">
+            <label class="form-label fw-600">Qual sua orientação sexual?</label>
+            <small class="d-block text-muted mb-2">
+              Essa informação é opcional e confidencial. Ajuda a garantir diversidade e inclusão no programa.
+            </small>
+            <div class="row g-2">
+              <?php
+              $opcoesOrientacao = ['Heterossexual','Homossexual','Bissexual','Assexual','Prefiro não responder'];
+              foreach ($opcoesOrientacao as $op):
+                $orientacaoAtual = $data['orientacao_sexual'] ?? '';
+              ?>
+              <div class="col-12 col-md-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio"
+                         name="orientacao_sexual" id="orient_<?= md5($op) ?>"
+                         value="<?= htmlspecialchars($op, ENT_QUOTES) ?>"
+                         <?= $orientacaoAtual === $op ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="orient_<?= md5($op) ?>">
+                    <?= htmlspecialchars($op) ?>
+                  </label>
+                </div>
+              </div>
+              <?php endforeach; ?>
+              <div class="col-12 col-md-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio"
+                         name="orientacao_sexual" id="orient_outra"
+                         value="Outra"
+                         <?= str_starts_with($data['orientacao_sexual'] ?? '', 'Outra') ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="orient_outra">
+                    Outra. Qual?
+                  </label>
+                </div>
+                <input type="text" name="orientacao_sexual_outra" id="orientacao_outra_texto"
+                       class="form-control form-control-sm mt-1 <?= str_starts_with($data['orientacao_sexual'] ?? '', 'Outra') ? '' : 'd-none' ?>"
+                       placeholder="Descreva sua orientação sexual"
+                       value="<?= htmlspecialchars(
+                         str_starts_with($data['orientacao_sexual'] ?? '', 'Outra: ')
+                           ? substr($data['orientacao_sexual'], 7)
+                           : ($data['orientacao_sexual_outra'] ?? ''),
+                         ENT_QUOTES
+                       ) ?>">
+              </div>
+            </div>
+          </div>
+
+          <!-- ── NOVO: Grupo Vulnerável ── -->
+          <div class="col-12 d-none" id="grupo-vulneravel-wrapper">
+            <label class="form-label fw-600">Você pertence a algum desses grupos?</label>
+            <small class="d-block text-muted mb-2">
+              Essa informação é opcional e confidencial.
+            </small>
+            <div class="row g-2">
+              <?php
+              $opcoesGrupo = ['Pessoa com deficiência', 'Pessoa refugiada', 'Não'];
+              foreach ($opcoesGrupo as $gp):
+              ?>
+              <div class="col-12 col-md-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio"
+                         name="grupo_vulneravel" id="grupo_<?= md5($gp) ?>"
+                         value="<?= htmlspecialchars($gp, ENT_QUOTES) ?>"
+                         <?= ($data['grupo_vulneravel'] ?? '') === $gp ? 'checked' : '' ?>>
+                  <label class="form-check-label" for="grupo_<?= md5($gp) ?>">
+                    <?= htmlspecialchars($gp) ?>
+                  </label>
+                </div>
+              </div>
+              <?php endforeach; ?>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -433,7 +527,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
           <label for="termosUso">
             <span class="fw-600 d-block">Termos de Uso *</span>
             <small>Concordo com os
-              <a href="/../termos-de-uso.php" target="_blank">Termos de Uso</a>, 
+              <a href="/../termos-de-uso.php" target="_blank">Termos de Uso</a>,
               <a href="/../politica-de-privacidade.php" target="_blank">Política de Privacidade</a> e a <a href="/../politica-de-posicionamento.php" target="_blank">Política de Posicionamento</a>.
             </small>
           </label>
@@ -442,24 +536,22 @@ include __DIR__ . '/../app/views/public/header_public.php';
     </div>
 
     <!-- ── Ação ── -->
-    <!-- Trecho final do form, substitua por: -->
-<div class="d-flex align-items-center justify-content-between flex-wrap gap-3"
-     style="color:#212529;">
-  <span class="small" style="color:#4a5e4f;">
-    Já tem conta?
-    <a href="/login.php" style="color:#1E3425; font-weight:700;">Faça login</a>
-  </span>
-  <button type="submit" class="btn-reg-submit">
-    <i class="bi bi-person-check me-2"></i> Criar minha conta
-  </button>
-</div>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3"
+         style="color:#212529;">
+      <span class="small" style="color:#4a5e4f;">
+        Já tem conta?
+        <a href="/login.php" style="color:#1E3425; font-weight:700;">Faça login</a>
+      </span>
+      <button type="submit" class="btn-reg-submit">
+        <i class="bi bi-person-check me-2"></i> Criar minha conta
+      </button>
+    </div>
 
   </form>
 </div>
 
 <script>
 (function () {
-
 
   const cpfInput      = document.getElementById('cpf');
   const cpfSpinner    = document.getElementById('cpfSpinner');
@@ -472,7 +564,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
   const sobrenomeHelp = document.getElementById('sobrenomeHelp');
   let   debounce      = null;
 
-  // ── Utilitários ─────────────────────────────────────────────────
   function onlyDigits(s) { return (s || '').replace(/\D/g, ''); }
 
   function formatCPF(d) {
@@ -483,7 +574,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
             .slice(0, 14);
   }
 
-  // ── Validação CPF ────────────────────────────────────────────────
   function isValidCPF(cpf) {
     cpf = onlyDigits(cpf);
     if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
@@ -497,7 +587,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
     return (r < 2 ? 0 : 11 - r) === parseInt(cpf[10]);
   }
 
-  // ── Estados do CPF ───────────────────────────────────────────────
   function cpfSetLoading(on) {
     if (on) { cpfSpinner.classList.remove('d-none'); cpfBadge.classList.add('d-none'); }
     else    { cpfSpinner.classList.add('d-none'); }
@@ -516,7 +605,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
     cpfInput.setCustomValidity('');
   }
 
-  // ── Estados de Nome/Sobrenome ────────────────────────────────────
   function nomeSobrenomeClear() {
     nomeInput.value      = '';
     sobrenomeInput.value = '';
@@ -531,24 +619,18 @@ include __DIR__ . '/../app/views/public/header_public.php';
   }
 
   function nomeSobrenomeSetSuccess(nomeCompleto) {
-    // Separa: primeira palavra = nome, restante = sobrenome
     const partes    = nomeCompleto.trim().split(/\s+/);
     const nome      = partes[0] || '';
     const sobrenome = partes.slice(1).join(' ') || '';
-
     nomeInput.value      = nome;
     sobrenomeInput.value = sobrenome;
-
     nomeInput.setAttribute('readonly', 'readonly');
     sobrenomeInput.setAttribute('readonly', 'readonly');
     nomeInput.classList.add('bg-light');
     sobrenomeInput.classList.add('bg-light');
-
     const msgLock = '<span class="text-success"><i class="bi bi-lock-fill me-1"></i>Preenchido via Receita Federal. Não pode ser alterado.</span>';
     nomeHelp.innerHTML      = msgLock;
     sobrenomeHelp.innerHTML = msgLock;
-
-    // Badge verde no CPF
     cpfBadge.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
     cpfBadge.classList.remove('d-none');
     cpfHelp.innerHTML = '<span class="text-success">CPF válido ✓</span>';
@@ -560,7 +642,6 @@ include __DIR__ . '/../app/views/public/header_public.php';
     cpfBadge.classList.remove('d-none');
     cpfHelp.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>'
       + (msg || 'Não foi possível consultar o CPF.') + ' Preencha o nome manualmente.</span>';
-    // Libera campos para digitar manualmente
     nomeInput.removeAttribute('readonly');
     sobrenomeInput.removeAttribute('readonly');
     nomeInput.classList.remove('bg-light');
@@ -569,13 +650,9 @@ include __DIR__ . '/../app/views/public/header_public.php';
     sobrenomeInput.setAttribute('placeholder', 'Digite seu sobrenome');
   }
 
-  // ── Consulta à API (Produto 1 = Dados Básicos CPF) ───────────────
-  // Endpoint: https://api.cpfcnpj.com.br/{TOKEN}/1/{CPF_SEM_MASCARA}
-  // Retorna: { cpf, nome, sexo, ... }
   function consultarCPF(digits) {
     cpfSetLoading(true);
     cpfHelp.innerHTML = '<span class="text-muted">Consultando Receita Federal…</span>';
-
     fetch('../app/api/cpfcnpj_proxy.php?tipo=cpf&doc=' + digits)
       .then(function (res) {
         cpfSetLoading(false);
@@ -603,22 +680,18 @@ include __DIR__ . '/../app/views/public/header_public.php';
       });
   }
 
-  // ── Input do CPF ─────────────────────────────────────────────────
   cpfInput.addEventListener('input', function () {
     cpfInput.value = formatCPF(onlyDigits(cpfInput.value));
     cpfClearError();
     cpfBadge.classList.add('d-none');
     cpfHelp.innerHTML = '';
-
     const d = onlyDigits(cpfInput.value);
     clearTimeout(debounce);
-
     if (d.length === 11) {
       if (!isValidCPF(d)) {
         cpfSetError('CPF inválido. Verifique os números digitados.');
         nomeSobrenomeClear();
       } else {
-        // CPF completo e válido → aguarda 600ms e consulta
         nomeSobrenomeClear();
         cpfHelp.innerHTML = '<span class="text-muted">Aguardando…</span>';
         debounce = setTimeout(function () { consultarCPF(d); }, 600);
@@ -635,11 +708,8 @@ include __DIR__ . '/../app/views/public/header_public.php';
     cpfInput.dispatchEvent(new Event('input', { bubbles: true }));
   });
 
-  cpfInput.addEventListener('focus', function () {
-    cpfClearError();
-  });
+  cpfInput.addEventListener('focus', function () { cpfClearError(); });
 
-  // ── Submit: remove máscara antes de enviar ────────────────────────
   const form = cpfInput.closest('form');
   if (form) {
     form.addEventListener('submit', function (ev) {
@@ -650,16 +720,14 @@ include __DIR__ . '/../app/views/public/header_public.php';
         cpfInput.focus();
         return;
       }
-      cpfInput.value = d; // envia só os dígitos → PHP já faz preg_replace
+      cpfInput.value = d;
     });
   }
 
-  // ── Se voltou do POST com erro (valor já preenchido no PHP) ──────
   (function init() {
     const d = onlyDigits(cpfInput.value);
     if (d.length === 11) {
       cpfInput.value = formatCPF(d);
-      // Se nome/sobrenome também voltaram preenchidos, mantém readonly
       if (nomeInput.value.trim() !== '') {
         nomeInput.setAttribute('readonly', 'readonly');
         sobrenomeInput.setAttribute('readonly', 'readonly');
@@ -684,12 +752,35 @@ const formacao   = document.getElementById('formacao');
 const etnia      = document.getElementById('etnia');
 const paisSel    = document.getElementById('pais');
 
-// Fundador toggle
+// Fundador toggle — inclui novos campos de diversidade
 ehFundador.addEventListener('change', function () {
   const isFund = this.value === 'Sim';
   document.getElementById('formacao-wrapper').classList.toggle('d-none', !isFund);
   document.getElementById('etnia-wrapper').classList.toggle('d-none', !isFund);
-  if (!isFund) { formacao.value = ''; etnia.value = ''; }
+  document.getElementById('orientacao-wrapper').classList.toggle('d-none', !isFund);
+  document.getElementById('grupo-vulneravel-wrapper').classList.toggle('d-none', !isFund);
+  if (!isFund) {
+    formacao.value = '';
+    etnia.value = '';
+    document.querySelectorAll('input[name="orientacao_sexual"]').forEach(r => r.checked = false);
+    document.querySelectorAll('input[name="grupo_vulneravel"]').forEach(r => r.checked = false);
+    const campoOutra = document.getElementById('orientacao_outra_texto');
+    if (campoOutra) { campoOutra.value = ''; campoOutra.classList.add('d-none'); }
+  }
+});
+
+// Mostrar/esconder campo de texto "Outra" orientação sexual
+document.querySelectorAll('input[name="orientacao_sexual"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    const campoOutra = document.getElementById('orientacao_outra_texto');
+    if (this.value === 'Outra') {
+      campoOutra.classList.remove('d-none');
+      campoOutra.focus();
+    } else {
+      campoOutra.classList.add('d-none');
+      campoOutra.value = '';
+    }
+  });
 });
 
 // País toggle

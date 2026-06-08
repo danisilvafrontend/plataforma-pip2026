@@ -18,27 +18,30 @@ require_once __DIR__ . '/../app/helpers/functions.php';
 
 // Sanitização
 $data = [
-    'nome' => trim($_POST['nome'] ?? ''),
-    'sobrenome' => trim($_POST['sobrenome'] ?? ''),
-    'cpf' => sanitize_text($_POST['cpf'] ?? ''),
-    'email' => trim(filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL)),
-    'celular' => sanitize_text($_POST['celular'] ?? ''),
-    'data_nascimento' => $_POST['data_nascimento'] ?? '',
-    'genero' => sanitize_text($_POST['genero'] ?? ''),
-    'cidade' => trim($_POST['cidade'] ?? ''),
-    'estado' => trim($_POST['estado'] ?? ''),
-    'pais' => sanitize_text($_POST['pais'] ?? ''),
-    'regiao' => trim($_POST['regiao'] ?? ''),
-    'cargo' => trim($_POST['cargo'] ?? ''),
-    'origem_conhecimento' => sanitize_text($_POST['origem_conhecimento'] ?? ''),
-    'consentimento_email' => isset($_POST['consentimento_email']) ? 1 : 0,
-    'consentimento_whatsapp' => isset($_POST['consentimento_whatsapp']) ? 1 : 0,
-    'termos_uso' => isset($_POST['termos_uso']) ? 1 : 0,
-    'senha' => $_POST['senha'] ?? '',
-    'senha_confirm' => $_POST['senha_confirm'] ?? '',
-    'eh_fundador' => $_POST['eh_fundador'] ?? 'Não',
-    'formacao' => $_POST['formacao'] ?? null,
-    'etnia' => $_POST['etnia'] ?? null,
+    'nome'                    => trim($_POST['nome'] ?? ''),
+    'sobrenome'               => trim($_POST['sobrenome'] ?? ''),
+    'cpf'                     => sanitize_text($_POST['cpf'] ?? ''),
+    'email'                   => trim(filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL)),
+    'celular'                 => sanitize_text($_POST['celular'] ?? ''),
+    'data_nascimento'         => $_POST['data_nascimento'] ?? '',
+    'genero'                  => sanitize_text($_POST['genero'] ?? ''),
+    'cidade'                  => trim($_POST['cidade'] ?? ''),
+    'estado'                  => trim($_POST['estado'] ?? ''),
+    'pais'                    => sanitize_text($_POST['pais'] ?? ''),
+    'regiao'                  => trim($_POST['regiao'] ?? ''),
+    'cargo'                   => trim($_POST['cargo'] ?? ''),
+    'origem_conhecimento'     => sanitize_text($_POST['origem_conhecimento'] ?? ''),
+    'consentimento_email'     => isset($_POST['consentimento_email']) ? 1 : 0,
+    'consentimento_whatsapp'  => isset($_POST['consentimento_whatsapp']) ? 1 : 0,
+    'termos_uso'              => isset($_POST['termos_uso']) ? 1 : 0,
+    'senha'                   => $_POST['senha'] ?? '',
+    'senha_confirm'           => $_POST['senha_confirm'] ?? '',
+    'eh_fundador'             => $_POST['eh_fundador'] ?? 'Não',
+    'formacao'                => $_POST['formacao'] ?? null,
+    'etnia'                   => $_POST['etnia'] ?? null,
+    'orientacao_sexual'       => sanitize_text($_POST['orientacao_sexual'] ?? ''),
+    'orientacao_sexual_outra' => trim($_POST['orientacao_sexual_outra'] ?? ''),
+    'grupo_vulneravel'        => sanitize_text($_POST['grupo_vulneravel'] ?? ''),
 ];
 
 // Validação
@@ -57,7 +60,7 @@ if ($data['senha'] !== $data['senha_confirm']) {
     $erros['senha_confirm'] = "As senhas não conferem.";
 }
 
-// Se é fundador, formação e etnia obrigatórios
+// Se é fundador, formação e etnia obrigatórios; orientação e grupo são opcionais
 if ($data['eh_fundador'] === 'Sim') {
     if (empty($data['formacao'])) {
         $erros['formacao'] = "Informe sua formação.";
@@ -65,9 +68,19 @@ if ($data['eh_fundador'] === 'Sim') {
     if (empty($data['etnia'])) {
         $erros['etnia'] = "Informe sua etnia/raça.";
     }
+    // Tratar "Outra" orientação sexual
+    if ($data['orientacao_sexual'] === 'Outra') {
+        $data['orientacao_sexual'] = $data['orientacao_sexual_outra'] !== ''
+            ? 'Outra: ' . $data['orientacao_sexual_outra']
+            : 'Outra';
+    }
+    $data['orientacao_sexual'] = $data['orientacao_sexual'] ?: null;
+    $data['grupo_vulneravel']  = $data['grupo_vulneravel']  ?: null;
 } else {
-    $data['formacao'] = null;
-    $data['etnia'] = null;
+    $data['formacao']          = null;
+    $data['etnia']             = null;
+    $data['orientacao_sexual'] = null;
+    $data['grupo_vulneravel']  = null;
 }
 
 if (!empty($erros)) {
@@ -86,25 +99,22 @@ $options = [
     PDO::ATTR_EMULATE_PREPARES   => false,
 ];
 
-
 try {
     $pdo = new PDO($dsn, $config['user'], $config['pass'], $options);
-    
-    // FORÇA UTF-8MB4 em todas as variáveis de conexão
     $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
     $pdo->exec("SET character_set_client = utf8mb4");
     $pdo->exec("SET character_set_connection = utf8mb4");
     $pdo->exec("SET character_set_results = utf8mb4");
     $pdo->exec("SET collation_connection = utf8mb4_unicode_ci");
-    
 } catch (PDOException $e) {
     die("Erro na conexão com o banco: " . $e->getMessage());
 }
+
 // Normalizações
-$data['cpf'] = only_digits($data['cpf']);
-$data['celular'] = only_digits($data['celular']);
+$data['cpf']         = only_digits($data['cpf']);
+$data['celular']     = only_digits($data['celular']);
 $data['eh_fundador'] = (($_POST['eh_fundador'] ?? 'Não') === 'Sim') ? 1 : 0;
-$passwordHash = password_hash($data['senha'], PASSWORD_BCRYPT);
+$passwordHash        = password_hash($data['senha'], PASSWORD_BCRYPT);
 
 // Regras de unicidade
 $stmt = $pdo->prepare("SELECT id FROM empreendedores WHERE email = ? LIMIT 1");
@@ -127,45 +137,48 @@ if (!empty($data['cpf'])) {
 $sql = "INSERT INTO empreendedores
         (nome, sobrenome, cpf, email, celular, data_nascimento, genero, cidade, estado, pais, regiao,
          cargo, origem_conhecimento, consentimento_email, consentimento_whatsapp, termos_uso, senha_hash,
-         eh_fundador, formacao, etnia, criado_em)
-        VALUES (:nome, :sobrenome, :cpf, :email, :celular, :data_nascimento, :genero, :cidade, :estado, :pais, :regiao,
-                :cargo, :origem_conhecimento, :consentimento_email, :consentimento_whatsapp, :termos_uso, :senha_hash,
-                :eh_fundador, :formacao, :etnia, CURRENT_TIMESTAMP)";
+         eh_fundador, formacao, etnia, orientacao_sexual, grupo_vulneravel, criado_em)
+        VALUES
+        (:nome, :sobrenome, :cpf, :email, :celular, :data_nascimento, :genero, :cidade, :estado, :pais, :regiao,
+         :cargo, :origem_conhecimento, :consentimento_email, :consentimento_whatsapp, :termos_uso, :senha_hash,
+         :eh_fundador, :formacao, :etnia, :orientacao_sexual, :grupo_vulneravel, CURRENT_TIMESTAMP)";
 
 $stmt = $pdo->prepare($sql);
 
 try {
     $stmt->execute([
-        ':nome' => $data['nome'],
-        ':sobrenome' => $data['sobrenome'],
-        ':cpf' => $data['cpf'] ?: null,
-        ':email' => $data['email'],
-        ':celular' => $data['celular'] ?: null,
-        ':data_nascimento' => !empty($data['data_nascimento']) ? $data['data_nascimento'] : null,
-        ':genero' => !empty($data['genero']) ? $data['genero'] : null,
-        ':cidade' => !empty($data['cidade']) ? $data['cidade'] : null,
-        ':estado' => !empty($data['estado']) ? $data['estado'] : null,
-        ':pais' => !empty($data['pais']) ? $data['pais'] : null,
-        ':regiao' => !empty($data['regiao']) ? $data['regiao'] : null,
-        ':cargo' => !empty($data['cargo']) ? $data['cargo'] : null,
-        ':origem_conhecimento' => !empty($data['origem_conhecimento']) ? $data['origem_conhecimento'] : null,
-        ':consentimento_email' => $data['consentimento_email'],
+        ':nome'                   => $data['nome'],
+        ':sobrenome'              => $data['sobrenome'],
+        ':cpf'                    => $data['cpf'] ?: null,
+        ':email'                  => $data['email'],
+        ':celular'                => $data['celular'] ?: null,
+        ':data_nascimento'        => !empty($data['data_nascimento']) ? $data['data_nascimento'] : null,
+        ':genero'                 => !empty($data['genero']) ? $data['genero'] : null,
+        ':cidade'                 => !empty($data['cidade']) ? $data['cidade'] : null,
+        ':estado'                 => !empty($data['estado']) ? $data['estado'] : null,
+        ':pais'                   => !empty($data['pais']) ? $data['pais'] : null,
+        ':regiao'                 => !empty($data['regiao']) ? $data['regiao'] : null,
+        ':cargo'                  => !empty($data['cargo']) ? $data['cargo'] : null,
+        ':origem_conhecimento'    => !empty($data['origem_conhecimento']) ? $data['origem_conhecimento'] : null,
+        ':consentimento_email'    => $data['consentimento_email'],
         ':consentimento_whatsapp' => $data['consentimento_whatsapp'],
-        ':termos_uso' => $data['termos_uso'],
-        ':senha_hash' => $passwordHash,
-        ':eh_fundador' => $data['eh_fundador'],
-        ':formacao' => $data['formacao'],
-        ':etnia' => $data['etnia'],
+        ':termos_uso'             => $data['termos_uso'],
+        ':senha_hash'             => $passwordHash,
+        ':eh_fundador'            => $data['eh_fundador'],
+        ':formacao'               => $data['formacao'],
+        ':etnia'                  => $data['etnia'],
+        ':orientacao_sexual'      => $data['orientacao_sexual'],
+        ':grupo_vulneravel'       => $data['grupo_vulneravel'],
     ]);
 
     $empreendedorId = $pdo->lastInsertId();
-    $_SESSION['empreendedor_id'] = $empreendedorId;
-    $_SESSION['empreendedor_nome'] = $data['nome'];
+    $_SESSION['empreendedor_id']    = $empreendedorId;
+    $_SESSION['empreendedor_nome']  = $data['nome'];
     $_SESSION['empreendedor_email'] = $data['email'];
-    $_SESSION['eh_fundador'] = $data['eh_fundador'];
-    $_SESSION['logged_at'] = time();
-    $_SESSION['user_id'] = $empreendedorId;
-    $_SESSION['user_role']  = 'empreendedor';
+    $_SESSION['eh_fundador']        = $data['eh_fundador'];
+    $_SESSION['logged_at']          = time();
+    $_SESSION['user_id']            = $empreendedorId;
+    $_SESSION['user_role']          = 'empreendedor';
 
 } catch (PDOException $e) {
     http_response_code(500);
@@ -180,17 +193,16 @@ $subject = "Bem-vindo à Plataforma Impactos Positivos";
 $body = render_email_template(
     __DIR__ . '/../app/views/emails/new_empreendedor.php',
     [
-        'nome' => $data['nome'],
-        'sobrenome' => $data['sobrenome'],
-        'email' => $data['email'],
+        'nome'     => $data['nome'],
+        'sobrenome'=> $data['sobrenome'],
+        'email'    => $data['email'],
         'base_url' => get_base_url()
     ]
 );
 
-$headers = "MIME-Version: 1.0\r\n";
+$headers  = "MIME-Version: 1.0\r\n";
 $headers .= "Content-type: text/html; charset=UTF-8\r\n";
 $headers .= "From: Plataforma Impactos Positivos <noreply@impactospositivos.com.br>\r\n";
-
 
 send_mail(
     $data['email'],
@@ -200,7 +212,7 @@ send_mail(
     $headers
 );
 
-session_write_close(); 
+session_write_close();
 
 // Redireciona para sucesso
 header("Location: /empreendedores/sucesso.php?email=" . urlencode($data['email']));
