@@ -525,6 +525,20 @@ document.addEventListener('DOMContentLoaded', function () {
   // Bind nas máscaras já existentes
   document.querySelectorAll('.cpf-input').forEach(bindCpfMask);
 
+  // Bloqueia submit se CPF inválido
+  document.getElementById('formEtapa2').addEventListener('submit', function (e) {
+    let invalido = false;
+    document.querySelectorAll('.cpf-input').forEach(function (input) {
+      const d = input.value.replace(/\D/g,'');
+      if (d && !isValidCPF(d)) { invalido = true; input.classList.add('is-invalid'); }
+    });
+    if (invalido) {
+      e.preventDefault();
+      alert('Corrija todos os CPFs inválidos antes de continuar.');
+    }
+  });
+
 })();
 </script>
+
 <?php include __DIR__ . '/../app/views/empreendedor/footer.php'; ?>
