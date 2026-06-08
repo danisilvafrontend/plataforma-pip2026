@@ -179,6 +179,53 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
           </select>
         </div>
 
+        <!-- ── Orientação Sexual (Fundador Principal) ── -->
+        <div class="col-12">
+          <label class="form-label fw-600">
+            <i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual sua orientação sexual? *
+          </label>
+          <div class="d-flex flex-wrap gap-3">
+            <?php
+            $orientacoes = ['Heterossexual','Homossexual','Bissexual','Assexual','Prefiro não responder'];
+            foreach ($orientacoes as $ori): ?>
+              <div class="form-check">
+                <input class="form-check-input" type="radio"
+                       name="fundador_principal[orientacao_sexual]"
+                       value="<?= $ori ?>" id="fp_ori_<?= md5($ori) ?>" required>
+                <label class="form-check-label" for="fp_ori_<?= md5($ori) ?>"><?= $ori ?></label>
+              </div>
+            <?php endforeach; ?>
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="fundador_principal[orientacao_sexual]"
+                     value="Outra" id="fp_ori_outra"
+                     onchange="document.getElementById('fp_ori_outra_texto').classList.remove('d-none')">
+              <label class="form-check-label" for="fp_ori_outra">Outra. Qual?</label>
+            </div>
+          </div>
+          <div id="fp_ori_outra_texto" class="mt-2 d-none" style="max-width:320px;">
+            <input type="text" name="fundador_principal[orientacao_sexual_outra]"
+                   class="form-control form-control-sm" placeholder="Digite sua orientação sexual">
+          </div>
+        </div>
+
+        <!-- ── Grupo Vulnerável (Fundador Principal) ── -->
+        <div class="col-12">
+          <label class="form-label fw-600">
+            <i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Você pertence a algum desses grupos? *
+          </label>
+          <div class="d-flex flex-wrap gap-3">
+            <?php foreach (['Pessoa com deficiência','Pessoa refugiada','Não'] as $grp): ?>
+              <div class="form-check">
+                <input class="form-check-input" type="radio"
+                       name="fundador_principal[grupo_vulneravel]"
+                       value="<?= $grp ?>" id="fp_grp_<?= md5($grp) ?>" required>
+                <label class="form-check-label" for="fp_grp_<?= md5($grp) ?>"><?= $grp ?></label>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
         <!-- Endereço -->
         <div class="col-12">
           <label class="form-label fw-600">
@@ -403,6 +450,27 @@ document.addEventListener('DOMContentLoaded', function () {
             ${buildOpts(etnias)}
           </select>
         </div>
+
+        <div class="col-12">
+          <label class="form-label fw-600"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Qual sua orientação sexual? *</label>
+          <div class="d-flex flex-wrap gap-3">
+            ${['Heterossexual','Homossexual','Bissexual','Assexual','Prefiro não responder'].map(o =>
+              `<div class="form-check"><input class="form-check-input" type="radio" name="cofundador[${count}][orientacao_sexual]" value="${o}" required><label class="form-check-label">${o}</label></div>`
+            ).join('')}
+            <div class="form-check"><input class="form-check-input" type="radio" name="cofundador[${count}][orientacao_sexual]" value="Outra" id="cf_ori_outra_${count}" onchange="document.getElementById('cf_ori_texto_${count}').classList.remove('d-none')"><label class="form-check-label" for="cf_ori_outra_${count}">Outra. Qual?</label></div>
+          </div>
+          <div id="cf_ori_texto_${count}" class="mt-2 d-none" style="max-width:320px;">
+            <input type="text" name="cofundador[${count}][orientacao_sexual_outra]" class="form-control form-control-sm" placeholder="Digite sua orientação sexual">
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-600"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Você pertence a algum desses grupos? *</label>
+          <div class="d-flex flex-wrap gap-3">
+            ${['Pessoa com deficiência','Pessoa refugiada','Não'].map(g =>
+              `<div class="form-check"><input class="form-check-input" type="radio" name="cofundador[${count}][grupo_vulneravel]" value="${g}" required><label class="form-check-label">${g}</label></div>`
+            ).join('')}
+          </div>
+        </div>
       </div>
     `;
     container.appendChild(bloco);
@@ -452,28 +520,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (err) err.remove();
       }
     });
-    input.addEventListener('focus', function () {
-      this.classList.remove('is-invalid','is-valid');
-    });
   }
 
-  // Aplica máscara nos CPFs já presentes no DOM
+  // Bind nas máscaras já existentes
   document.querySelectorAll('.cpf-input').forEach(bindCpfMask);
-
-  // Bloqueia submit se CPF inválido
-  document.getElementById('formEtapa2').addEventListener('submit', function (e) {
-    let invalido = false;
-    document.querySelectorAll('.cpf-input').forEach(function (input) {
-      const d = input.value.replace(/\D/g,'');
-      if (d && !isValidCPF(d)) { invalido = true; input.classList.add('is-invalid'); }
-    });
-    if (invalido) {
-      e.preventDefault();
-      alert('Corrija todos os CPFs inválidos antes de continuar.');
-    }
-  });
 
 })();
 </script>
-
 <?php include __DIR__ . '/../app/views/empreendedor/footer.php'; ?>
