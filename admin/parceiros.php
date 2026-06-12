@@ -6,6 +6,8 @@ session_start();
 require_once __DIR__ . '/../app/helpers/auth.php';
 require_admin_login();
 
+$isSuperadmin = is_superadmin();
+
 $config = require __DIR__ . '/../app/config/db.php';
 $dsn    = "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}";
 $opts   = [
@@ -53,7 +55,7 @@ $stmtCount->execute($params);
 $totalRecords = (int)$stmtCount->fetchColumn();
 $totalPages   = max(1, (int)ceil($totalRecords / $limit));
 
-$sql  = "SELECT id, nome_fantasia, cnpj, rep_nome, rep_email, status, etapa_atual, criado_em, acordo_aceito
+$sql  = "SELECT id, nome_fantasia, razao_social, cnpj, rep_nome, rep_email, status, etapa_atual, criado_em, acordo_aceito
          FROM parceiros $whereSql ORDER BY criado_em DESC LIMIT $limit OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -208,39 +210,71 @@ include __DIR__ . '/../app/views/admin/header.php';
                 <?= $p['criado_em'] ? date('d/m/Y', strtotime($p['criado_em'])) : '—' ?>
               </td>
               <td class="text-end text-nowrap">
+
+                {{!-- Ver cadastro --}}
                 <a href="visualizar_parceiro.php?id=<?= (int)$p['id'] ?>"
-                  class="btn btn-sm btn-outline-secondary"
-                  title="Ver cadastro completo">
+                   class="btn btn-sm btn-outline-secondary"
+                   title="Ver cadastro completo">
                     <i class="bi bi-eye"></i>
                 </a>
 
                 <?php if ((int)($p['acordo_aceito'] ?? 0) === 1): ?>
-                    <a href="visualizar_carta_parceiro.php?id=<?= (int)$p['id'] ?>"
-                      class="btn btn-sm btn-outline-success ms-1"
-                      title="Ver Carta-Acordo">
-                        <i class="bi bi-file-earmark-text"></i>
-                    </a>
 
-                    <button type="button"
-                            class="btn btn-sm btn-outline-primary ms-1"
-                            title="Alterar status"
-                            onclick="openStatusModal(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'] ?: $p['razao_social'] ?: 'Parceiro')) ?>', '<?= htmlspecialchars($p['status'] ?? '') ?>')">
-                        <i class="bi bi-arrow-repeat"></i>
-                    </button>
+                  {{!-- Ver carta-acordo --}}
+                  <a href="visualizar_carta_parceiro.php?id=<?= (int)$p['id'] ?>"
+                     class="btn btn-sm btn-outline-success ms-1"
+                     title="Ver Carta-Acordo">
+                      <i class="bi bi-file-earmark-text"></i>
+                  </a>
+
+                  {{!-- Alterar status --}}
+                  <button type="button"
+                          class="btn btn-sm btn-outline-primary ms-1"
+                          title="Alterar status"
+                          onclick="openStatusModal(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'] ?: $p['razao_social'] ?: 'Parceiro')) ?>', '<?= htmlspecialchars($p['status'] ?? '') ?>')">
+                      <i class="bi bi-arrow-repeat"></i>
+                  </button>
+
+                  <?php if ($isSuperadmin): ?>
+                  {{!-- Indeferir carta-acordo --}}
+                  <button type="button"
+                          class="btn btn-sm btn-outline-warning ms-1"
+                          title="Indeferir Carta-Acordo"
+                          onclick="confirmarIndeferimento(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'] ?: $p['razao_social'] ?: 'Parceiro')) ?>')">
+                      <i class="bi bi-file-earmark-x"></i>
+                  </button>
+                  <?php endif; ?>
+
                 <?php else: ?>
+
+                  {{!-- Lembrete assinatura --}}
                   <button type="button"
                           class="btn btn-sm btn-outline-warning ms-1"
                           title="Lembrar de assinar a carta-acordo"
                           onclick="abrirModalLembrete(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'] ?: $p['razao_social'] ?: 'Parceiro')) ?>', '<?= htmlspecialchars(addslashes($p['rep_nome'] ?: '')) ?>', '<?= htmlspecialchars(addslashes($p['rep_email'] ?: '')) ?>')">
                       <i class="bi bi-envelope-exclamation"></i>
                   </button>
+
+                  {{!-- Status bloqueado sem carta assinada --}}
                   <button type="button"
                           class="btn btn-sm btn-outline-secondary ms-1"
                           title="Só é possível alterar o status após a assinatura da carta-acordo"
                           disabled>
                       <i class="bi bi-lock"></i>
                   </button>
+
                 <?php endif; ?>
+
+                <?php if ($isSuperadmin): ?>
+                {{!-- Excluir parceiro --}}
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger ms-1"
+                        title="Excluir parceiro permanentemente"
+                        onclick="confirmarExclusao(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nome_fantasia'] ?: $p['razao_social'] ?: 'Parceiro')) ?>')">
+                    <i class="bi bi-trash3"></i>
+                </button>
+                <?php endif; ?>
+
               </td>
             </tr>
           <?php endforeach; ?>
@@ -277,7 +311,9 @@ include __DIR__ . '/../app/views/admin/header.php';
 </nav>
 <?php endif; ?>
 
-<!-- MODAL LEMBRETE CARTA-ACORDO -->
+<!-- ══════════════════════════════════
+     MODAL — Lembrete Carta-Acordo
+═══════════════════════════════════ -->
 <div class="modal fade" id="modalLembrete" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:14px; border:none;">
@@ -293,8 +329,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                 </div>
 
                 <div class="modal-body">
-
-                    <!-- Info do parceiro -->
                     <div class="p-3 rounded mb-4" style="background:#f7f9f5; border:1px solid #e6ece1;">
                         <div class="small fw-semibold mb-1" style="color:#1E3425;">
                             <i class="bi bi-building me-1"></i> Parceiro
@@ -306,8 +340,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                             <span id="lembrete_rep_email"></span>
                         </div>
                     </div>
-
-                    <!-- Aviso -->
                     <div class="p-3 rounded mb-3" style="background:#fff8e1; border-left:4px solid #f59e0b;">
                         <p class="small mb-0" style="color:#856404;">
                             <i class="bi bi-info-circle me-1"></i>
@@ -316,8 +348,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                             seja formalizada.
                         </p>
                     </div>
-
-                    <!-- Mensagem personalizada opcional -->
                     <div class="mb-1">
                         <label class="form-label fw-semibold" style="font-size:.88rem; color:#1E3425;">
                             Mensagem adicional <span class="text-muted fw-normal">(opcional)</span>
@@ -327,7 +357,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                                   placeholder="Ex: Estamos aguardando sua assinatura para darmos início às ações previstas…"></textarea>
                         <div class="form-text">Máx. 500 caracteres. Será inserida no corpo do e-mail.</div>
                     </div>
-
                 </div>
 
                 <div class="modal-footer" style="border-top:1px solid #f0f4ed;">
@@ -341,8 +370,9 @@ include __DIR__ . '/../app/views/admin/header.php';
     </div>
 </div>
 
-<!-- MODAL STATUS PARCEIRO -->
-
+<!-- ══════════════════════════════════
+     MODAL — Alterar Status
+═══════════════════════════════════ -->
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -351,14 +381,11 @@ include __DIR__ . '/../app/views/admin/header.php';
                     <h5 class="modal-title">Alterar Status do Parceiro</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
-
                 <div class="modal-body">
                     <input type="hidden" name="parceiro_id" id="modal_parceiro_id">
-
                     <p class="mb-3">
                         Alterando status de <strong id="modal_parceiro_nome">Parceiro</strong>
                     </p>
-
                     <div class="mb-3">
                         <label for="modal_novo_status" class="form-label">Novo status</label>
                         <select class="form-select" name="novo_status" id="modal_novo_status" required>
@@ -368,12 +395,10 @@ include __DIR__ . '/../app/views/admin/header.php';
                             <option value="inativo">Inativo</option>
                         </select>
                     </div>
-
                     <div class="small text-muted">
                         O status só pode ser alterado para parceiros com carta-acordo assinada.
                     </div>
                 </div>
-
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary">Salvar status</button>
@@ -383,26 +408,94 @@ include __DIR__ . '/../app/views/admin/header.php';
     </div>
 </div>
 
+<!-- ══════════════════════════════════
+     MODAL — Confirmar Indeferimento (superadmin)
+═══════════════════════════════════ -->
+<div class="modal fade" id="modalIndeferimento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius:14px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-warning">
+                    <i class="bi bi-file-earmark-x-fill me-2"></i>Indeferir Carta-Acordo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">Deseja indeferir a carta-acordo de:</p>
+                <p class="fw-bold" id="indeferimento_nome_parceiro"></p>
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-0">
+                    <i class="bi bi-info-circle-fill mt-1"></i>
+                    <span>A assinatura será cancelada e o parceiro poderá editar os dados e assinar novamente.</span>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a id="indeferimento_link" href="#" class="btn btn-warning">
+                    <i class="bi bi-file-earmark-x me-1"></i> Ir para Indeferimento
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MODAL — Confirmar Exclusão (superadmin)
+═══════════════════════════════════ -->
+<div class="modal fade" id="modalExclusao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius:14px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Excluir Parceiro
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">Deseja excluir permanentemente o parceiro:</p>
+                <p class="fw-bold" id="exclusao_nome_parceiro"></p>
+                <div class="alert alert-danger d-flex align-items-start gap-2 mb-0">
+                    <i class="bi bi-shield-exclamation mt-1"></i>
+                    <span>Esta ação <strong>não pode ser desfeita</strong>. Todos os dados relacionados (contrato, ODS, interesses, perfil) serão removidos.</span>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a id="exclusao_link" href="#" class="btn btn-danger">
+                    <i class="bi bi-trash3 me-1"></i> Confirmar Exclusão
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
 
 <script>
 function abrirModalLembrete(id, nome, repNome, repEmail) {
-  document.getElementById('lembrete_parceiro_id').value   = id;
-  document.getElementById('lembrete_nome_parceiro').textContent = nome;
-  document.getElementById('lembrete_rep_nome').textContent  = repNome  || '—';
-  document.getElementById('lembrete_rep_email').textContent = repEmail || '—';
-  new bootstrap.Modal(document.getElementById('modalLembrete')).show();
+    document.getElementById('lembrete_parceiro_id').value        = id;
+    document.getElementById('lembrete_nome_parceiro').textContent = nome;
+    document.getElementById('lembrete_rep_nome').textContent      = repNome  || '—';
+    document.getElementById('lembrete_rep_email').textContent     = repEmail || '—';
+    new bootstrap.Modal(document.getElementById('modalLembrete')).show();
 }
-function openStatusModal(id, nome, statusAtual = '') {
-    document.getElementById('modal_parceiro_id').value = id;
-    document.getElementById('modal_parceiro_nome').textContent = nome || 'Parceiro';
 
+function openStatusModal(id, nome, statusAtual) {
+    document.getElementById('modal_parceiro_id').value          = id;
+    document.getElementById('modal_parceiro_nome').textContent  = nome || 'Parceiro';
     const select = document.getElementById('modal_novo_status');
-    if (select) {
-        select.value = statusAtual || '';
-    }
+    if (select) select.value = statusAtual || '';
+    new bootstrap.Modal(document.getElementById('statusModal')).show();
+}
 
-    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
-    modal.show();
+function confirmarIndeferimento(id, nome) {
+    document.getElementById('indeferimento_nome_parceiro').textContent = nome;
+    document.getElementById('indeferimento_link').href = 'indeferir_carta_parceiro.php?id=' + id;
+    new bootstrap.Modal(document.getElementById('modalIndeferimento')).show();
+}
+
+function confirmarExclusao(id, nome) {
+    document.getElementById('exclusao_nome_parceiro').textContent = nome;
+    document.getElementById('exclusao_link').href = 'excluir_parceiro.php?id=' + id;
+    new bootstrap.Modal(document.getElementById('modalExclusao')).show();
 }
 </script>
