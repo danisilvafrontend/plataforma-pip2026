@@ -185,7 +185,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <i class="bi bi-bar-chart"></i> Métricas e medição
                     </div>
 
-                    <!-- BLOCO ESG: substitui checkboxes de métricas -->
                     <div class="mb-4">
                         <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais indicadores você já utiliza (formal ou informalmente)? <small class="text-muted">(Opcional)</small></label>
                         <small class="text-muted d-block mb-3">Especifique os indicadores que utiliza em cada dimensão ESG (máx. 300 caracteres cada).</small>
@@ -193,7 +192,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                             <div class="col-12 col-md-4">
                                 <label class="form-label fw-semibold" for="indicador_ambiental">
                                     <i class="bi bi-tree text-success me-1"></i> Ambiental
-                                    <span class="badge bg-success-subtle text-success-emphasis ms-1" style="font-size: 0.7rem;">3 pts</span>
                                 </label>
                                 <textarea name="indicador_ambiental" id="indicador_ambiental"
                                     class="form-control" rows="3" maxlength="300"
@@ -203,7 +201,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                             <div class="col-12 col-md-4">
                                 <label class="form-label fw-semibold" for="indicador_social">
                                     <i class="bi bi-people text-primary me-1"></i> Social
-                                    <span class="badge bg-primary-subtle text-primary-emphasis ms-1" style="font-size: 0.7rem;">3 pts</span>
                                 </label>
                                 <textarea name="indicador_social" id="indicador_social"
                                     class="form-control" rows="3" maxlength="300"
@@ -213,7 +210,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                             <div class="col-12 col-md-4">
                                 <label class="form-label fw-semibold" for="indicador_governanca">
                                     <i class="bi bi-shield-check text-warning-emphasis me-1"></i> Governança
-                                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1" style="font-size: 0.7rem;">4 pts</span>
                                 </label>
                                 <textarea name="indicador_governanca" id="indicador_governanca"
                                     class="form-control" rows="3" maxlength="300"
@@ -222,7 +218,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                             </div>
                         </div>
                     </div>
-                    <!-- /BLOCO ESG -->
 
                     <div class="mb-4">
                         <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental? *</label>
