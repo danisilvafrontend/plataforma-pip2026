@@ -21,23 +21,23 @@ if ($negocio_id === 0) {
 }
 
 // Captura dos campos
-$intencionalidade   = $_POST['intencionalidade'] ?? null;
-$tipo_impacto       = $_POST['tipo_impacto'] ?? null;
-$beneficiarios      = $_POST['beneficiarios'] ?? [];
-$beneficiario_outro = trim($_POST['beneficiario_outro'] ?? '');
-$alcance            = $_POST['alcance'] ?? null;
-$metricas           = $_POST['metricas'] ?? [];
-$metrica_outro      = trim($_POST['metrica_outro'] ?? '');
-$medicao            = $_POST['medicao'] ?? null;
-$formas_medicao     = $_POST['formas_medicao'] ?? [];
-$forma_outro        = trim($_POST['forma_outro'] ?? '');
-$reporte            = $_POST['reporte'] ?? null;
-$resultados         = $_POST['resultados'] ?? null;
-$proximos_passos    = $_POST['proximos_passos'] ?? null;
+$intencionalidade    = $_POST['intencionalidade'] ?? null;
+$tipo_impacto        = $_POST['tipo_impacto'] ?? null;
+$beneficiarios       = $_POST['beneficiarios'] ?? [];
+$beneficiario_outro  = trim($_POST['beneficiario_outro'] ?? '');
+$alcance             = $_POST['alcance'] ?? null;
+$indicador_ambiental = mb_substr(trim($_POST['indicador_ambiental'] ?? ''), 0, 300);
+$indicador_social    = mb_substr(trim($_POST['indicador_social'] ?? ''), 0, 300);
+$indicador_governanca= mb_substr(trim($_POST['indicador_governanca'] ?? ''), 0, 300);
+$medicao             = $_POST['medicao'] ?? null;
+$formas_medicao      = $_POST['formas_medicao'] ?? [];
+$forma_outro         = trim($_POST['forma_outro'] ?? '');
+$reporte             = $_POST['reporte'] ?? null;
+$resultados          = $_POST['resultados'] ?? null;
+$proximos_passos     = $_POST['proximos_passos'] ?? null;
 
-// Limite de beneficiários e métricas
-$beneficiarios = array_slice($beneficiarios, 0, 3);
-$metricas = array_slice($metricas, 0, 8);
+// Limites de arrays
+$beneficiarios  = array_slice($beneficiarios, 0, 3);
 $formas_medicao = array_slice($formas_medicao, 0, 4);
 
 // Links externos (até 4)
@@ -51,44 +51,37 @@ $stmt->execute([$negocio_id]);
 $impactoExistente = $stmt->fetch(PDO::FETCH_ASSOC);
 $existentes = json_decode($impactoExistente['resultados_pdfs'] ?? '[]', true);
 
-// Inicializa array final
 $pdfs = [];
 
 // Upload de novos PDFs (até 4, cada ≤ 5MB)
 if (!empty($_FILES['resultados_pdf']['name'][0])) {
     $uploadDir = __DIR__ . '/../uploads/negocios/documentos/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
     foreach ($_FILES['resultados_pdf']['name'] as $index => $name) {
         if ($index >= 4) break;
         $tmpName = $_FILES['resultados_pdf']['tmp_name'][$index];
-        $size = $_FILES['resultados_pdf']['size'][$index];
-        $error = $_FILES['resultados_pdf']['error'][$index];
+        $size    = $_FILES['resultados_pdf']['size'][$index];
+        $error   = $_FILES['resultados_pdf']['error'][$index];
 
         if ($error === UPLOAD_ERR_OK && $size <= 5 * 1024 * 1024) {
             $ext = pathinfo($name, PATHINFO_EXTENSION);
             if (strtolower($ext) === 'pdf') {
-                $newName = uniqid("impacto_", true) . ".pdf";
+                $newName  = uniqid('impacto_', true) . '.pdf';
                 $destPath = $uploadDir . $newName;
                 if (move_uploaded_file($tmpName, $destPath)) {
-                    $pdfs[] = "uploads/negocios/documentos/" . $newName;
+                    $pdfs[] = 'uploads/negocios/documentos/' . $newName;
                 }
             }
         }
     }
 }
 
-// Mantém existentes que não foram removidos
+// Mantém existentes não removidos
 $remover = $_POST['remover_pdf'] ?? [];
 foreach ($existentes as $pdf) {
-    if (!in_array($pdf, $remover)) {
-        $pdfs[] = $pdf;
-    }
+    if (!in_array($pdf, $remover)) $pdfs[] = $pdf;
 }
-
-// Limita a 4 PDFs
 $pdfs = array_slice($pdfs, 0, 4);
 
 // Limita proximos_passos a 1000 caracteres
@@ -96,8 +89,12 @@ if ($proximos_passos && strlen($proximos_passos) > 1000) {
     $proximos_passos = substr($proximos_passos, 0, 1000);
 }
 
-// ===== Validações extras =====
-if (in_array("Outro", $beneficiarios)) {
+// ===== Validações =====
+function textoValido($texto) {
+    return preg_match_all('/[a-zA-ZÀ-ÿ]/', trim($texto)) >= 5;
+}
+
+if (in_array('Outro', $beneficiarios)) {
     if ($beneficiario_outro === '') {
         $_SESSION['errors_etapa7'][] = "Você marcou 'Outro' em beneficiários, mas não especificou.";
     } elseif (mb_strlen($beneficiario_outro) > 120) {
@@ -105,76 +102,37 @@ if (in_array("Outro", $beneficiarios)) {
     }
 }
 
-if (in_array("Outro", $metricas)) {
-    if ($metrica_outro === '') {
-        $_SESSION['errors_etapa7'][] = "Você marcou 'Outro' em métricas, mas não especificou.";
-    } elseif (mb_strlen($metrica_outro) > 120) {
-        $_SESSION['errors_etapa7'][] = "O campo 'Outro' em métricas deve ter no máximo 120 caracteres.";
-    }
-}
-
-if (in_array("Outro", $formas_medicao)) {
+if (in_array('Outro', $formas_medicao)) {
     if ($forma_outro === '') {
         $_SESSION['errors_etapa7'][] = "Você marcou 'Outro' em formas de medição, mas não especificou.";
     } elseif (mb_strlen($forma_outro) > 120) {
         $_SESSION['errors_etapa7'][] = "O campo 'Outro' em formas de medição deve ter no máximo 120 caracteres.";
     }
 }
-// VALIDAR TEXTOS
-function textoValido($texto) {
-    $texto = trim($texto);
-    // Pelo menos 5 letras no total, não precisa ser consecutivas
-    return preg_match_all('/[a-zA-ZÀ-ÿ]/', $texto) >= 5;
-}
-// Validações de texto
+
 if ($beneficiario_outro && !textoValido($beneficiario_outro)) {
     $_SESSION['errors_etapa7'][] = "O campo 'Outro' em Beneficiários deve conter texto válido.";
 }
-
-if ($metrica_outro && !textoValido($metrica_outro)) {
-    $_SESSION['errors_etapa7'][] = "O campo 'Outro' em Métricas deve conter texto válido.";
-}
-
 if ($forma_outro && !textoValido($forma_outro)) {
     $_SESSION['errors_etapa7'][] = "O campo 'Outro' em Formas de Medição deve conter texto válido.";
 }
-
 if ($resultados && !textoValido($resultados)) {
     $_SESSION['errors_etapa7'][] = "O campo 'Resultados' deve conter texto válido.";
 }
-
 if ($proximos_passos && !textoValido($proximos_passos)) {
     $_SESSION['errors_etapa7'][] = "O campo 'Próximos Passos' deve conter texto válido.";
 }
-// ── Validações obrigatórias ausentes ──────────────────────────
-if (empty($intencionalidade)) {
-    $_SESSION['errors_etapa7'][] = "Informe a intencionalidade do negócio.";
-}
-if (empty($tipo_impacto)) {
-    $_SESSION['errors_etapa7'][] = "Informe o tipo de impacto.";
-}
-if (empty($beneficiarios)) {
-    $_SESSION['errors_etapa7'][] = "Selecione pelo menos um beneficiário.";
-}
-if (empty($alcance)) {
-    $_SESSION['errors_etapa7'][] = "Informe o alcance do impacto.";
-}
-if (empty($medicao)) {
-    $_SESSION['errors_etapa7'][] = "Informe a forma de medição.";
-}
-if (empty($reporte)) {
-    $_SESSION['errors_etapa7'][] = "Informe a frequência de reporte.";
-}
-if (empty($proximos_passos)) {
-    $_SESSION['errors_etapa7'][] = "O campo 'Próximos Passos' é obrigatório.";
-}
-if (empty($metricas)) {
-    $_SESSION['errors_etapa7'][] = "Selecione pelo menos um indicador de impacto.";
-}
-if (empty($formas_medicao)) {
-    $_SESSION['errors_etapa7'][] = "Selecione pelo menos uma forma de medição do impacto.";
-}
-// Se houver erros, volta para etapa
+
+// Validações obrigatórias
+if (empty($intencionalidade))  $_SESSION['errors_etapa7'][] = "Informe a intencionalidade do negócio.";
+if (empty($tipo_impacto))      $_SESSION['errors_etapa7'][] = "Informe o tipo de impacto.";
+if (empty($beneficiarios))     $_SESSION['errors_etapa7'][] = "Selecione pelo menos um beneficiário.";
+if (empty($alcance))           $_SESSION['errors_etapa7'][] = "Informe o alcance do impacto.";
+if (empty($medicao))           $_SESSION['errors_etapa7'][] = "Informe a forma de medição.";
+if (empty($reporte))           $_SESSION['errors_etapa7'][] = "Informe a frequência de reporte.";
+if (empty($proximos_passos))   $_SESSION['errors_etapa7'][] = "O campo 'Próximos Passos' é obrigatório.";
+if (empty($formas_medicao))    $_SESSION['errors_etapa7'][] = "Selecione pelo menos uma forma de medição do impacto.";
+
 if (!empty($_SESSION['errors_etapa7'])) {
     header("Location: /negocios/etapa7_impacto.php?id=" . $negocio_id);
     exit;
@@ -184,51 +142,55 @@ if (!empty($_SESSION['errors_etapa7'])) {
 $stmt = $pdo->prepare("
     INSERT INTO negocio_impacto (
         negocio_id, intencionalidade, tipo_impacto, beneficiarios, beneficiario_outro,
-        alcance, metricas, metrica_outro, medicao, formas_medicao, forma_outro,
+        alcance, indicador_ambiental, indicador_social, indicador_governanca,
+        medicao, formas_medicao, forma_outro,
         reporte, resultados, resultados_links, resultados_pdfs, proximos_passos,
         criado_em, atualizado_em
     ) VALUES (
         :negocio_id, :intencionalidade, :tipo_impacto, :beneficiarios, :beneficiario_outro,
-        :alcance, :metricas, :metrica_outro, :medicao, :formas_medicao, :forma_outro,
+        :alcance, :indicador_ambiental, :indicador_social, :indicador_governanca,
+        :medicao, :formas_medicao, :forma_outro,
         :reporte, :resultados, :resultados_links, :resultados_pdfs, :proximos_passos,
         NOW(), NOW()
     )
     ON DUPLICATE KEY UPDATE
-        intencionalidade = VALUES(intencionalidade),
-        tipo_impacto = VALUES(tipo_impacto),
-        beneficiarios = VALUES(beneficiarios),
-        beneficiario_outro = VALUES(beneficiario_outro),
-        alcance = VALUES(alcance),
-        metricas = VALUES(metricas),
-        metrica_outro = VALUES(metrica_outro),
-        medicao = VALUES(medicao),
-        formas_medicao = VALUES(formas_medicao),
-        forma_outro = VALUES(forma_outro),
-        reporte = VALUES(reporte),
-        resultados = VALUES(resultados),
-        resultados_links = VALUES(resultados_links),
-        resultados_pdfs = VALUES(resultados_pdfs),
-        proximos_passos = VALUES(proximos_passos),
-        atualizado_em = NOW()
+        intencionalidade      = VALUES(intencionalidade),
+        tipo_impacto          = VALUES(tipo_impacto),
+        beneficiarios         = VALUES(beneficiarios),
+        beneficiario_outro    = VALUES(beneficiario_outro),
+        alcance               = VALUES(alcance),
+        indicador_ambiental   = VALUES(indicador_ambiental),
+        indicador_social      = VALUES(indicador_social),
+        indicador_governanca  = VALUES(indicador_governanca),
+        medicao               = VALUES(medicao),
+        formas_medicao        = VALUES(formas_medicao),
+        forma_outro           = VALUES(forma_outro),
+        reporte               = VALUES(reporte),
+        resultados            = VALUES(resultados),
+        resultados_links      = VALUES(resultados_links),
+        resultados_pdfs       = VALUES(resultados_pdfs),
+        proximos_passos       = VALUES(proximos_passos),
+        atualizado_em         = NOW()
 ");
 
 $params = [
-    'negocio_id'        => $negocio_id,
-    'intencionalidade'  => $intencionalidade,
-    'tipo_impacto'      => $tipo_impacto,
-    'beneficiarios'     => json_encode($beneficiarios),
-    'beneficiario_outro'=> $beneficiario_outro,
-    'alcance'           => $alcance,
-    'metricas'          => json_encode($metricas),
-    'metrica_outro'     => $metrica_outro,
-    'medicao'           => $medicao,
-    'formas_medicao'    => json_encode($formas_medicao),
-    'forma_outro'       => $forma_outro,
-    'reporte'           => $reporte,
-    'resultados'        => $resultados,
-    'resultados_links'  => json_encode($links),
-    'resultados_pdfs'   => json_encode($pdfs),
-    'proximos_passos'   => $proximos_passos
+    'negocio_id'           => $negocio_id,
+    'intencionalidade'     => $intencionalidade,
+        'tipo_impacto'         => $tipo_impacto,
+    'beneficiarios'        => json_encode($beneficiarios),
+    'beneficiario_outro'   => $beneficiario_outro,
+    'alcance'              => $alcance,
+    'indicador_ambiental'  => $indicador_ambiental,
+    'indicador_social'     => $indicador_social,
+    'indicador_governanca' => $indicador_governanca,
+    'medicao'              => $medicao,
+    'formas_medicao'       => json_encode($formas_medicao),
+    'forma_outro'          => $forma_outro,
+    'reporte'              => $reporte,
+    'resultados'           => $resultados,
+    'resultados_links'     => json_encode($links),
+    'resultados_pdfs'      => json_encode($pdfs),
+    'proximos_passos'      => $proximos_passos
 ];
 
 $stmt->execute($params);
@@ -245,7 +207,6 @@ foreach ($pesos as $p) {
     $componente = $p['componente'];
     $peso = (float)$p['peso'];
 
-    // Normaliza respostas para opções do lookup
     switch ($componente) {
         case 'intencionalidade':
             if (strpos($intencionalidade, 'integrado') !== false) $opcao = 'lucro_com_impacto_integrado';
@@ -270,10 +231,19 @@ foreach ($pesos as $p) {
 
         case 'mensuracao':
             if ($medicao && strpos($medicao, 'auditoria') !== false) $opcao = 'auditoria_framework';
-            elseif (in_array("Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)", $formas_medicao)) $opcao = 'framework_reconhecido';
-            elseif (in_array("Relatórios internos manuais ou dashboards próprios", $formas_medicao)) $opcao = 'dashboard_interno';
-            elseif (in_array("Não fazemos medição formal ainda", $formas_medicao)) $opcao = 'nao_mede';
+            elseif (in_array('Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)', $formas_medicao)) $opcao = 'framework_reconhecido';
+            elseif (in_array('Relatórios internos manuais ou dashboards próprios', $formas_medicao)) $opcao = 'dashboard_interno';
+            elseif (in_array('Não fazemos medição formal ainda', $formas_medicao)) $opcao = 'nao_mede';
             else $opcao = 'relatorio_manual';
+            break;
+
+        case 'indicadores_esg':
+            // Pontuação ESG: Ambiental=3, Social=3, Governança=4
+            $pts = 0;
+            if (!empty($indicador_ambiental))  $pts += 3;
+            if (!empty($indicador_social))     $pts += 3;
+            if (!empty($indicador_governanca)) $pts += 4;
+            $opcao = $pts >= 8 ? 'esg_completo' : ($pts >= 4 ? 'esg_parcial' : ($pts > 0 ? 'esg_minimo' : 'esg_vazio'));
             break;
 
         case 'evidencias':
@@ -293,23 +263,14 @@ foreach ($pesos as $p) {
             $opcao = 'nao_informado';
     }
 
-    // Busca valor normalizado
     $stmt2 = $pdo->prepare("SELECT valor FROM lookup_scores WHERE componente=? AND opcao=?");
     $stmt2->execute([$componente, $opcao]);
     $valor = (int)($stmt2->fetchColumn() ?: 0);
-
     $scoreImpacto += $valor * $peso;
 }
 
-// Penalidades
-$penalty = 0;
-if ($opcao === 'nao_mede' && $opcao === 'vazio') {
-    $penalty += 10;
-}
+$scoreImpacto = max(0, min(100, round($scoreImpacto)));
 
-$scoreImpacto = max(0, min(100, round($scoreImpacto - $penalty)));
-
-// Salva no banco
 $stmt = $pdo->prepare("
     INSERT INTO scores_negocios (negocio_id, score_impacto, atualizado_em)
     VALUES (?, ?, NOW())
@@ -320,42 +281,30 @@ $stmt->execute([$negocio_id, $scoreImpacto]);
 // --------- Redirecionamento Inteligente ---------
 $modo = $_POST['modo'] ?? 'cadastro';
 
-// PRIMEIRO: Busca como o negócio está AGORA no banco
 $stmtProgresso = $pdo->prepare("SELECT etapa_atual, inscricao_completa FROM negocios WHERE id = ?");
 $stmtProgresso->execute([$negocio_id]);
 $progresso = $stmtProgresso->fetch(PDO::FETCH_ASSOC);
 
 if ($modo === 'cadastro') {
-    // Modo Cadastro: Atualiza a etapa (neste caso da 2 para a 3) SOMENTE SE ainda não passou por ela
     $etapaAtualNoBanco = (int)($progresso['etapa_atual'] ?? 1);
-    
     if ($etapaAtualNoBanco < 8) {
         $stmtUpdate = $pdo->prepare("
-            UPDATE negocios 
-            SET etapa_atual = 8, updated_at = NOW() 
-            WHERE id = ? AND empreendedor_id = ?
+            UPDATE negocios SET etapa_atual = 8, updated_at = NOW() WHERE id = ? AND empreendedor_id = ?
         ");
         $stmtUpdate->execute([$negocio_id, $_SESSION['user_id']]);
     }
-
-    // Avança para a PRÓXIMA etapa
     header("Location: /negocios/etapa8_visao.php?id=" . $negocio_id);
     exit;
-    
 } else {
-    // Modo Edição: Para onde enviamos o usuário agora?
-    
     if (!empty($progresso['inscricao_completa'])) {
-        // Já completou tudo = volta para confirmação
         header("Location: /negocios/confirmacao.php?id=" . $negocio_id);
         exit;
     } else {
-        // Ainda em andamento = volta para a etapa onde parou
         $rotas_etapas = [
             1 => '/negocios/etapa1_dados_negocio.php',
             2 => '/negocios/etapa2_fundadores.php',
             3 => '/negocios/etapa3_eixo_tematico.php',
-            4 => '/negocios/etapa4_ods.php',    
+            4 => '/negocios/etapa4_ods.php',
             5 => '/negocios/etapa5_apresentacao.php',
             6 => '/negocios/etapa6_financeiro.php',
             7 => '/negocios/etapa7_impacto.php',
@@ -363,14 +312,9 @@ if ($modo === 'cadastro') {
             9 => '/negocios/etapa9_documentacao.php',
             10 => '/negocios/confirmacao.php'
         ];
-
         $etapaParada = (int)($progresso['etapa_atual'] ?? 1);
-        
-        if (isset($rotas_etapas[$etapaParada])) {
-            header("Location: " . $rotas_etapas[$etapaParada] . "?id=" . $negocio_id);
-        } else {
-            header("Location: /empreendedores/meus-negocios.php");
-        }
+        $rota = $rotas_etapas[$etapaParada] ?? '/empreendedores/meus-negocios.php';
+        header("Location: " . $rota . "?id=" . $negocio_id);
         exit;
     }
 }

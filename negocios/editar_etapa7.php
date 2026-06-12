@@ -2,7 +2,6 @@
 declare(strict_types=1);
 session_start();
 
-
 if (!isset($_SESSION['user_id'])) {
     header("Location: /login.php");
     exit;
@@ -36,11 +35,10 @@ $stmt = $pdo->prepare("SELECT * FROM negocio_impacto WHERE negocio_id = ?");
 $stmt->execute([$negocio_id]);
 $impacto = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-$beneficiarios = json_decode($impacto['beneficiarios'] ?? '[]', true);
-$metricas = json_decode($impacto['metricas'] ?? '[]', true);
+$beneficiarios  = json_decode($impacto['beneficiarios'] ?? '[]', true);
 $formas_medicao = json_decode($impacto['formas_medicao'] ?? '[]', true);
-$links = json_decode($impacto['resultados_links'] ?? '[]', true);
-$pdfs = json_decode($impacto['resultados_pdfs'] ?? '[]', true);
+$links          = json_decode($impacto['resultados_links'] ?? '[]', true);
+$pdfs           = json_decode($impacto['resultados_pdfs'] ?? '[]', true);
 
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
@@ -61,12 +59,12 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <i class="bi bi-card-checklist me-1"></i> Voltar à Revisão
                 </a>
             <?php endif; ?>
-
             <a href="/empreendedores/meus-negocios.php" class="btn-emp-outline">
                 <i class="bi bi-arrow-left me-1"></i> Meus Negócios
             </a>
         </div>
     </div>
+
     <?php if (!empty($_SESSION['errors_etapa7'])): ?>
         <div class="alert alert-danger alert-dismissible fade show mb-4">
             <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
@@ -79,7 +77,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         </div>
         <?php unset($_SESSION['errors_etapa7']); ?>
     <?php endif; ?>
-    
+
     <form action="/negocios/processar_etapa7.php" method="post" enctype="multipart/form-data">
         <input type="hidden" name="negocio_id" value="<?= $negocio_id ?>">
         <input type="hidden" name="modo" value="editar">
@@ -96,20 +94,15 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <label class="form-label">
                             <i class="bi bi-eye text-secondary me-1"></i> Qual das opções melhor representa a relação entre geração de receita e missão do seu negócio? *
                         </label>
-
                         <?php
                         $opcoesIntencionalidade = [
                             "integrado" => "Lucro com impacto intencional integrado ao modelo. A geração de receita está diretamente ligada à solução de um problema social ou ambiental. O impacto positivo faz parte central do modelo de negócio e é intencional.",
                             "prioridade" => "Missão de impacto como prioridade principal. A razão de existir do negócio é gerar impacto social e/ou ambiental. A sustentabilidade financeira é importante, mas serve principalmente para viabilizar a missão.",
                             "secundario" => "Lucro como foco principal, com impacto secundário. O principal objetivo do negócio é o retorno financeiro. O impacto positivo pode existir, mas não é o foco central nem está estruturado como parte estratégica do modelo."
                         ];
-
                         foreach ($opcoesIntencionalidade as $chave => $texto) {
                             $valorSalvo = $impacto['intencionalidade'] ?? '';
-                            $checked = '';
-                            if ($valorSalvo === $chave || (!empty($valorSalvo) && strpos($texto, substr($valorSalvo, 0, 20)) !== false)) {
-                                $checked = 'checked';
-                            }
+                            $checked = ($valorSalvo === $chave || (!empty($valorSalvo) && strpos($texto, substr($valorSalvo, 0, 20)) !== false)) ? 'checked' : '';
                             ?>
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="radio"
@@ -150,7 +143,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <label class="form-label">
                             <i class="bi bi-eye text-secondary me-1"></i> Quem são os principais grupos beneficiados pelo seu negócio? *
                         </label>
-
                         <?php
                         $beneficiariosLista = [
                             "Agricultores familiares","Crianças e adolescentes","Ex-infratores","Extrativistas","Idosos","Indígenas","Juventude",
@@ -167,11 +159,11 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <?php endforeach; ?>
 
                         <input type="text" name="beneficiario_outro" id="beneficiario_outro"
-                            class="form-control mt-2 <?= in_array("Outro", $beneficiarios) ? '' : 'd-none' ?>"
+                            class="form-control mt-2 <?= in_array('Outro', $beneficiarios) ? '' : 'd-none' ?>"
                             value="<?= htmlspecialchars($impacto['beneficiario_outro'] ?? '') ?>"
                             placeholder="Se marcou 'Outro', especifique aqui"
                             maxlength="120"
-                            <?= in_array("Outro", $beneficiarios) ? 'required' : '' ?>>
+                            <?= in_array('Outro', $beneficiarios) ? 'required' : '' ?>>
                     </div>
 
                     <div class="mb-0">
@@ -193,29 +185,44 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <i class="bi bi-bar-chart"></i> Métricas e medição
                     </div>
 
+                    <!-- BLOCO ESG: substitui checkboxes de métricas -->
                     <div class="mb-4">
-                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Métricas e indicadores utilizados para mensurar o impacto *</label>
-                        <?php
-                        $metricasLista = [
-                            "Número de pessoas atendidas","Geração de renda ou empregos","Redução de emissões de CO₂",
-                            "Área preservada ou protegida","Resíduos reciclados ou reaproveitados","Melhoria em indicadores de saúde ou educação",
-                            "Área reflorestada, regenerada ou recuperada","Outro"
-                        ];
-                        foreach ($metricasLista as $m): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="metricas[]" value="<?= $m ?>"
-                                    id="<?= md5($m) ?>" <?= in_array($m, $metricas) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="<?= md5($m) ?>"><?= $m ?></label>
+                        <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Quais indicadores você já utiliza (formal ou informalmente)? <small class="text-muted">(Opcional)</small></label>
+                        <small class="text-muted d-block mb-3">Especifique os indicadores que utiliza em cada dimensão ESG (máx. 300 caracteres cada).</small>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-semibold" for="indicador_ambiental">
+                                    <i class="bi bi-tree text-success me-1"></i> Ambiental
+                                    <span class="badge bg-success-subtle text-success-emphasis ms-1" style="font-size: 0.7rem;">3 pts</span>
+                                </label>
+                                <textarea name="indicador_ambiental" id="indicador_ambiental"
+                                    class="form-control" rows="3" maxlength="300"
+                                    placeholder="Ex: toneladas de CO₂ evitadas, área preservada, resíduos reciclados..."><?= htmlspecialchars($impacto['indicador_ambiental'] ?? '') ?></textarea>
+                                <div class="form-text">Máx. 300 caracteres.</div>
                             </div>
-                        <?php endforeach; ?>
-
-                        <input type="text" name="metrica_outro" id="metrica_outro"
-                            class="form-control mt-2 <?= in_array("Outro", $metricas) ? '' : 'd-none' ?>"
-                            value="<?= htmlspecialchars($impacto['metrica_outro'] ?? '') ?>"
-                            placeholder="Se marcou 'Outro', especifique aqui"
-                            maxlength="120"
-                            <?= in_array("Outro", $metricas) ? 'required' : '' ?>>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-semibold" for="indicador_social">
+                                    <i class="bi bi-people text-primary me-1"></i> Social
+                                    <span class="badge bg-primary-subtle text-primary-emphasis ms-1" style="font-size: 0.7rem;">3 pts</span>
+                                </label>
+                                <textarea name="indicador_social" id="indicador_social"
+                                    class="form-control" rows="3" maxlength="300"
+                                    placeholder="Ex: número de pessoas atendidas, empregos gerados, melhoria em saúde/educação..."><?= htmlspecialchars($impacto['indicador_social'] ?? '') ?></textarea>
+                                <div class="form-text">Máx. 300 caracteres.</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-semibold" for="indicador_governanca">
+                                    <i class="bi bi-shield-check text-warning-emphasis me-1"></i> Governança
+                                    <span class="badge bg-warning-subtle text-warning-emphasis ms-1" style="font-size: 0.7rem;">4 pts</span>
+                                </label>
+                                <textarea name="indicador_governanca" id="indicador_governanca"
+                                    class="form-control" rows="3" maxlength="300"
+                                    placeholder="Ex: políticas de compliance, diversidade na liderança, transparência com stakeholders..."><?= htmlspecialchars($impacto['indicador_governanca'] ?? '') ?></textarea>
+                                <div class="form-text">Máx. 300 caracteres.</div>
+                            </div>
+                        </div>
                     </div>
+                    <!-- /BLOCO ESG -->
 
                     <div class="mb-4">
                         <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental? *</label>
@@ -254,11 +261,11 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <?php endforeach; ?>
 
                         <input type="text" name="forma_outro" id="forma_outro"
-                            class="form-control mt-2 <?= in_array("Outro", $formas_medicao) ? '' : 'd-none' ?>"
+                            class="form-control mt-2 <?= in_array('Outro', $formas_medicao) ? '' : 'd-none' ?>"
                             value="<?= htmlspecialchars($impacto['forma_outro'] ?? '') ?>"
                             placeholder="Se marcou 'Outro', especifique aqui"
                             maxlength="120"
-                            <?= in_array("Outro", $formas_medicao) ? 'required' : '' ?>>
+                            <?= in_array('Outro', $formas_medicao) ? 'required' : '' ?>>
                     </div>
 
                     <div class="mb-0">
@@ -294,19 +301,14 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold"><i class="bi bi-link-45deg text-secondary me-1"></i> Links externos (máx. 4) <small>(Opcional)</small></label>
-
                             <div class="alert alert-info py-2 px-3 small mb-3">
                                 <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de links:</strong> vídeos institucionais, apresentações (Pitch Deck no Canva/Google Slides), matérias na mídia, ou painéis interativos de resultados.
                             </div>
-
                             <div id="links-container">
-                                <?php
-                                if (!empty($links)):
-                                    foreach ($links as $link): ?>
-                                        <input type="url" name="resultados_link[]" class="form-control mb-2"
-                                               value="<?= htmlspecialchars($link) ?>" placeholder="https://...">
-                                    <?php endforeach;
-                                endif; ?>
+                                <?php foreach ($links as $link): ?>
+                                    <input type="url" name="resultados_link[]" class="form-control mb-2"
+                                           value="<?= htmlspecialchars($link) ?>" placeholder="https://...">
+                                <?php endforeach; ?>
                                 <input type="url" name="resultados_link[]" class="form-control mb-2" placeholder="Adicionar novo link">
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addLink()"><i class="bi bi-plus-circle me-1"></i> Adicionar link</button>
@@ -314,24 +316,19 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> PDFs (máx. 4, até 5MB cada) <small>(Opcional)</small></label>
-
                             <div class="alert alert-info py-2 px-3 small mb-3">
                                 <i class="bi bi-info-circle me-1"></i> <strong>Exemplos de PDFs:</strong> relatórios de impacto anuais, certificados, dossiês de resultados ou documentos de validação do negócio.
                             </div>
-
                             <div id="pdfs-container">
-                                <?php
-                                if (!empty($pdfs)):
-                                    foreach ($pdfs as $pdf): ?>
-                                        <div class="mb-2 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
-                                            <a href="/<?= htmlspecialchars($pdf) ?>" target="_blank" class="text-truncate d-inline-block" style="max-width: 70%;"><i class="bi bi-file-earmark-text me-1"></i> Ver PDF atual</a>
-                                            <div class="form-check m-0">
-                                                <input class="form-check-input" type="checkbox" name="remover_pdf[]" value="<?= htmlspecialchars($pdf) ?>" id="remover<?= md5($pdf) ?>">
-                                                <label class="form-check-label text-danger small" for="remover<?= md5($pdf) ?>">Remover</label>
-                                            </div>
+                                <?php foreach ($pdfs as $pdf): ?>
+                                    <div class="mb-2 p-2 border rounded bg-light d-flex justify-content-between align-items-center">
+                                        <a href="/<?= htmlspecialchars($pdf) ?>" target="_blank" class="text-truncate d-inline-block" style="max-width: 70%;"><i class="bi bi-file-earmark-text me-1"></i> Ver PDF atual</a>
+                                        <div class="form-check m-0">
+                                            <input class="form-check-input" type="checkbox" name="remover_pdf[]" value="<?= htmlspecialchars($pdf) ?>" id="remover<?= md5($pdf) ?>">
+                                            <label class="form-check-label text-danger small" for="remover<?= md5($pdf) ?>">Remover</label>
                                         </div>
-                                    <?php endforeach;
-                                endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
                                 <input type="file" name="resultados_pdf[]" class="form-control mb-2" accept="application/pdf">
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="addPdf()"><i class="bi bi-plus-circle me-1"></i> Adicionar PDF</button>
@@ -346,7 +343,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 
                     <div class="mb-0">
                         <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Quais os próximos passos planejados para ampliar ou fortalecer o impacto? *</label>
-                        <small class="text-muted">Conte-nos como pretende escalar, medir ou qualificar ainda mais seu impacto nos próximos 12 a 24 meses (até 1000 caracteres).</small>
+                        <small class="text-muted d-block mb-2">Conte-nos como pretende escalar, medir ou qualificar ainda mais seu impacto nos próximos 12 a 24 meses (até 1000 caracteres).</small>
                         <textarea name="proximos_passos" class="form-control" rows="4" maxlength="1000"><?= htmlspecialchars($impacto['proximos_passos'] ?? '') ?></textarea>
                     </div>
                 </div>
@@ -360,11 +357,9 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="emp-card-header">
                             <i class="bi bi-info-circle"></i> Orientações
                         </div>
-
                         <p class="small text-muted mb-2">
                             Revise com cuidado os dados sobre intencionalidade, beneficiários, métricas e resultados para garantir coerência com a atuação real do negócio.
                         </p>
-
                         <p class="small text-muted mb-0">
                             Sempre que possível, mantenha evidências atualizadas, como links, relatórios e PDFs de comprovação.
                         </p>
@@ -374,22 +369,18 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                         <div class="emp-card-header">
                             <i class="bi bi-floppy"></i> Salvar
                         </div>
-
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn-emp-primary w-100 justify-content-center">
                                 <i class="bi bi-floppy me-1"></i> Salvar Alterações
                             </button>
-
                             <?php if (!empty($negocio['inscricao_completa'])): ?>
                                 <a href="/negocios/confirmacao.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
                                     <i class="bi bi-card-checklist me-1"></i> Voltar à Revisão
                                 </a>
                             <?php endif; ?>
-
                             <a href="/negocios/editar_etapa6.php?id=<?= (int)$negocio_id ?>" class="btn-emp-outline w-100 justify-content-center">
                                 <i class="bi bi-arrow-left me-1"></i> Etapa Anterior
                             </a>
-
                             <a href="/empreendedores/meus-negocios.php" class="btn-emp-outline w-100 justify-content-center">
                                 <i class="bi bi-grid me-1"></i> Meus Negócios
                             </a>
@@ -405,80 +396,40 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
 <script>
 function addLink() {
     const container = document.getElementById('links-container');
-    const inputs = container.querySelectorAll('input[name="resultados_link[]"]');
-    if (inputs.length >= 4) {
-        alert("Máximo de 4 links permitidos.");
-        return;
-    }
+    if (container.querySelectorAll('input[name="resultados_link[]"]').length >= 4) { alert('Máximo de 4 links permitidos.'); return; }
     const input = document.createElement('input');
-    input.type = 'url';
-    input.name = 'resultados_link[]';
-    input.className = 'form-control mb-2';
-    input.placeholder = 'Adicionar novo link';
+    input.type = 'url'; input.name = 'resultados_link[]'; input.className = 'form-control mb-2'; input.placeholder = 'Adicionar novo link';
     container.appendChild(input);
 }
-
 function addPdf() {
     const container = document.getElementById('pdfs-container');
-    const inputs = container.querySelectorAll('input[name="resultados_pdf[]"]');
-    if (inputs.length >= 4) {
-        alert("Máximo de 4 PDFs permitidos.");
-        return;
-    }
+    if (container.querySelectorAll('input[name="resultados_pdf[]"]').length >= 4) { alert('Máximo de 4 PDFs permitidos.'); return; }
     const input = document.createElement('input');
-    input.type = 'file';
-    input.name = 'resultados_pdf[]';
-    input.className = 'form-control mb-2';
-    input.accept = 'application/pdf';
+    input.type = 'file'; input.name = 'resultados_pdf[]'; input.className = 'form-control mb-2'; input.accept = 'application/pdf';
     container.appendChild(input);
 }
 </script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener('DOMContentLoaded', function() {
     const outrosMap = {
-        "beneficiarios[]": document.getElementById("beneficiario_outro"),
-        "metricas[]": document.getElementById("metrica_outro"),
-        "formas_medicao[]": document.getElementById("forma_outro")
+        "beneficiarios[]": document.getElementById('beneficiario_outro'),
+        "formas_medicao[]": document.getElementById('forma_outro')
     };
-
-    const outros = document.querySelectorAll("input[value='Outro']");
-
-    outros.forEach(function(outroCheckbox) {
-        const outroInput = outrosMap[outroCheckbox.name];
+    document.querySelectorAll("input[value='Outro']").forEach(function(cb) {
+        const outroInput = outrosMap[cb.name];
         if (!outroInput) return;
-
-        function toggleOutro() {
-            if (outroCheckbox.checked) {
-                outroInput.classList.remove("d-none");
-                outroInput.setAttribute("required", "required");
-            } else {
-                outroInput.classList.add("d-none");
-                outroInput.removeAttribute("required");
-                outroInput.value = "";
-            }
-        }
-
-        toggleOutro();
-        outroCheckbox.addEventListener("change", toggleOutro);
+        cb.addEventListener('change', function() {
+            outroInput.classList.toggle('d-none', !this.checked);
+            outroInput.required = this.checked;
+            if (!this.checked) outroInput.value = '';
+        });
     });
-});
-</script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const camposTexto = document.querySelectorAll("input[type='text'], textarea");
-
-    camposTexto.forEach(campo => {
-        campo.addEventListener("input", function() {
-            const regex = /[a-zA-ZÀ-ÿ]/g;
-            const letras = (this.value.match(regex) || []).length;
-
-            if (letras < 5) {
-                this.setCustomValidity("Digite um texto válido (mínimo 5 letras reais).");
-            } else {
-                this.setCustomValidity("");
-            }
+    document.querySelectorAll("input[type='text'], textarea").forEach(campo => {
+        campo.addEventListener('input', function() {
+            const letras = (this.value.match(/[a-zA-ZÀ-ÿ]/g) || []).length;
+            this.setCustomValidity(letras > 0 && letras < 5 ? 'Digite um texto válido (mínimo 5 letras reais).' : '');
         });
     });
 });
