@@ -40,19 +40,19 @@ if (!$negocio) {
 $stmt = $pdo->prepare("SELECT * FROM negocio_fundadores WHERE negocio_id = ? ORDER BY tipo, id");
 $stmt->execute([$negocio_id]);
 $fundadoresExistentes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 // Busca dados de impacto já salvos
 $stmtImp = $pdo->prepare("SELECT * FROM negocio_impacto WHERE negocio_id = ?");
 $stmtImp->execute([$negocio_id]);
 $impacto = $stmtImp->fetch(PDO::FETCH_ASSOC) ?: [];
 
 // Decodifica arrays JSON
-foreach (['beneficiarios', 'formas_medicao'] as $col) {
-    if (!empty($impacto[$col])) {
-        $impacto[$col] = json_decode($impacto[$col], true) ?: [];
-    } else {
-        $impacto[$col] = [];
-    }
+if (!empty($impacto['beneficiarios'])) {
+    $impacto['beneficiarios'] = json_decode($impacto['beneficiarios'], true) ?: [];
+} else {
+    $impacto['beneficiarios'] = [];
 }
+
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
@@ -67,6 +67,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
         include __DIR__ . '/../app/views/partials/progress.php';
         include __DIR__ . '/../app/views/partials/intro_text_impacto.php';
     ?>
+
     <?php if (!empty($_SESSION['errors_etapa7'])): ?>
         <div class="alert alert-danger alert-dismissible fade show mb-4">
             <h6 class="fw-bold mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Corrija os erros:</h6>
@@ -233,33 +234,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 </select>
             </div>
 
-            <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Como o impacto é medido hoje? *</label>
-                <?php
-                $formasLista = [
-                    "Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)",
-                    "Relatórios internos manuais ou dashboards próprios",
-                    "Parcerias com especialistas, consultorias ou ONGs",
-                    "Não fazemos medição formal ainda",
-                    "Outro"
-                ];
-                $selecionadasF = $impacto['formas_medicao'];
-                foreach ($formasLista as $fm): ?>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="formas_medicao[]" value="<?= $fm ?>"
-                            id="<?= md5($fm) ?>" <?= in_array($fm, $selecionadasF) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="<?= md5($fm) ?>"><?= $fm ?></label>
-                    </div>
-                <?php endforeach; ?>
-
-                <input type="text" name="forma_outro" id="forma_outro"
-                    class="form-control mt-2 <?= in_array('Outro', $selecionadasF) ? '' : 'd-none' ?>"
-                    value="<?= htmlspecialchars($impacto['forma_outro'] ?? '') ?>"
-                    placeholder="Se marcou 'Outro', especifique aqui"
-                    maxlength="120"
-                    <?= in_array('Outro', $selecionadasF) ? 'required' : '' ?>>
-            </div>
-
             <div class="mb-0">
                 <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto? *</label>
                 <select name="reporte" class="form-select" required>
@@ -364,16 +338,6 @@ document.addEventListener('DOMContentLoaded', function() {
             inputBenefOutro.classList.toggle('d-none', !this.checked);
             inputBenefOutro.required = this.checked;
             if (!this.checked) inputBenefOutro.value = '';
-        });
-    }
-
-    const outrosForma = document.querySelector("input[name='formas_medicao[]'][value='Outro']");
-    const inputFormaOutro = document.getElementById('forma_outro');
-    if (outrosForma && inputFormaOutro) {
-        outrosForma.addEventListener('change', function() {
-            inputFormaOutro.classList.toggle('d-none', !this.checked);
-            inputFormaOutro.required = this.checked;
-            if (!this.checked) inputFormaOutro.value = '';
         });
     }
 
