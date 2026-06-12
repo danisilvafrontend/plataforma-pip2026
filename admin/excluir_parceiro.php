@@ -2,7 +2,6 @@
 // ============================================================
 // admin/excluir_parceiro.php
 // Exclui permanentemente um parceiro e seus dados relacionados
-// Baseado no schema real do bd_homo.sql
 // ============================================================
 declare(strict_types=1);
 session_start();
@@ -12,32 +11,26 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/../app/helpers/auth.php';
+require_admin_login();
 
 // Apenas superadmin
 if (!is_superadmin()) {
     http_response_code(403);
-    die("Acesso negado. Apenas superadmin pode excluir empreendedor.");
+    die("Acesso negado. Apenas superadmin pode excluir parceiro.");
 }
 
 $config = require __DIR__ . '/../app/config/db.php';
 
-$dsn = "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
-
-try {
-    $pdo = new PDO($dsn, $config['user'], $config['pass'], $options);
-} catch (PDOException $e) {
-    die('Erro de conexão: ' . $e->getMessage());
-}
-
-$id = (int)($_GET['id'] ?? 0);
-if ($id <= 0) {
-    die("ID inválido.");
-}
+$pdo = new PDO(
+    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
+    $config['user'],
+    $config['pass'],
+    [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ]
+);
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
@@ -47,9 +40,9 @@ if ($id <= 0) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT id, razaos_ocial, nome_fantasia, email_login, rep_nome, rep_email FROM parceiros WHERE id = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT id, razao_social, nome_fantasia, email_login, rep_nome, rep_email FROM parceiros WHERE id = ? LIMIT 1");
 $stmt->execute([$id]);
-$parceiro = $stmt->fetch(PDO::FETCH_ASSOC);
+$parceiro = $stmt->fetch();
 
 if (!$parceiro) {
     $_SESSION['msg_erro'] = 'Parceiro não encontrado.';
@@ -61,14 +54,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmar_exclusao'])
     try {
         $pdo->beginTransaction();
 
-        // Tabelas sem garantia de cascade explícita no dump
         $pdo->prepare('DELETE FROM parceiro_ods WHERE parceiro_id = ?')->execute([$id]);
         $pdo->prepare('DELETE FROM parceiro_interesses WHERE parceiro_id = ?')->execute([$id]);
         $pdo->prepare('DELETE FROM parceiro_etapa_extra WHERE parceiro_id = ?')->execute([$id]);
         $pdo->prepare('DELETE FROM parceiro_contrato WHERE parceiro_id = ?')->execute([$id]);
         $pdo->prepare('DELETE FROM parceiros_perfil WHERE parceiro_id = ?')->execute([$id]);
-
-        // Registro principal
         $pdo->prepare('DELETE FROM parceiros WHERE id = ?')->execute([$id]);
 
         $pdo->commit();
@@ -85,67 +75,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmar_exclusao'])
         exit;
     }
 }
+
+$pageTitle = "Excluir Parceiro";
+include __DIR__ . '/../app/views/admin/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excluir Parceiro</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card border-danger shadow-sm">
-                <div class="card-header bg-danger text-white">
-                    <h4 class="mb-0">Excluir cadastro de parceiro</h4>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-danger">
-                        <strong>Atenção:</strong> esta ação remove permanentemente o parceiro e os dados relacionados. Não há desfazer.
-                    </div>
 
-                    <table class="table table-bordered align-middle">
-                        <tbody>
-                            <tr>
-                                <th width="220">ID</th>
-                                <td><?= (int) $parceiro['id'] ?></td>
-                            </tr>
-                            <tr>
-                                <th>Razão social</th>
-                                <td><?= htmlspecialchars((string) $parceiro['razaosocial']) ?></td>
-                            </tr>
-                            <tr>
-                                <th>Nome fantasia</th>
-                                <td><?= htmlspecialchars((string) $parceiro['nomefantasia']) ?></td>
-                            </tr>
-                            <tr>
-                                <th>E-mail de login</th>
-                                <td><?= htmlspecialchars((string) $parceiro['emaillogin']) ?></td>
-                            </tr>
-                            <tr>
-                                <th>Representante</th>
-                                <td><?= htmlspecialchars((string) $parceiro['repnome']) ?></td>
-                            </tr>
-                            <tr>
-                                <th>E-mail do representante</th>
-                                <td><?= htmlspecialchars((string) $parceiro['repemail']) ?></td>
-                            </tr>
-                        </tbody>
-                    </table>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Excluir Parceiro</h2>
+            <p class="text-muted mb-0">
+                <?= htmlspecialchars($parceiro['nome_fantasia'] ?? $parceiro['razao_social'] ?? 'Parceiro') ?>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="visualizar_parceiro.php?id=<?= (int) $parceiro['id'] ?>" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <a href="parceiros.php" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-list-ul"></i> Lista de Parceiros
+            </a>
+        </div>
+    </div>
 
-                    <form method="post" class="d-flex gap-2 flex-wrap">
-                        <input type="hidden" name="confirmar_exclusao" value="1">
-                        <button type="submit" class="btn btn-danger">Sim, excluir permanentemente</button>
-                        <a href="visualizar_parceiro.php?id=<?= (int) $parceiro['id'] ?>" class="btn btn-outline-secondary">Cancelar</a>
-                        <a href="parceiros.php" class="btn btn-light border">Voltar à lista</a>
-                    </form>
+    <div class="card border-0 rounded-4 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 pt-3 pb-0 px-4 d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+            <h5 class="fw-bold text-danger mb-0">Confirmação de Exclusão Permanente</h5>
+        </div>
+        <div class="card-body px-4 pb-4 pt-3">
+
+            <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+                <i class="bi bi-shield-exclamation fs-5 mt-1"></i>
+                <div>
+                    <strong>Atenção:</strong> esta ação remove permanentemente o parceiro e todos os dados relacionados (contrato, ODS, interesses, perfil). Esta operação <strong>não pode ser desfeita</strong>.
                 </div>
             </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6 mb-2">
+                    <small class="text-muted d-block">ID</small>
+                    <span class="fw-semibold">#<?= (int) $parceiro['id'] ?></span>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <small class="text-muted d-block">Razão Social</small>
+                    <span class="fw-semibold"><?= htmlspecialchars((string) ($parceiro['razao_social'] ?? '-')) ?></span>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <small class="text-muted d-block">Nome Fantasia</small>
+                    <span class="fw-semibold"><?= htmlspecialchars((string) ($parceiro['nome_fantasia'] ?? '-')) ?></span>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <small class="text-muted d-block">E-mail de Login</small>
+                    <span class="fw-semibold"><?= htmlspecialchars((string) ($parceiro['email_login'] ?? '-')) ?></span>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <small class="text-muted d-block">Representante</small>
+                    <span class="fw-semibold"><?= htmlspecialchars((string) ($parceiro['rep_nome'] ?? '-')) ?></span>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <small class="text-muted d-block">E-mail do Representante</small>
+                    <span class="fw-semibold"><?= htmlspecialchars((string) ($parceiro['rep_email'] ?? '-')) ?></span>
+                </div>
+            </div>
+
+            <form method="post" class="d-flex gap-2 flex-wrap">
+                <input type="hidden" name="confirmar_exclusao" value="1">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash3"></i> Sim, excluir permanentemente
+                </button>
+                <a href="visualizar_parceiro.php?id=<?= (int) $parceiro['id'] ?>" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+            </form>
         </div>
     </div>
 </div>
-</body>
-</html>
+
+<?php include __DIR__ . '/../app/views/admin/footer.php'; ?>
