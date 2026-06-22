@@ -382,6 +382,51 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     </div>
                 </div>
             </div>
+
+            <!-- Replicabilidade -->
+            <div class="mt-4">
+                <label class="form-label fw-semibold">
+                    <i class="bi bi-eye-slash-fill lbl-priv me-1"></i> Como você descreveria a replicabilidade do seu modelo de negócio?
+                    <span class="text-danger">*</span>
+                </label>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="replicabilidade"
+                           id="rep_digital" value="digital_escalavel"
+                           <?= ($apresentacao['replicabilidade'] ?? '') === 'digital_escalavel' ? 'checked' : '' ?>
+                           required>
+                    <label class="form-check-label" for="rep_digital">
+                        O modelo é totalmente digital e pode ser replicado sem adaptações significativas
+                    </label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="replicabilidade"
+                           id="rep_baixa" value="replicavel_baixa_adaptacao"
+                           <?= ($apresentacao['replicabilidade'] ?? '') === 'replicavel_baixa_adaptacao' ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="rep_baixa">
+                        Pode ser replicado com pequenas adaptações locais
+                    </label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="replicabilidade"
+                           id="rep_alta" value="replicavel_alta_adaptacao"
+                           <?= ($apresentacao['replicabilidade'] ?? '') === 'replicavel_alta_adaptacao' ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="rep_alta">
+                        Pode ser replicado, mas exige adaptações relevantes para cada contexto
+                    </label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="replicabilidade"
+                           id="rep_dificil" value="dificil_replicacao"
+                           <?= ($apresentacao['replicabilidade'] ?? '') === 'dificil_replicacao' ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="rep_dificil">
+                        O modelo é muito específico e dificilmente replicável em outros contextos
+                    </label>
+                </div>
+            </div>
         </div>
 
         <!-- ══════════════════════════════════════════════════
