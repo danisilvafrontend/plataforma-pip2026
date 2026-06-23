@@ -17,6 +17,9 @@ require_once __DIR__ . '/../app/validators/validate_empreendedor.php';
 require_once __DIR__ . '/../app/helpers/functions.php';
 
 // Sanitização
+// ATENÇÃO: campos de texto livre usam apenas trim() para não converter acentos
+// em entidades HTML (problema com FILTER_SANITIZE_FULL_SPECIAL_CHARS).
+// A escaping para saída HTML deve ser feita com htmlspecialchars() nos templates.
 $data = [
     'nome'                    => trim($_POST['nome'] ?? ''),
     'sobrenome'               => trim($_POST['sobrenome'] ?? ''),
@@ -24,24 +27,24 @@ $data = [
     'email'                   => trim(filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL)),
     'celular'                 => sanitize_text($_POST['celular'] ?? ''),
     'data_nascimento'         => $_POST['data_nascimento'] ?? '',
-    'genero'                  => sanitize_text($_POST['genero'] ?? ''),
+    'genero'                  => trim($_POST['genero'] ?? ''),
     'cidade'                  => trim($_POST['cidade'] ?? ''),
     'estado'                  => trim($_POST['estado'] ?? ''),
-    'pais'                    => sanitize_text($_POST['pais'] ?? ''),
+    'pais'                    => trim($_POST['pais'] ?? ''),
     'regiao'                  => trim($_POST['regiao'] ?? ''),
     'cargo'                   => trim($_POST['cargo'] ?? ''),
-    'origem_conhecimento'     => sanitize_text($_POST['origem_conhecimento'] ?? ''),
+    'origem_conhecimento'     => trim($_POST['origem_conhecimento'] ?? ''),
     'consentimento_email'     => isset($_POST['consentimento_email']) ? 1 : 0,
     'consentimento_whatsapp'  => isset($_POST['consentimento_whatsapp']) ? 1 : 0,
     'termos_uso'              => isset($_POST['termos_uso']) ? 1 : 0,
     'senha'                   => $_POST['senha'] ?? '',
     'senha_confirm'           => $_POST['senha_confirm'] ?? '',
     'eh_fundador'             => $_POST['eh_fundador'] ?? 'Não',
-    'formacao'                => $_POST['formacao'] ?? null,
-    'etnia'                   => $_POST['etnia'] ?? null,
-    'orientacao_sexual'       => sanitize_text($_POST['orientacao_sexual'] ?? ''),
+    'formacao'                => trim($_POST['formacao'] ?? ''),
+    'etnia'                   => trim($_POST['etnia'] ?? ''),
+    'orientacao_sexual'       => trim($_POST['orientacao_sexual'] ?? ''),
     'orientacao_sexual_outra' => trim($_POST['orientacao_sexual_outra'] ?? ''),
-    'grupo_vulneravel'        => sanitize_text($_POST['grupo_vulneravel'] ?? ''),
+    'grupo_vulneravel'        => trim($_POST['grupo_vulneravel'] ?? ''),
 ];
 
 // Validação
