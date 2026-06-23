@@ -7,7 +7,7 @@ if (!isset($pageTitle)) $pageTitle = 'Painel — Impactos Positivos';
 $currentPage = $_SERVER['REQUEST_URI'];
 
 $usuariosPages   = ['/admin/administradores.php', '/admin/empreendedores.php', '/admin/usuarios.php'];
-$relatoriosPages = ['/admin/relatorios_negocios.php'];
+$relatoriosPages = ['/admin/relatorios_negocios.php', '/admin/relatorios_usuarios.php'];
 $premiacaoPages = [
     '/admin/premiacao_edicoes.php',
     '/admin/premiacao_periodos.php',
@@ -71,7 +71,7 @@ function isJuriOuTecnica(): bool {
   <?php if (!empty($extraHead ?? null)) echo $extraHead; ?>
 </head>
 <body>
-<!-- ── Topbar ─────────────────────────────────────────── -->
+<!-- ── Topbar ────────────────────────────────────────────────── -->
 <header class="ip-topbar">
   <button class="sidebar-toggle" id="sidebarToggle" aria-label="Abrir menu">
     <i class="bi bi-list"></i>
@@ -99,10 +99,10 @@ function isJuriOuTecnica(): bool {
   </div>
 </header>
 
-<!-- ── Backdrop mobile ────────────────────────────────── -->
+<!-- ── Backdrop mobile ────────────────────────────────────────────── -->
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-<!-- ── Sidebar ────────────────────────────────────────── -->
+<!-- ── Sidebar ────────────────────────────────────────────────── -->
 <aside class="ip-sidebar" id="ipSidebar">
 
 <?php if (isJuriOuTecnica()): ?>
@@ -171,10 +171,31 @@ function isJuriOuTecnica(): bool {
       </a>
     </li>
 
+    <!-- Relatórios (submenu com negócios + usuários) -->
     <li class="nav-item">
-      <a class="nav-link <?= isActive($currentPage, '/admin/relatorios_negocios.php') ?>" href="/admin/relatorios_negocios.php">
+      <a class="nav-link <?= $isRelatoriosActive ? 'active' : '' ?>"
+         href="#relatoriosSubmenu"
+         data-bs-toggle="collapse"
+         role="button"
+         aria-expanded="<?= $isRelatoriosActive ? 'true' : 'false' ?>"
+         aria-controls="relatoriosSubmenu">
         <i class="bi bi-bar-chart-fill"></i> Relatórios
+        <i class="bi bi-chevron-down chevron"></i>
       </a>
+      <div class="collapse <?= $isRelatoriosActive ? 'show' : '' ?>" id="relatoriosSubmenu">
+        <ul class="nav flex-column submenu">
+          <li>
+            <a class="nav-link <?= isActive($currentPage, '/admin/relatorios_negocios.php') ?>" href="/admin/relatorios_negocios.php">
+              <i class="bi bi-briefcase"></i> Negócios
+            </a>
+          </li>
+          <li>
+            <a class="nav-link <?= isActive($currentPage, '/admin/relatorios_usuarios.php') ?>" href="/admin/relatorios_usuarios.php">
+              <i class="bi bi-people"></i> Usuários
+            </a>
+          </li>
+        </ul>
+      </div>
     </li>
 
     <li class="nav-item">
@@ -235,7 +256,7 @@ function isJuriOuTecnica(): bool {
   </div>
 </aside>
 
-<!-- ── Main content ───────────────────────────────────── -->
+<!-- ── Main content ────────────────────────────────────────────────── -->
 <main class="ip-main">
 
 <script>
