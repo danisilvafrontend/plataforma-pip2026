@@ -60,24 +60,13 @@ try {
 
     $suportaJson = mysqlSuportaJsonTableU($pdo);
 
-    // =========================================================
-    // KPIs GERAIS
-    // Empreendedores: apenas status = 'ativo'
-    // =========================================================
     $kpiEmp        = (int)$pdo->query("SELECT COUNT(*) FROM empreendedores WHERE status = 'ativo'")->fetchColumn();
     $kpiEmpTotal   = (int)$pdo->query("SELECT COUNT(*) FROM empreendedores")->fetchColumn();
     $kpiSoc        = (int)$pdo->query("SELECT COUNT(*) FROM sociedade_civil")->fetchColumn();
     $kpiPar        = (int)$pdo->query("SELECT COUNT(*) FROM parceiros")->fetchColumn();
     $kpiTotal      = $kpiEmp + $kpiSoc + $kpiPar;
-
-    // Parceiros com cadastro completo (etapa_atual >= 6)
     $kpiParCompleto = (int)$pdo->query("SELECT COUNT(*) FROM parceiros WHERE etapa_atual >= 6")->fetchColumn();
 
-    // =========================================================
-    // EMPREENDEDORES — filtro global: status = 'ativo'
-    // =========================================================
-
-    // Por estado
     $empEstado = $pdo->query("
         SELECT estado, COUNT(*) AS total
         FROM empreendedores
@@ -86,7 +75,6 @@ try {
         GROUP BY estado ORDER BY total DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Por gênero
     $empGenero = $pdo->query("
         SELECT COALESCE(genero, 'Não informado') AS genero, COUNT(*) AS total
         FROM empreendedores
@@ -94,7 +82,6 @@ try {
         GROUP BY genero ORDER BY total DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Por etnia (apenas fundadores ativos)
     $empEtnia = $pdo->query("
         SELECT etnia, COUNT(*) AS total
         FROM empreendedores
@@ -104,7 +91,6 @@ try {
         GROUP BY etnia ORDER BY total DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Por formação (apenas fundadores ativos)
     $empFormacao = $pdo->query("
         SELECT formacao, COUNT(*) AS total
         FROM empreendedores
@@ -114,7 +100,6 @@ try {
         GROUP BY formacao ORDER BY total DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Por origem de conhecimento
     $empOrigem = $pdo->query("
         SELECT COALESCE(origem_conhecimento, 'Não informado') AS origem_conhecimento, COUNT(*) AS total
         FROM empreendedores
@@ -123,7 +108,6 @@ try {
         GROUP BY origem_conhecimento ORDER BY total DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Fundadores vs não-fundadores (ativos)
     $empFundador = $pdo->query("
         SELECT
             SUM(eh_fundador = 1) AS fundadores,
@@ -132,7 +116,6 @@ try {
         WHERE status = 'ativo'
     ")->fetch(PDO::FETCH_ASSOC);
 
-    // Grupo vulnerável (fundadores ativos)
     $empGrupoVulneravel = $pdo->query("
         SELECT grupo_vulneravel AS nome, COUNT(*) AS total
         FROM empreendedores
@@ -142,7 +125,6 @@ try {
         GROUP BY grupo_vulneravel ORDER BY total DESC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // Novos cadastros ativos por mês (últimos 12 meses)
     $empPorMes = $pdo->query("
         SELECT DATE_FORMAT(criado_em, '%Y-%m') AS mes, COUNT(*) AS total
         FROM empreendedores
@@ -151,9 +133,6 @@ try {
         GROUP BY mes ORDER BY mes ASC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    // =========================================================
-    // SOCIEDADE CIVIL
-    // =========================================================
     $socEstado = $pdo->query("
         SELECT estado, COUNT(*) AS total
         FROM sociedade_civil
@@ -242,9 +221,6 @@ try {
         $socSetores        = agregarJsonU($rawSoc, 'setores');
     }
 
-    // =========================================================
-    // PARCEIROS
-    // =========================================================
     $parEstado = $pdo->query("
         SELECT estado, COUNT(*) AS total
         FROM parceiros
@@ -334,9 +310,6 @@ try {
     die("Erro ao gerar relatórios de usuários: " . $e->getMessage());
 }
 
-// ── Prepara dados para JS ──────────────────────────────────────────────────
-
-// Empreendedores
 $labEmpEstado   = extrairLabels($empEstado, 'estado');
 $totEmpEstado   = extrairTotais($empEstado);
 $labEmpGenero   = extrairLabels($empGenero, 'genero');
@@ -352,7 +325,6 @@ $totEmpMes      = array_column($empPorMes, 'total');
 $labEmpGrupo    = extrairLabels($empGrupoVulneravel, 'nome');
 $totEmpGrupo    = extrairTotais($empGrupoVulneravel);
 
-// Sociedade Civil
 $labSocEstado = extrairLabels($socEstado, 'estado');
 $totSocEstado = extrairTotais($socEstado);
 $labSocProf   = extrairLabels($socProfissao, 'profissao');
@@ -388,7 +360,6 @@ $tabSocInt   = montarTabelaPercentual($topSocInt);
 $tabSocEng   = montarTabelaPercentual($topSocEng);
 $tabSocSet   = montarTabelaPercentual($topSocSet);
 
-// Parceiros
 $labParEstado  = extrairLabels($parEstado, 'estado');
 $totParEstado  = extrairTotais($parEstado);
 $labParMes     = array_column($parPorMes, 'mes');
@@ -419,7 +390,6 @@ $tabParEixos = montarTabelaPercentual($topParEixos);
 $tabParPerf  = montarTabelaPercentual($topParPerf);
 $tabParSet   = montarTabelaPercentual($topParSet);
 
-// Etapas do parceiro
 $etapaLabels = [];
 $etapaTotais = [];
 foreach ($parEtapa as $row) {
@@ -552,20 +522,20 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
-        <div class="grid-2">
-
-            <!-- Por estado -->
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <div class="accent-bar green"></div>
-                    <h5>Empreendedores ativos por estado</h5>
-                </div>
-                <div class="chart-card-body">
-                    <div class="chart-wrap" id="wrap-graficoEmpEstado">
-                        <canvas id="graficoEmpEstado"></canvas>
-                    </div>
+        <!-- Empreendedores por estado — linha inteira, barra horizontal compacta -->
+        <div class="chart-card mb-4">
+            <div class="chart-card-header">
+                <div class="accent-bar green"></div>
+                <h5>Empreendedores ativos por estado</h5>
+            </div>
+            <div class="chart-card-body">
+                <div class="chart-wrap" id="wrap-graficoEmpEstado">
+                    <canvas id="graficoEmpEstado"></canvas>
                 </div>
             </div>
+        </div>
+
+        <div class="grid-2">
 
             <!-- Por gênero -->
             <div class="chart-card">
@@ -852,8 +822,13 @@ include __DIR__ . '/../app/views/admin/header.php';
 </div><!-- /container -->
 
 <script>
+// Altura para gráficos horizontais genéricos (outros)
 function alturaHorizontal(n, minH = 220, porItem = 44) {
     return Math.max(minH, n * porItem);
+}
+// Altura compacta exclusiva do gráfico de estados de empreendedores
+function alturaEstadoEmp(n) {
+    return Math.max(300, n * 28);
 }
 function setAltura(id, h) {
     const el = document.getElementById(id);
@@ -921,8 +896,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const totParSet     = <?= json_encode($totParSet) ?>;
     const dataParODS    = <?= json_encode($parODS,        JSON_UNESCAPED_UNICODE) ?>;
 
+    // Altura do gráfico de estados (horizontal compacto)
+    setAltura('wrap-graficoEmpEstado', alturaEstadoEmp(labEmpEstado.length));
+
+    // Demais gráficos horizontais genéricos
     [
-        { id: 'wrap-graficoEmpEstado',   n: labEmpEstado.length   },
         { id: 'wrap-graficoEmpEtnia',    n: labEmpEtnia.length    },
         { id: 'wrap-graficoEmpFormacao', n: labEmpFormacao.length  },
         { id: 'wrap-graficoEmpGrupo',    n: labEmpGrupo.length    },
@@ -949,13 +927,16 @@ document.addEventListener('DOMContentLoaded', function () {
         'doughnut'
     );
 
-    criarGraficoLinha  ('graficoEmpMes',      labEmpMes,     totEmpMes,     'Ativos cadastrados', '#1a8a4a');
-    criarGraficoBarra  ('graficoEmpEstado',   labEmpEstado,  totEmpEstado,  'Ativos', true);
+    criarGraficoLinha('graficoEmpMes', labEmpMes, totEmpMes, 'Ativos cadastrados', '#1a8a4a');
+
+    // Estado: horizontal compacto (linha inteira)
+    criarGraficoBarraHorizontalCompacto('graficoEmpEstado', labEmpEstado, totEmpEstado, 'Ativos');
+
     criarGraficoCircular('graficoEmpGenero',  labEmpGenero,  totEmpGenero,  'pie');
-    criarGraficoBarra  ('graficoEmpEtnia',    labEmpEtnia,   totEmpEtnia,   'Fundadores ativos', true);
-    criarGraficoBarra  ('graficoEmpFormacao', labEmpFormacao,totEmpFormacao,'Fundadores ativos', true);
+    criarGraficoBarra   ('graficoEmpEtnia',    labEmpEtnia,   totEmpEtnia,   'Fundadores ativos', true);
+    criarGraficoBarra   ('graficoEmpFormacao', labEmpFormacao,totEmpFormacao,'Fundadores ativos', true);
     criarGraficoCircular('graficoEmpOrigem',  labEmpOrigem,  totEmpOrigem,  'doughnut');
-    criarGraficoBarra  ('graficoEmpGrupo',    labEmpGrupo,   totEmpGrupo,   'Fundadores ativos', true);
+    criarGraficoBarra   ('graficoEmpGrupo',    labEmpGrupo,   totEmpGrupo,   'Fundadores ativos', true);
 
     criarGraficoLinha  ('graficoSocMes',    labSocMes,   totSocMes,   'Novos cadastros', '#0369a1');
     criarGraficoBarra  ('graficoSocEstado', labSocEstado,totSocEstado,'Membros', true);
@@ -1005,6 +986,59 @@ function criarGraficoLinha(canvasId, labels, data, label, cor) {
                 y: { beginAtZero: true, ticks: { precision: 0 } },
                 x: { ticks: { maxRotation: 45, minRotation: 30 } }
             }
+        }
+    });
+}
+
+// Barra horizontal compacta — para o gráfico de estados (linha inteira)
+function criarGraficoBarraHorizontalCompacto(canvasId, labels, data, label) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    const cores = [
+        '#1a8a4a','#2563eb','#d97706','#7c3aed','#0e7490',
+        '#be185d','#16a34a','#ea580c','#0284c7','#9333ea',
+        '#15803d','#b45309','#1d4ed8','#db2777','#0891b2',
+        '#65a30d','#c2410c','#6d28d9','#047857','#dc2626',
+        '#0369a1','#a16207','#7e22ce','#166534','#b91c1c'
+    ];
+    const bgColors = labels.map((_, i) => cores[i % cores.length]);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label,
+                data,
+                backgroundColor: bgColors,
+                borderRadius: 4,
+                barThickness: 18
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ' ' + ctx.parsed.x + ' empreendedores'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, font: { size: 11 } },
+                    grid: { color: 'rgba(0,0,0,.06)' }
+                },
+                y: {
+                    ticks: { font: { size: 12 } },
+                    grid: { display: false }
+                }
+            },
+            layout: { padding: { right: 8 } }
         }
     });
 }
