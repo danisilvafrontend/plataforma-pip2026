@@ -95,7 +95,6 @@ include __DIR__ . '/app/views/public/header_public.php';
 
 <!-- ═══════════════════════════════════════════════
      FAIXA DE URGÊNCIA — Premiação 2026
-     Brand colors: #1E3425 / #CDDE00 / #97A327
 ════════════════════════════════════════════════ -->
 <div class="pip-urgency-bar" role="banner" aria-label="Alerta de prazo — Premiação 2026">
   <div class="pip-urgency-inner">
@@ -147,11 +146,18 @@ include __DIR__ . '/app/views/public/header_public.php';
 </div>
 
 <style>
-/* ── Faixa de Urgência — brand colors ── */
+/* ── Faixa de Urgência — full-bleed + brand colors ── */
 .pip-urgency-bar {
+  /* full-bleed: mesmo padrão de .hero-home e .como-funciona-home */
+  margin-left:  calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  padding-left: calc(50vw - 50% + 1.5rem);
+  padding-right: calc(50vw - 50% + 1.5rem);
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+
   background: linear-gradient(90deg, #1E3425 0%, #2d5038 60%, #1E3425 100%);
   color: #fff;
-  padding: 0.85rem 1.5rem;
   position: relative;
   overflow: hidden;
   border-bottom: 3px solid #CDDE00;
@@ -210,8 +216,6 @@ include __DIR__ . '/app/views/public/header_public.php';
   color: rgba(255, 255, 255, 0.75);
   line-height: 1.3;
 }
-
-/* Countdown */
 .pip-urgency-center { flex-shrink: 0; }
 .pip-countdown {
   display: flex;
@@ -251,8 +255,6 @@ include __DIR__ . '/app/views/public/header_public.php';
   margin-top: 2px;
   line-height: 1.1;
 }
-
-/* Botões — reutiliza .btn-premiacao-primary / .btn-premiacao-outline */
 .pip-urgency-right {
   display: flex;
   align-items: center;
@@ -260,21 +262,22 @@ include __DIR__ . '/app/views/public/header_public.php';
   flex-shrink: 0;
   flex-wrap: wrap;
 }
-/* Override de border-radius para a faixa (estilo pill) */
 .pip-urgency-btn-cta {
   font-size: 0.82rem !important;
   padding: 0.5rem 1.15rem !important;
   border-radius: 999px !important;
 }
-
 @media (max-width: 768px) {
+  .pip-urgency-bar {
+    padding-left: calc(50vw - 50% + 1rem);
+    padding-right: calc(50vw - 50% + 1rem);
+  }
   .pip-urgency-inner { flex-direction: column; align-items: flex-start; gap: 0.85rem; }
   .pip-urgency-center { width: 100%; display: flex; justify-content: center; }
   .pip-urgency-right { width: 100%; justify-content: center; }
   .pip-countdown-num { font-size: 1.3rem; }
 }
 @media (max-width: 480px) {
-  .pip-urgency-bar { padding: 0.85rem 1rem; }
   .pip-urgency-btn-cta { font-size: 0.78rem !important; padding: 0.45rem 0.9rem !important; }
 }
 </style>
@@ -301,7 +304,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 })();
 </script>
 
-<!-- ════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════
      SEÇÃO — Apoio Institucional
 ════════════════════════════════════════════════ -->
 <section class="apoio-institucional">
@@ -312,7 +315,6 @@ include __DIR__ . '/app/views/public/header_public.php';
     </h2>
 
     <ul class="apoio-institucional__grid">
-
       <li class="apoio-institucional__item">
         <img src="/assets/images/apoio/mdic.png" alt="Ministério do Desenvolvimento, Indústria, Comércio e Serviços" class="apoio-institucional__logo" loading="lazy" width="200" height="100">
       </li>
@@ -331,8 +333,8 @@ include __DIR__ . '/app/views/public/header_public.php';
       <li class="apoio-institucional__item">
         <img src="/assets/images/apoio/alianca.webp" alt="Aliança pelos Investimentos e Negócios de Impacto" class="apoio-institucional__logo" loading="lazy" width="200" height="100">
       </li>
-
     </ul>
+
   </div>
 </section>
 
@@ -406,15 +408,13 @@ include __DIR__ . '/app/views/public/header_public.php';
 <!-- ════ FIM: PARCEIROS ════ -->
 
 
-<!-- ════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════
      SEÇÃO DESTAQUE — Prêmio Impactos Positivos 2026
-     Reutiliza .premiacao-inner do style.css — brand colors
 ════════════════════════════════════════════════ -->
-<section class="premiacao-home py-5" aria-label="Prêmio Impactos Positivos 2026">
+<section class="premiacao-home premiacao-home--fullbleed py-5" aria-label="Prêmio Impactos Positivos 2026">
   <div class="container">
     <div class="premiacao-inner">
 
-      <!-- Grafismo de fundo (igual ao bloco premiacao original) -->
       <div class="premiacao-grafismo" aria-hidden="true"></div>
 
       <div class="row align-items-center g-5 position-relative">
@@ -433,9 +433,7 @@ include __DIR__ . '/app/views/public/header_public.php';
             O <strong>Prêmio Impactos Positivos 2026</strong> celebra iniciativas que provam que é possível gerar impacto real — social, ambiental e econômico — transformando territórios e vidas em todo o Brasil.
           </p>
 
-          <!-- Pilares reutilizando .premiacao-pilar do style.css -->
           <div class="premiacao-pilares mt-4">
-
             <div class="premiacao-pilar">
               <div class="premiacao-pilar-icon"><i class="bi bi-award-fill"></i></div>
               <div>
@@ -443,7 +441,6 @@ include __DIR__ . '/app/views/public/header_public.php';
                 <span>Seu negócio apresentado para o ecossistema de impacto do Brasil.</span>
               </div>
             </div>
-
             <div class="premiacao-pilar">
               <div class="premiacao-pilar-icon"><i class="bi bi-people-fill"></i></div>
               <div>
@@ -451,7 +448,6 @@ include __DIR__ . '/app/views/public/header_public.php';
                 <span>Critérios claros de impacto, inovação e sustentabilidade.</span>
               </div>
             </div>
-
             <div class="premiacao-pilar">
               <div class="premiacao-pilar-icon"><i class="bi bi-check-circle-fill"></i></div>
               <div>
@@ -459,10 +455,8 @@ include __DIR__ . '/app/views/public/header_public.php';
                 <span>Inscrições encerram em <strong style="color:#CDDE00;">julho de 2026</strong>.</span>
               </div>
             </div>
-
           </div>
 
-          <!-- CTAs — classes do style.css -->
           <div class="d-flex flex-wrap gap-3 mt-4">
             <a href="/premiacao.php" class="btn-premiacao-primary">
               <i class="bi bi-trophy me-1"></i> Quero me inscrever
@@ -523,7 +517,16 @@ include __DIR__ . '/app/views/public/header_public.php';
 </section>
 
 <style>
-/* ── Card countdown da seção premiação ── */
+/* ── Seção premiação — full-bleed ── */
+.premiacao-home--fullbleed {
+  /* full-bleed: mesmo padrão de .hero-home e .como-funciona-home */
+  margin-left:  calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  padding-left: calc(50vw - 50%);
+  padding-right: calc(50vw - 50%);
+}
+
+/* ── Card countdown ── */
 .pip-cd-card {
   background: rgba(255,255,255,.08);
   border: 1px solid rgba(205,222,0,.25);
@@ -600,7 +603,6 @@ include __DIR__ . '/app/views/public/header_public.php';
   line-height: 1.5;
   margin: 0;
 }
-
 @media (max-width: 767.98px) {
   .pip-cd-card { padding: 1.5rem 1.25rem; }
   .pip-cd-num  { font-size: 1.75rem; }
@@ -632,7 +634,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 </script>
 
 
-<!-- ════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════
      POPUP — PIP Insights
 ════════════════════════════════════════════════ -->
 <div id="pip-insights-popup" role="dialog" aria-modal="true" aria-labelledby="pip-insights-title" style="display:none;">
