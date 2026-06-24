@@ -145,7 +145,6 @@ try {
         FROM sociedade_civil
         WHERE profissao IS NOT NULL AND profissao != ''
         GROUP BY profissao ORDER BY total DESC
-        LIMIT 10
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     $socOrganizacao = $pdo->query("
@@ -153,7 +152,6 @@ try {
         FROM sociedade_civil
         WHERE organizacao IS NOT NULL AND organizacao != ''
         GROUP BY organizacao ORDER BY total DESC
-        LIMIT 10
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     $socPorMes = $pdo->query("
@@ -188,12 +186,15 @@ try {
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-        $socODS = $pdo->query("
-            SELECT jt.item AS nome, COUNT(*) AS total
+        // ODS via JOIN com tabela ods (igual ao relatorios_negocios.php)
+        $socODSData = $pdo->query("
+            SELECT o.id, o.n_ods, o.nome, COUNT(*) AS total
             FROM sociedade_civil sc
             JOIN JSON_TABLE(sc.ods, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN ods o ON o.n_ods = jt.item OR o.nome = jt.item OR CONCAT('ODS ', o.n_ods) = jt.item
             WHERE sc.ods IS NOT NULL
-            GROUP BY jt.item ORDER BY total DESC
+            GROUP BY o.id, o.n_ods, o.nome
+            ORDER BY o.id ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
         $socEngajamento = $pdo->query("
@@ -216,9 +217,9 @@ try {
         $socIdentificacoes = agregarJsonU($rawSoc, 'identificacoes');
         $socMotivacoes     = agregarJsonU($rawSoc, 'motivacoes');
         $socInteresses     = agregarJsonU($rawSoc, 'interesses');
-        $socODS            = agregarJsonU($rawSoc, 'ods');
         $socEngajamento    = agregarJsonU($rawSoc, 'engajamento');
         $socSetores        = agregarJsonU($rawSoc, 'setores');
+        $socODSData        = [];
     }
 
     $parEstado = $pdo->query("
@@ -310,6 +311,7 @@ try {
     die("Erro ao gerar relatórios de usuários: " . $e->getMessage());
 }
 
+// --- Empreendedores ---
 $labEmpEstado   = extrairLabels($empEstado, 'estado');
 $totEmpEstado   = extrairTotais($empEstado);
 $labEmpGenero   = extrairLabels($empGenero, 'genero');
@@ -325,6 +327,7 @@ $totEmpMes      = array_column($empPorMes, 'total');
 $labEmpGrupo    = extrairLabels($empGrupoVulneravel, 'nome');
 $totEmpGrupo    = extrairTotais($empGrupoVulneravel);
 
+// --- Sociedade Civil ---
 $labSocEstado = extrairLabels($socEstado, 'estado');
 $totSocEstado = extrairTotais($socEstado);
 $labSocProf   = extrairLabels($socProfissao, 'profissao');
@@ -334,32 +337,25 @@ $totSocOrg    = extrairTotais($socOrganizacao);
 $labSocMes    = array_column($socPorMes, 'mes');
 $totSocMes    = array_column($socPorMes, 'total');
 
-$topSocIdent = prepararTopDados($socIdentificacoes, 8, true);
-$topSocMotiv = prepararTopDados($socMotivacoes, 8, true);
-$topSocInt   = prepararTopDados($socInteresses, 8, true);
-$topSocODS   = prepararTopDados($socODS, 8, true);
-$topSocEng   = prepararTopDados($socEngajamento, 8, true);
-$topSocSet   = prepararTopDados($socSetores, 8, true);
+// Todos os dados completos, sem agrupamento em "Outros"
+$labSocIdent = extrairLabels($socIdentificacoes, 'nome');
+$totSocIdent = extrairTotais($socIdentificacoes);
+$labSocMotiv = extrairLabels($socMotivacoes, 'nome');
+$totSocMotiv = extrairTotais($socMotivacoes);
+$labSocInt   = extrairLabels($socInteresses, 'nome');
+$totSocInt   = extrairTotais($socInteresses);
+$labSocEng   = extrairLabels($socEngajamento, 'nome');
+$totSocEng   = extrairTotais($socEngajamento);
+$labSocSet   = extrairLabels($socSetores, 'nome');
+$totSocSet   = extrairTotais($socSetores);
 
-$labSocIdent = extrairLabelsLimitados($topSocIdent, 'nome', 60);
-$totSocIdent = extrairTotais($topSocIdent);
-$labSocMotiv = extrairLabelsLimitados($topSocMotiv, 'nome', 60);
-$totSocMotiv = extrairTotais($topSocMotiv);
-$labSocInt   = extrairLabelsLimitados($topSocInt, 'nome', 60);
-$totSocInt   = extrairTotais($topSocInt);
-$labSocODS   = extrairLabelsLimitados($topSocODS, 'nome', 60);
-$totSocODS   = extrairTotais($topSocODS);
-$labSocEng   = extrairLabelsLimitados($topSocEng, 'nome', 60);
-$totSocEng   = extrairTotais($topSocEng);
-$labSocSet   = extrairLabelsLimitados($topSocSet, 'nome', 60);
-$totSocSet   = extrairTotais($topSocSet);
+$tabSocIdent = montarTabelaPercentual($socIdentificacoes);
+$tabSocMotiv = montarTabelaPercentual($socMotivacoes);
+$tabSocInt   = montarTabelaPercentual($socInteresses);
+$tabSocEng   = montarTabelaPercentual($socEngajamento);
+$tabSocSet   = montarTabelaPercentual($socSetores);
 
-$tabSocIdent = montarTabelaPercentual($topSocIdent);
-$tabSocMotiv = montarTabelaPercentual($topSocMotiv);
-$tabSocInt   = montarTabelaPercentual($topSocInt);
-$tabSocEng   = montarTabelaPercentual($topSocEng);
-$tabSocSet   = montarTabelaPercentual($topSocSet);
-
+// --- Parceiros ---
 $labParEstado  = extrairLabels($parEstado, 'estado');
 $totParEstado  = extrairTotais($parEstado);
 $labParMes     = array_column($parPorMes, 'mes');
@@ -367,28 +363,23 @@ $totParMes     = array_column($parPorMes, 'total');
 $labParAlcance = extrairLabels($parAlcance, 'nome');
 $totParAlcance = extrairTotais($parAlcance);
 
-$topParTipos = prepararTopDados($parTipos, 8, true);
-$topParNat   = prepararTopDados($parNatureza, 8, true);
-$topParEixos = prepararTopDados($parEixos, 8, true);
-$topParPerf  = prepararTopDados($parPerfilImpacto, 8, true);
-$topParSet   = prepararTopDados($parSetores, 8, true);
+// Todos os dados completos, sem agrupamento em "Outros"
+$labParTipos = extrairLabels($parTipos, 'nome');
+$totParTipos = extrairTotais($parTipos);
+$labParNat   = extrairLabels($parNatureza, 'nome');
+$totParNat   = extrairTotais($parNatureza);
+$labParEixos = extrairLabels($parEixos, 'nome');
+$totParEixos = extrairTotais($parEixos);
+$labParPerf  = extrairLabels($parPerfilImpacto, 'nome');
+$totParPerf  = extrairTotais($parPerfilImpacto);
+$labParSet   = extrairLabels($parSetores, 'nome');
+$totParSet   = extrairTotais($parSetores);
 
-$labParTipos = extrairLabelsLimitados($topParTipos, 'nome', 60);
-$totParTipos = extrairTotais($topParTipos);
-$labParNat   = extrairLabelsLimitados($topParNat, 'nome', 60);
-$totParNat   = extrairTotais($topParNat);
-$labParEixos = extrairLabelsLimitados($topParEixos, 'nome', 60);
-$totParEixos = extrairTotais($topParEixos);
-$labParPerf  = extrairLabelsLimitados($topParPerf, 'nome', 60);
-$totParPerf  = extrairTotais($topParPerf);
-$labParSet   = extrairLabelsLimitados($topParSet, 'nome', 60);
-$totParSet   = extrairTotais($topParSet);
-
-$tabParTipos = montarTabelaPercentual($topParTipos);
-$tabParNat   = montarTabelaPercentual($topParNat);
-$tabParEixos = montarTabelaPercentual($topParEixos);
-$tabParPerf  = montarTabelaPercentual($topParPerf);
-$tabParSet   = montarTabelaPercentual($topParSet);
+$tabParTipos = montarTabelaPercentual($parTipos);
+$tabParNat   = montarTabelaPercentual($parNatureza);
+$tabParEixos = montarTabelaPercentual($parEixos);
+$tabParPerf  = montarTabelaPercentual($parPerfilImpacto);
+$tabParSet   = montarTabelaPercentual($parSetores);
 
 $etapaLabels = [];
 $etapaTotais = [];
@@ -509,7 +500,6 @@ include __DIR__ . '/../app/views/admin/header.php';
             </span>
         </div>
 
-        <!-- Crescimento mensal -->
         <div class="chart-card mb-4">
             <div class="chart-card-header">
                 <div class="accent-bar green"></div>
@@ -522,7 +512,7 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Empreendedores por estado — linha inteira, barra vertical compacta -->
+        <!-- Empreendedores por estado — barra vertical compacta, altura fixa -->
         <div class="chart-card mb-4">
             <div class="chart-card-header">
                 <div class="accent-bar green"></div>
@@ -536,8 +526,6 @@ include __DIR__ . '/../app/views/admin/header.php';
         </div>
 
         <div class="grid-2">
-
-            <!-- Por gênero -->
             <div class="chart-card">
                 <div class="chart-card-header">
                     <div class="accent-bar teal"></div>
@@ -549,8 +537,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                     </div>
                 </div>
             </div>
-
-            <!-- Etnia (fundadores ativos) -->
             <div class="chart-card">
                 <div class="chart-card-header">
                     <div class="accent-bar amber"></div>
@@ -562,8 +548,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                     </div>
                 </div>
             </div>
-
-            <!-- Formação (fundadores ativos) -->
             <div class="chart-card">
                 <div class="chart-card-header">
                     <div class="accent-bar blue"></div>
@@ -575,8 +559,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                     </div>
                 </div>
             </div>
-
-            <!-- Origem de conhecimento -->
             <div class="chart-card">
                 <div class="chart-card-header">
                     <div class="accent-bar purple"></div>
@@ -588,8 +570,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                     </div>
                 </div>
             </div>
-
-            <!-- Grupo vulnerável (fundadores ativos) -->
             <div class="chart-card">
                 <div class="chart-card-header">
                     <div class="accent-bar"></div>
@@ -601,7 +581,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -626,18 +605,20 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
-        <div class="grid-2">
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <div class="accent-bar blue"></div>
-                    <h5>Membros por estado</h5>
-                </div>
-                <div class="chart-card-body">
-                    <div class="chart-wrap" id="wrap-graficoSocEstado">
-                        <canvas id="graficoSocEstado"></canvas>
-                    </div>
+        <!-- Sociedade Civil por estado — barra vertical igual ao graficoEmpEstado -->
+        <div class="chart-card mb-4">
+            <div class="chart-card-header">
+                <div class="accent-bar blue"></div>
+                <h5>Membros por estado</h5>
+            </div>
+            <div class="chart-card-body">
+                <div class="chart-wrap" style="height:320px;">
+                    <canvas id="graficoSocEstado"></canvas>
                 </div>
             </div>
+        </div>
+
+        <div class="grid-2">
             <div class="chart-card">
                 <div class="chart-card-header">
                     <div class="accent-bar teal"></div>
@@ -651,6 +632,19 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
+        <!-- ODS — card de largura total, igual ao relatorios_negocios.php -->
+        <div class="chart-card mt-0 mb-4">
+            <div class="chart-card-header">
+                <div class="accent-bar teal"></div>
+                <h5>ODS de interesse da Sociedade Civil</h5>
+            </div>
+            <div class="chart-card-body">
+                <div class="chart-wrap" style="height:340px;">
+                    <canvas id="graficoSocODS"></canvas>
+                </div>
+            </div>
+        </div>
+
         <div class="grid-2 mt-0">
             <?php
             $cardsSoc = [
@@ -659,7 +653,6 @@ include __DIR__ . '/../app/views/admin/header.php';
                 ['canvas' => 'graficoSocInt',   'title' => 'Interesses temáticos',  'tabela' => $tabSocInt,   'cor' => 'green'],
                 ['canvas' => 'graficoSocEng',   'title' => 'Formas de engajamento', 'tabela' => $tabSocEng,   'cor' => 'amber'],
                 ['canvas' => 'graficoSocSet',   'title' => 'Setores de interesse',  'tabela' => $tabSocSet,   'cor' => 'purple'],
-                ['canvas' => 'graficoSocODS',   'title' => 'ODS de interesse',      'tabela' => [],           'cor' => 'teal'],
             ];
             foreach ($cardsSoc as $c):
                 $maxPct = !empty($c['tabela']) ? max(array_column($c['tabela'], 'percentual')) : 100;
@@ -868,8 +861,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const totSocEng    = <?= json_encode($totSocEng) ?>;
     const labSocSet    = <?= json_encode($labSocSet,    JSON_UNESCAPED_UNICODE) ?>;
     const totSocSet    = <?= json_encode($totSocSet) ?>;
-    const labSocODS    = <?= json_encode($labSocODS,    JSON_UNESCAPED_UNICODE) ?>;
-    const totSocODS    = <?= json_encode($totSocODS) ?>;
+    const dataSocODS   = <?= json_encode($socODSData,   JSON_UNESCAPED_UNICODE) ?>;
 
     const labParEstado  = <?= json_encode($labParEstado,  JSON_UNESCAPED_UNICODE) ?>;
     const totParEstado  = <?= json_encode($totParEstado) ?>;
@@ -891,18 +883,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const totParSet     = <?= json_encode($totParSet) ?>;
     const dataParODS    = <?= json_encode($parODS,        JSON_UNESCAPED_UNICODE) ?>;
 
+    // Alturas dinâmicas apenas para gráficos horizontais (SocEstado e EmpEstado têm altura fixa no HTML)
     [
         { id: 'wrap-graficoEmpEtnia',    n: labEmpEtnia.length    },
         { id: 'wrap-graficoEmpFormacao', n: labEmpFormacao.length  },
         { id: 'wrap-graficoEmpGrupo',    n: labEmpGrupo.length    },
-        { id: 'wrap-graficoSocEstado',   n: labSocEstado.length   },
         { id: 'wrap-graficoSocProf',     n: labSocProf.length     },
         { id: 'wrap-graficoSocIdent',    n: labSocIdent.length    },
         { id: 'wrap-graficoSocMotiv',    n: labSocMotiv.length    },
         { id: 'wrap-graficoSocInt',      n: labSocInt.length      },
         { id: 'wrap-graficoSocEng',      n: labSocEng.length      },
         { id: 'wrap-graficoSocSet',      n: labSocSet.length      },
-        { id: 'wrap-graficoSocODS',      n: labSocODS.length      },
         { id: 'wrap-graficoParEstado',   n: labParEstado.length   },
         { id: 'wrap-graficoParTipos',    n: labParTipos.length    },
         { id: 'wrap-graficoParNat',      n: labParNat.length      },
@@ -920,8 +911,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     criarGraficoLinha('graficoEmpMes', labEmpMes, totEmpMes, 'Ativos cadastrados', '#1a8a4a');
 
-    // Estado: barra vertical com valores acima (linha inteira, altura fixa 320px)
-    criarGraficoBarraVerticalEstado('graficoEmpEstado', labEmpEstado, totEmpEstado);
+    // Empreendedores por estado — barra vertical com valores acima
+    criarGraficoBarraVerticalEstado('graficoEmpEstado', labEmpEstado, totEmpEstado, 'empreendedores');
 
     criarGraficoCircular('graficoEmpGenero',  labEmpGenero,  totEmpGenero,  'pie');
     criarGraficoBarra   ('graficoEmpEtnia',    labEmpEtnia,   totEmpEtnia,   'Fundadores ativos', true);
@@ -929,26 +920,31 @@ document.addEventListener('DOMContentLoaded', function () {
     criarGraficoCircular('graficoEmpOrigem',  labEmpOrigem,  totEmpOrigem,  'doughnut');
     criarGraficoBarra   ('graficoEmpGrupo',    labEmpGrupo,   totEmpGrupo,   'Fundadores ativos', true);
 
-    criarGraficoLinha  ('graficoSocMes',    labSocMes,   totSocMes,   'Novos cadastros', '#0369a1');
-    criarGraficoBarra  ('graficoSocEstado', labSocEstado,totSocEstado,'Membros', true);
-    criarGraficoBarra  ('graficoSocProf',   labSocProf,  totSocProf,  'Membros', true);
-    criarGraficoBarra  ('graficoSocIdent',  labSocIdent, totSocIdent, 'Ocorrências', true);
-    criarGraficoBarra  ('graficoSocMotiv',  labSocMotiv, totSocMotiv, 'Ocorrências', true);
-    criarGraficoBarra  ('graficoSocInt',    labSocInt,   totSocInt,   'Ocorrências', true);
-    criarGraficoBarra  ('graficoSocEng',    labSocEng,   totSocEng,   'Ocorrências', true);
-    criarGraficoBarra  ('graficoSocSet',    labSocSet,   totSocSet,   'Ocorrências', true);
-    criarGraficoBarra  ('graficoSocODS',    labSocODS,   totSocODS,   'Ocorrências', true);
+    criarGraficoLinha('graficoSocMes', labSocMes, totSocMes, 'Novos cadastros', '#0369a1');
 
-    criarGraficoLinha  ('graficoParMes',     labParMes,    totParMes,    'Novos parceiros', '#c07a00');
-    criarGraficoBarra  ('graficoParEstado',  labParEstado, totParEstado, 'Parceiros', true);
-    criarGraficoBarra  ('graficoParEtapa',   labParEtapa,  totParEtapa,  'Parceiros', false);
-    criarGraficoCircular('graficoParAlcance',labParAlcance,totParAlcance,'doughnut');
-    criarGraficoODS    ('graficoParODS',     dataParODS);
-    criarGraficoBarra  ('graficoParTipos',   labParTipos,  totParTipos,  'Parceiros', true);
-    criarGraficoBarra  ('graficoParNat',     labParNat,    totParNat,    'Parceiros', true);
-    criarGraficoBarra  ('graficoParEixos',   labParEixos,  totParEixos,  'Ocorrências', true);
-    criarGraficoBarra  ('graficoParPerf',    labParPerf,   totParPerf,   'Ocorrências', true);
-    criarGraficoBarra  ('graficoParSet',     labParSet,    totParSet,    'Ocorrências', true);
+    // Sociedade Civil por estado — barra vertical com valores acima (igual ao EmpEstado)
+    criarGraficoBarraVerticalEstado('graficoSocEstado', labSocEstado, totSocEstado, 'membros');
+
+    criarGraficoBarra('graficoSocProf',  labSocProf,  totSocProf,  'Membros',      true);
+    criarGraficoBarra('graficoSocIdent', labSocIdent, totSocIdent, 'Ocorrências',  true);
+    criarGraficoBarra('graficoSocMotiv', labSocMotiv, totSocMotiv, 'Ocorrências',  true);
+    criarGraficoBarra('graficoSocInt',   labSocInt,   totSocInt,   'Ocorrências',  true);
+    criarGraficoBarra('graficoSocEng',   labSocEng,   totSocEng,   'Ocorrências',  true);
+    criarGraficoBarra('graficoSocSet',   labSocSet,   totSocSet,   'Ocorrências',  true);
+
+    // ODS Sociedade Civil — igual ao graficoODS de relatorios_negocios.php
+    criarGraficoODS('graficoSocODS', dataSocODS);
+
+    criarGraficoLinha   ('graficoParMes',     labParMes,    totParMes,    'Novos parceiros', '#c07a00');
+    criarGraficoBarra   ('graficoParEstado',  labParEstado, totParEstado, 'Parceiros', true);
+    criarGraficoBarra   ('graficoParEtapa',   labParEtapa,  totParEtapa,  'Parceiros', false);
+    criarGraficoCircular('graficoParAlcance', labParAlcance,totParAlcance,'doughnut');
+    criarGraficoODS     ('graficoParODS',     dataParODS);
+    criarGraficoBarra   ('graficoParTipos',   labParTipos,  totParTipos,  'Parceiros', true);
+    criarGraficoBarra   ('graficoParNat',     labParNat,    totParNat,    'Parceiros', true);
+    criarGraficoBarra   ('graficoParEixos',   labParEixos,  totParEixos,  'Ocorrências', true);
+    criarGraficoBarra   ('graficoParPerf',    labParPerf,   totParPerf,   'Ocorrências', true);
+    criarGraficoBarra   ('graficoParSet',     labParSet,    totParSet,    'Ocorrências', true);
 });
 
 function criarGraficoLinha(canvasId, labels, data, label, cor) {
@@ -1002,8 +998,9 @@ const valoresAcimaPlugin = {
     }
 };
 
-// Barra vertical com valores acima — exclusivo para graficoEmpEstado
-function criarGraficoBarraVerticalEstado(canvasId, labels, data) {
+// Barra vertical com valores acima — usado para estado (emp e soc)
+// tooltipLabel: string que aparece no tooltip (ex: 'empreendedores', 'membros')
+function criarGraficoBarraVerticalEstado(canvasId, labels, data, tooltipLabel) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
     const cores = [
@@ -1034,7 +1031,7 @@ function criarGraficoBarraVerticalEstado(canvasId, labels, data) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ' ' + ctx.parsed.y + ' empreendedores'
+                        label: ctx => ' ' + ctx.parsed.y + ' ' + (tooltipLabel || '')
                     }
                 }
             },
