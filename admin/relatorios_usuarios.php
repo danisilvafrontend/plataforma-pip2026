@@ -56,7 +56,7 @@ function agregarJsonU(array $linhas, string $campoJson): array
 try {
     $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset=utf8mb4";
     $pdo = new PDO($dsn, $config['user'], $config['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    $pdo->exec("SET NAMES utf8mb4");
+    $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
 
     $suportaJson = mysqlSuportaJsonTableU($pdo);
 
@@ -165,7 +165,9 @@ try {
         $socIdentificacoes = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.identificacoes, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(sc.identificacoes, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE sc.identificacoes IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -173,7 +175,9 @@ try {
         $socMotivacoes = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.motivacoes, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(sc.motivacoes, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE sc.motivacoes IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -181,17 +185,25 @@ try {
         $socInteresses = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.interesses, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(sc.interesses, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE sc.interesses IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-        // ODS via JOIN com tabela ods (igual ao relatorios_negocios.php)
+        // ODS via JOIN com tabela ods — COLLATE garante compatibilidade de collation
         $socODSData = $pdo->query("
             SELECT o.id, o.n_ods, o.nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.ods, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
-            JOIN ods o ON o.n_ods = jt.item OR o.nome = jt.item OR CONCAT('ODS ', o.n_ods) = jt.item
+            JOIN JSON_TABLE(sc.ods, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
+            JOIN ods o ON (
+                o.n_ods COLLATE utf8mb4_unicode_ci = jt.item
+                OR o.nome COLLATE utf8mb4_unicode_ci = jt.item
+                OR CONCAT('ODS ', o.n_ods) COLLATE utf8mb4_unicode_ci = jt.item
+            )
             WHERE sc.ods IS NOT NULL
             GROUP BY o.id, o.n_ods, o.nome
             ORDER BY o.id ASC
@@ -200,7 +212,9 @@ try {
         $socEngajamento = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.engajamento, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(sc.engajamento, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE sc.engajamento IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -208,7 +222,9 @@ try {
         $socSetores = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.setores, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(sc.setores, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE sc.setores IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -246,7 +262,9 @@ try {
         $parTipos = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_contrato pc
-            JOIN JSON_TABLE(pc.tipos_parceria, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(pc.tipos_parceria, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE pc.tipos_parceria IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -254,7 +272,9 @@ try {
         $parNatureza = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_contrato pc
-            JOIN JSON_TABLE(pc.natureza_parceria, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(pc.natureza_parceria, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE pc.natureza_parceria IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -262,7 +282,9 @@ try {
         $parEixos = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_interesses pi
-            JOIN JSON_TABLE(pi.eixos_interesse, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(pi.eixos_interesse, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE pi.eixos_interesse IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -270,7 +292,9 @@ try {
         $parPerfilImpacto = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_interesses pi
-            JOIN JSON_TABLE(pi.perfil_impacto, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(pi.perfil_impacto, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE pi.perfil_impacto IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -278,7 +302,9 @@ try {
         $parSetores = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_interesses pi
-            JOIN JSON_TABLE(pi.setores_interesse, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
+            JOIN JSON_TABLE(pi.setores_interesse, '\$[*]' COLUMNS (
+                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
+            )) AS jt
             WHERE pi.setores_interesse IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -337,7 +363,6 @@ $totSocOrg    = extrairTotais($socOrganizacao);
 $labSocMes    = array_column($socPorMes, 'mes');
 $totSocMes    = array_column($socPorMes, 'total');
 
-// Todos os dados completos, sem agrupamento em "Outros"
 $labSocIdent = extrairLabels($socIdentificacoes, 'nome');
 $totSocIdent = extrairTotais($socIdentificacoes);
 $labSocMotiv = extrairLabels($socMotivacoes, 'nome');
@@ -363,7 +388,6 @@ $totParMes     = array_column($parPorMes, 'total');
 $labParAlcance = extrairLabels($parAlcance, 'nome');
 $totParAlcance = extrairTotais($parAlcance);
 
-// Todos os dados completos, sem agrupamento em "Outros"
 $labParTipos = extrairLabels($parTipos, 'nome');
 $totParTipos = extrairTotais($parTipos);
 $labParNat   = extrairLabels($parNatureza, 'nome');
@@ -512,7 +536,6 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Empreendedores por estado — barra vertical compacta, altura fixa -->
         <div class="chart-card mb-4">
             <div class="chart-card-header">
                 <div class="accent-bar green"></div>
@@ -605,7 +628,6 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Sociedade Civil por estado — barra vertical igual ao graficoEmpEstado -->
         <div class="chart-card mb-4">
             <div class="chart-card-header">
                 <div class="accent-bar blue"></div>
@@ -632,7 +654,6 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
-        <!-- ODS — card de largura total, igual ao relatorios_negocios.php -->
         <div class="chart-card mt-0 mb-4">
             <div class="chart-card-header">
                 <div class="accent-bar teal"></div>
@@ -883,7 +904,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const totParSet     = <?= json_encode($totParSet) ?>;
     const dataParODS    = <?= json_encode($parODS,        JSON_UNESCAPED_UNICODE) ?>;
 
-    // Alturas dinâmicas apenas para gráficos horizontais (SocEstado e EmpEstado têm altura fixa no HTML)
     [
         { id: 'wrap-graficoEmpEtnia',    n: labEmpEtnia.length    },
         { id: 'wrap-graficoEmpFormacao', n: labEmpFormacao.length  },
@@ -910,10 +930,7 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     criarGraficoLinha('graficoEmpMes', labEmpMes, totEmpMes, 'Ativos cadastrados', '#1a8a4a');
-
-    // Empreendedores por estado — barra vertical com valores acima
     criarGraficoBarraVerticalEstado('graficoEmpEstado', labEmpEstado, totEmpEstado, 'empreendedores');
-
     criarGraficoCircular('graficoEmpGenero',  labEmpGenero,  totEmpGenero,  'pie');
     criarGraficoBarra   ('graficoEmpEtnia',    labEmpEtnia,   totEmpEtnia,   'Fundadores ativos', true);
     criarGraficoBarra   ('graficoEmpFormacao', labEmpFormacao,totEmpFormacao,'Fundadores ativos', true);
@@ -921,19 +938,14 @@ document.addEventListener('DOMContentLoaded', function () {
     criarGraficoBarra   ('graficoEmpGrupo',    labEmpGrupo,   totEmpGrupo,   'Fundadores ativos', true);
 
     criarGraficoLinha('graficoSocMes', labSocMes, totSocMes, 'Novos cadastros', '#0369a1');
-
-    // Sociedade Civil por estado — barra vertical com valores acima (igual ao EmpEstado)
     criarGraficoBarraVerticalEstado('graficoSocEstado', labSocEstado, totSocEstado, 'membros');
-
-    criarGraficoBarra('graficoSocProf',  labSocProf,  totSocProf,  'Membros',      true);
-    criarGraficoBarra('graficoSocIdent', labSocIdent, totSocIdent, 'Ocorrências',  true);
-    criarGraficoBarra('graficoSocMotiv', labSocMotiv, totSocMotiv, 'Ocorrências',  true);
-    criarGraficoBarra('graficoSocInt',   labSocInt,   totSocInt,   'Ocorrências',  true);
-    criarGraficoBarra('graficoSocEng',   labSocEng,   totSocEng,   'Ocorrências',  true);
-    criarGraficoBarra('graficoSocSet',   labSocSet,   totSocSet,   'Ocorrências',  true);
-
-    // ODS Sociedade Civil — igual ao graficoODS de relatorios_negocios.php
-    criarGraficoODS('graficoSocODS', dataSocODS);
+    criarGraficoBarra('graficoSocProf',  labSocProf,  totSocProf,  'Membros',     true);
+    criarGraficoODS  ('graficoSocODS',   dataSocODS);
+    criarGraficoBarra('graficoSocIdent', labSocIdent, totSocIdent, 'Ocorrências', true);
+    criarGraficoBarra('graficoSocMotiv', labSocMotiv, totSocMotiv, 'Ocorrências', true);
+    criarGraficoBarra('graficoSocInt',   labSocInt,   totSocInt,   'Ocorrências', true);
+    criarGraficoBarra('graficoSocEng',   labSocEng,   totSocEng,   'Ocorrências', true);
+    criarGraficoBarra('graficoSocSet',   labSocSet,   totSocSet,   'Ocorrências', true);
 
     criarGraficoLinha   ('graficoParMes',     labParMes,    totParMes,    'Novos parceiros', '#c07a00');
     criarGraficoBarra   ('graficoParEstado',  labParEstado, totParEstado, 'Parceiros', true);
@@ -977,7 +989,6 @@ function criarGraficoLinha(canvasId, labels, data, label, cor) {
     });
 }
 
-// Plugin inline para desenhar valores acima das barras verticais
 const valoresAcimaPlugin = {
     id: 'valoresAcima',
     afterDatasetsDraw(chart) {
@@ -990,16 +1001,12 @@ const valoresAcimaPlugin = {
         ctx.textBaseline = 'bottom';
         dataset.data.forEach((bar, i) => {
             const value = data.datasets[0].data[i];
-            if (value > 0) {
-                ctx.fillText(value, bar.x, bar.y - 3);
-            }
+            if (value > 0) ctx.fillText(value, bar.x, bar.y - 3);
         });
         ctx.restore();
     }
 };
 
-// Barra vertical com valores acima — usado para estado (emp e soc)
-// tooltipLabel: string que aparece no tooltip (ex: 'empreendedores', 'membros')
 function criarGraficoBarraVerticalEstado(canvasId, labels, data, tooltipLabel) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
@@ -1010,8 +1017,6 @@ function criarGraficoBarraVerticalEstado(canvasId, labels, data, tooltipLabel) {
         '#65a30d','#c2410c','#6d28d9','#047857','#dc2626',
         '#0369a1','#a16207','#7e22ce','#166534','#b91c1c'
     ];
-    const bgColors = labels.map((_, i) => cores[i % cores.length]);
-
     new Chart(ctx, {
         type: 'bar',
         plugins: [valoresAcimaPlugin],
@@ -1019,7 +1024,7 @@ function criarGraficoBarraVerticalEstado(canvasId, labels, data, tooltipLabel) {
             labels,
             datasets: [{
                 data,
-                backgroundColor: bgColors,
+                backgroundColor: labels.map((_, i) => cores[i % cores.length]),
                 borderRadius: 4,
                 barThickness: 22
             }]
@@ -1029,26 +1034,11 @@ function criarGraficoBarraVerticalEstado(canvasId, labels, data, tooltipLabel) {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => ' ' + ctx.parsed.y + ' ' + (tooltipLabel || '')
-                    }
-                }
+                tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' ' + (tooltipLabel || '') } }
             },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { precision: 0, font: { size: 11 } },
-                    grid: { color: 'rgba(0,0,0,.06)' }
-                },
-                x: {
-                    ticks: {
-                        font: { size: 11 },
-                        maxRotation: 45,
-                        minRotation: 45
-                    },
-                    grid: { display: false }
-                }
+                y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.06)' } },
+                x: { ticks: { font: { size: 11 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } }
             },
             layout: { padding: { top: 20 } }
         }
