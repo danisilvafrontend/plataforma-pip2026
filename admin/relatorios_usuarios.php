@@ -56,7 +56,7 @@ function agregarJsonU(array $linhas, string $campoJson): array
 try {
     $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset=utf8mb4";
     $pdo = new PDO($dsn, $config['user'], $config['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $pdo->exec("SET NAMES utf8mb4");
 
     $suportaJson = mysqlSuportaJsonTableU($pdo);
 
@@ -165,9 +165,7 @@ try {
         $socIdentificacoes = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.identificacoes, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(sc.identificacoes, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE sc.identificacoes IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -175,9 +173,7 @@ try {
         $socMotivacoes = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.motivacoes, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(sc.motivacoes, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE sc.motivacoes IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -185,25 +181,18 @@ try {
         $socInteresses = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.interesses, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(sc.interesses, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE sc.interesses IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-        // ODS via JOIN com tabela ods — COLLATE garante compatibilidade de collation
+        // ODS: o campo sc.ods guarda números ("1", "2", ...) —
+        // usa CAST para inteiro e compara com o.n_ods (int), evitando conflito de collation
         $socODSData = $pdo->query("
             SELECT o.id, o.n_ods, o.nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.ods, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
-            JOIN ods o ON (
-                o.n_ods COLLATE utf8mb4_unicode_ci = jt.item
-                OR o.nome COLLATE utf8mb4_unicode_ci = jt.item
-                OR CONCAT('ODS ', o.n_ods) COLLATE utf8mb4_unicode_ci = jt.item
-            )
+            JOIN JSON_TABLE(sc.ods, '\$[*]' COLUMNS (item VARCHAR(10) PATH '\$')) AS jt
+            JOIN ods o ON o.n_ods = CAST(jt.item AS UNSIGNED)
             WHERE sc.ods IS NOT NULL
             GROUP BY o.id, o.n_ods, o.nome
             ORDER BY o.id ASC
@@ -212,9 +201,7 @@ try {
         $socEngajamento = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.engajamento, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(sc.engajamento, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE sc.engajamento IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -222,9 +209,7 @@ try {
         $socSetores = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM sociedade_civil sc
-            JOIN JSON_TABLE(sc.setores, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(sc.setores, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE sc.setores IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -262,9 +247,7 @@ try {
         $parTipos = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_contrato pc
-            JOIN JSON_TABLE(pc.tipos_parceria, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(pc.tipos_parceria, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE pc.tipos_parceria IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -272,9 +255,7 @@ try {
         $parNatureza = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_contrato pc
-            JOIN JSON_TABLE(pc.natureza_parceria, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(pc.natureza_parceria, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE pc.natureza_parceria IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -282,9 +263,7 @@ try {
         $parEixos = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_interesses pi
-            JOIN JSON_TABLE(pi.eixos_interesse, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(pi.eixos_interesse, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE pi.eixos_interesse IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -292,9 +271,7 @@ try {
         $parPerfilImpacto = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_interesses pi
-            JOIN JSON_TABLE(pi.perfil_impacto, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(pi.perfil_impacto, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE pi.perfil_impacto IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -302,9 +279,7 @@ try {
         $parSetores = $pdo->query("
             SELECT jt.item AS nome, COUNT(*) AS total
             FROM parceiro_interesses pi
-            JOIN JSON_TABLE(pi.setores_interesse, '\$[*]' COLUMNS (
-                item VARCHAR(255) COLLATE utf8mb4_unicode_ci PATH '\$'
-            )) AS jt
+            JOIN JSON_TABLE(pi.setores_interesse, '\$[*]' COLUMNS (item VARCHAR(255) PATH '\$')) AS jt
             WHERE pi.setores_interesse IS NOT NULL
             GROUP BY jt.item ORDER BY total DESC
         ")->fetchAll(PDO::FETCH_ASSOC);
