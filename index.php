@@ -94,42 +94,246 @@ include __DIR__ . '/app/views/public/header_public.php';
 </section>
 
 <!-- ═══════════════════════════════════════════════
-     HERO — Imagem Background
+     FAIXA DE URGÊNCIA — Premiação 2026
+     Exibida logo abaixo do Hero
 ════════════════════════════════════════════════ -->
-<!-- <section class="hero-video-home">
+<div class="pip-urgency-bar" role="banner" aria-label="Alerta de prazo — Premiação 2026">
+  <div class="pip-urgency-inner">
 
-  <div class="hero-video-overlay" aria-hidden="true"></div>
+    <div class="pip-urgency-left">
+      <span class="pip-urgency-fire">🏆</span>
+      <div class="pip-urgency-text">
+        <strong>Prêmio Impactos Positivos 2026</strong>
+        <span>As inscrições encerram em breve. Garanta a sua vaga!</span>
+      </div>
+    </div>
 
-  <div class="hero-video-content">
-    <span class="hero-video-hashtag">A maior vitrine de negócios de impacto do Brasil</span>
+    <div class="pip-urgency-center" aria-live="polite" aria-label="Contador regressivo">
+      <div class="pip-countdown">
+        <div class="pip-countdown-unit">
+          <span class="pip-countdown-num" id="pip-cd-days">--</span>
+          <span class="pip-countdown-label">dias</span>
+        </div>
+        <span class="pip-countdown-sep">:</span>
+        <div class="pip-countdown-unit">
+          <span class="pip-countdown-num" id="pip-cd-hours">--</span>
+          <span class="pip-countdown-label">horas</span>
+        </div>
+        <span class="pip-countdown-sep">:</span>
+        <div class="pip-countdown-unit">
+          <span class="pip-countdown-num" id="pip-cd-mins">--</span>
+          <span class="pip-countdown-label">min</span>
+        </div>
+        <span class="pip-countdown-sep">:</span>
+        <div class="pip-countdown-unit">
+          <span class="pip-countdown-num" id="pip-cd-secs">--</span>
+          <span class="pip-countdown-label">seg</span>
+        </div>
+      </div>
+    </div>
 
-    <h1 class="hero-video-title">
-      Juntos, ampliamos o que o mundo tem de melhor.
-    </h1>
-
-    <p class="hero-video-sub">
-      Conectamos negócios, parceiros e pessoas que estão transformando a economia por meio do Impacto Positivo
-    </p>
-
-    <div class="hero-video-btns">
-      <a href="/empreendedores/register.php" class="hero-btn hero-btn--yellow">
-        CADASTRAR MEU NEGÓCIO <i class="bi bi-chevron-right"></i>
+    <div class="pip-urgency-right">
+      <a href="/premiacao.php" class="pip-urgency-btn pip-urgency-btn--primary">
+        Inscrever-me agora <i class="bi bi-arrow-right ms-1"></i>
       </a>
-      <a href="/parceiros/cadastro.php" class="hero-btn hero-btn--outline-dark">
-        QUERO SER PARCEIRO <i class="bi bi-chevron-right"></i>
+      <a href="/premiacao.php#como-funciona" class="pip-urgency-btn pip-urgency-btn--ghost">
+        Como funciona
       </a>
     </div>
-  </div>
 
-</section> -->
+  </div>
+</div>
+
+<style>
+/* ── Faixa de Urgência — Premiação ── */
+.pip-urgency-bar {
+  background: linear-gradient(90deg, #0c4e54 0%, #01696f 60%, #0a7a40 100%);
+  color: #fff;
+  padding: 0.85rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.pip-urgency-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 18px,
+    rgba(255,255,255,0.03) 18px,
+    rgba(255,255,255,0.03) 36px
+  );
+  pointer-events: none;
+}
+.pip-urgency-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+.pip-urgency-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 220px;
+}
+.pip-urgency-fire {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(255,200,0,0.5));
+}
+.pip-urgency-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.pip-urgency-text strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+.pip-urgency-text span {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  line-height: 1.3;
+}
+
+/* Countdown */
+.pip-urgency-center {
+  flex-shrink: 0;
+}
+.pip-countdown {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(0,0,0,0.22);
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+}
+.pip-countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 38px;
+}
+.pip-countdown-num {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.pip-countdown-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+.pip-countdown-sep {
+  font-size: 1.3rem;
+  font-weight: 800;
+  opacity: 0.5;
+  align-self: flex-start;
+  margin-top: 2px;
+  line-height: 1.1;
+}
+
+/* Botões */
+.pip-urgency-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.pip-urgency-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.5rem 1.1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.18s;
+  letter-spacing: 0.01em;
+}
+.pip-urgency-btn--primary {
+  background: #f5c842;
+  color: #0c4e54;
+}
+.pip-urgency-btn--primary:hover {
+  background: #ffd900;
+  color: #0c4e54;
+  transform: translateY(-1px);
+}
+.pip-urgency-btn--ghost {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.pip-urgency-btn--ghost:hover {
+  background: rgba(255,255,255,0.22);
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .pip-urgency-inner { flex-direction: column; align-items: flex-start; gap: 0.85rem; }
+  .pip-urgency-center { width: 100%; display: flex; justify-content: center; }
+  .pip-urgency-right { width: 100%; justify-content: center; }
+  .pip-countdown-num { font-size: 1.25rem; }
+}
+@media (max-width: 480px) {
+  .pip-urgency-bar { padding: 0.85rem 1rem; }
+  .pip-urgency-btn { font-size: 0.78rem; padding: 0.45rem 0.85rem; }
+}
+</style>
+
+<script>
+(function () {
+  // Ajuste a data de encerramento conforme necessário
+  var deadline = new Date('2026-07-31T23:59:59-03:00').getTime();
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function tick() {
+    var now  = Date.now();
+    var diff = deadline - now;
+
+    if (diff <= 0) {
+      document.getElementById('pip-cd-days').textContent  = '00';
+      document.getElementById('pip-cd-hours').textContent = '00';
+      document.getElementById('pip-cd-mins').textContent  = '00';
+      document.getElementById('pip-cd-secs').textContent  = '00';
+      return;
+    }
+
+    var days  = Math.floor(diff / 86400000);
+    var hours = Math.floor((diff % 86400000) / 3600000);
+    var mins  = Math.floor((diff % 3600000)  / 60000);
+    var secs  = Math.floor((diff % 60000)    / 1000);
+
+    document.getElementById('pip-cd-days').textContent  = pad(days);
+    document.getElementById('pip-cd-hours').textContent = pad(hours);
+    document.getElementById('pip-cd-mins').textContent  = pad(mins);
+    document.getElementById('pip-cd-secs').textContent  = pad(secs);
+  }
+
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
 
 <!-- ════════════════════════════════════════════════
      SEÇÃO — Apoio Institucional
-     Cole no index.php no local desejado.
-     
-     Para adicionar/remover logos: basta adicionar
-     ou remover um <li class="apoio-institucional__item">
-     O layout se ajusta automaticamente.
 ════════════════════════════════════════════════ -->
 <section class="apoio-institucional">
   <div class="apoio-institucional__inner">
@@ -212,158 +416,9 @@ include __DIR__ . '/app/views/public/header_public.php';
         >
       </li>
 
-      <!-- Logo 7 -->
-      <!-- <li class="apoio-institucional__item">
-        <img
-          src="/assets/images/apoio/devagar_tag.png"
-          alt="Parceiro institucional"
-          class="apoio-institucional__logo"
-          loading="lazy"
-          width="200"
-          height="100"
-        >
-      </li> -->
-
     </ul>
   </div>
 </section>
-
-
-<!-- <section class="participar-home py-5">
-  <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="section-title">Cada perfil tem um papel na transformação</h2>
-      <p class="section-sub mx-auto">
-        A plataforma foi construída para públicos diferentes, com jornadas específicas e complementares dentro do ecossistema de impacto.
-      </p>
-    </div>
-
-    <div class="row g-4">
-      <div class="col-lg-4">
-        <div class="participar-card participar-card--empreendedor">
-          <span class="participar-tag">Empreendedores</span>
-          <h3>Cadastre seu negócio de impacto</h3>
-          <p>Apresente sua trajetória, seus diferenciais, ODS, impacto gerado e amplie sua visibilidade nacional.</p>
-          <a href="/empreendedores/register.php" class="btn-participar">Criar conta de empreendedor</a>
-        </div>
-      </div>
-
-      <div class="col-lg-4">
-        <div class="participar-card participar-card--parceiro">
-          <span class="participar-tag">Parceiros</span>
-          <h3>Conecte sua organização ao ecossistema</h3>
-          <p>Fortaleça sua atuação institucional e aproxime sua marca de iniciativas que transformam territórios.</p>
-          <a href="/parceiros/cadastro.php" class="btn-participar">Tornar-se parceiro</a>
-        </div>
-      </div>
-
-      <div class="col-lg-4">
-        <div class="participar-card participar-card--sociedade">
-          <span class="participar-tag">Sociedade civil</span>
-          <h3>Acompanhe, descubra e participe</h3>
-          <p>Conheça negócios e iniciativas inspiradoras, acompanhe histórias e participe do movimento de impacto positivo.</p>
-          <a href="cadastro.php" class="btn-participar">Acessar comunidade</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section> -->
-
-<!-- ===== COMO FUNCIONA ===== -->
-<!-- <section class="como-funciona-home py-5">
-  <div class="container">
-
-    <div class="text-center mb-5">
-      <h2 class="section-title">Uma jornada simples para fazer parte</h2>
-      <p class="section-sub mx-auto">
-        Cada perfil tem um caminho direto dentro da plataforma. Veja como é fácil começar.
-      </p>
-    </div>
-
-    <div class="row g-4">
-
-      
-      <div class="col-lg-4">
-        <div class="como-bloco">
-          <div class="como-bloco-header como-bloco-header--empreendedor">
-            <i class="bi bi-rocket-takeoff"></i>
-            <span>Empreendedor</span>
-          </div>
-          <ul class="como-bloco-steps">
-            <li>
-              <span class="como-num">1</span>
-              <span>Crie sua conta na plataforma</span>
-            </li>
-            <li>
-              <span class="como-num">2</span>
-              <span>Preencha os dados do seu negócio de impacto</span>
-            </li>
-            <li>
-              <span class="como-num">3</span>
-              <span>Publique sua iniciativa e ganhe visibilidade nacional</span>
-            </li>
-          </ul>
-          <a href="/empreendedores/register.php" class="btn-participar mt-auto">
-            Cadastrar negócio
-          </a>
-        </div>
-      </div>
-
-      <div class="col-lg-4">
-        <div class="como-bloco como-bloco--destaque">
-          <div class="como-bloco-header como-bloco-header--parceiro">
-            <i class="bi bi-building"></i>
-            <span>Parceiro</span>
-          </div>
-          <ul class="como-bloco-steps">
-            <li>
-              <span class="como-num como-num--parceiro">1</span>
-              <span>Realize o cadastro institucional</span>
-            </li>
-            <li>
-              <span class="como-num como-num--parceiro">2</span>
-              <span>Apresente sua atuação e interesses</span>
-            </li>
-            <li>
-              <span class="como-num como-num--parceiro">3</span>
-              <span>Conecte-se ao ecossistema de impacto</span>
-            </li>
-          </ul>
-          <a href="/parceiros/cadastro.php" class="btn-participar btn-participar--alt mt-auto">
-            Tornar-se parceiro
-          </a>
-        </div>
-      </div>
-
-      <div class="col-lg-4">
-        <div class="como-bloco">
-          <div class="como-bloco-header como-bloco-header--sociedade">
-            <i class="bi bi-people"></i>
-            <span>Sociedade civil</span>
-          </div>
-          <ul class="como-bloco-steps">
-            <li>
-              <span class="como-num">1</span>
-              <span>Acesse a plataforma gratuitamente</span>
-            </li>
-            <li>
-              <span class="como-num">2</span>
-              <span>Descubra iniciativas e causas transformadoras</span>
-            </li>
-            <li>
-              <span class="como-num">3</span>
-              <span>Acompanhe e fortaleça o movimento de impacto</span>
-            </li>
-          </ul>
-          <a href="/cadastro.php" class="btn-participar mt-auto">
-            Acessar comunidade
-          </a>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section> -->
 
 
 <!-- ════ BLOCO: VITRINE + PREMIAÇÃO ════ -->
@@ -438,60 +493,353 @@ include __DIR__ . '/app/views/public/header_public.php';
 <?php endif; ?>
 <!-- ════ FIM: PARCEIROS ════ -->
 
-<!-- ════ BLOCO: CTA FINAL ════ -->
-<!-- <section class="cta-final-home py-5">
-  <div class="container">
-    <div class="cta-final-inner">
 
-      <div class="cta-final-grafismo" aria-hidden="true"></div>
+<!-- ════════════════════════════════════════════════
+     SEÇÃO DESTAQUE — Prêmio Impactos Positivos 2026
+     Posicionada antes do footer para máxima conversão
+════════════════════════════════════════════════ -->
+<section class="pip-award-section" aria-label="Prêmio Impactos Positivos 2026">
+  <div class="pip-award-bg-deco" aria-hidden="true"></div>
+  <div class="container pip-award-inner">
 
-      <div class="text-center position-relative">
-        <span class="section-kicker section-kicker--claro mb-3 d-inline-block">
-          Próximo passo
-        </span>
-        <h2 class="cta-final-title mb-3">
-          Escolha como fazer parte do movimento
-        </h2>
-        <p class="cta-final-sub mx-auto mb-5">
-          Cada ação dentro da plataforma fortalece o ecossistema de impacto positivo no Brasil. Qual é o seu papel?
-        </p>
+    <!-- Coluna de texto -->
+    <div class="pip-award-copy">
+      <span class="pip-award-kicker">
+        <i class="bi bi-trophy-fill me-1"></i> Premiação 2026
+      </span>
+      <h2 class="pip-award-title">
+        Seu negócio merece<br>reconhecimento nacional.
+      </h2>
+      <p class="pip-award-sub">
+        O <strong>Prêmio Impactos Positivos 2026</strong> celebra iniciativas que provam que é possível gerar impacto real — social, ambiental e econômico — transformando territórios e vidas em todo o Brasil.
+      </p>
 
-        <div class="cta-final-cards">
+      <ul class="pip-award-bullets">
+        <li><i class="bi bi-check-circle-fill"></i> Reconhecimento e visibilidade nacional</li>
+        <li><i class="bi bi-check-circle-fill"></i> Avaliação por bancas especializadas</li>
+        <li><i class="bi bi-check-circle-fill"></i> Gratuito para negócios cadastrados na plataforma</li>
+        <li><i class="bi bi-check-circle-fill"></i> Inscrições encerram em <strong>julho de 2026</strong></li>
+      </ul>
 
-          <div class="cta-final-card">
-            <i class="bi bi-buildings-fill cta-final-card-icon"></i>
-            <h4>Sou parceiro</h4>
-            <p>Conecte sua organização a iniciativas transformadoras.</p>
-            <a href="/parceiros/cadastro.php" class="btn-participar">
-              Ser parceiro <i class="bi bi-arrow-right ms-1"></i>
-            </a>
-          </div>
+      <div class="pip-award-btns">
+        <a href="/premiacao.php" class="pip-award-btn pip-award-btn--primary">
+          <i class="bi bi-trophy me-1"></i> Quero me inscrever
+        </a>
+        <a href="/premiacao.php#criterios" class="pip-award-btn pip-award-btn--outline">
+          Ver critérios de avaliação
+        </a>
+        <a href="/empreendedores/register.php" class="pip-award-btn pip-award-btn--ghost">
+          Ainda não tenho conta <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+      </div>
+    </div>
 
-          <div class="cta-final-card cta-final-card--destaque">    
-            <i class="bi bi-rocket-takeoff-fill cta-final-card-icon"></i>
-            <h4>Sou empreendedor</h4>
-            <p>Cadastre seu negócio e ganhe visibilidade nacional.</p>
-            <a href="/empreendedores/register.php" class="btn-premiacao-primary">
-              Criar conta <i class="bi bi-arrow-right ms-1"></i>
-            </a>
-          </div>
-
-          <div class="cta-final-card">
-            <i class="bi bi-people-fill cta-final-card-icon"></i>
-            <h4>Quero acompanhar</h4>
-            <p>Explore iniciativas e vote no Prêmio Impactos Positivos.</p>
-            <a href="vitrine_nacional.php" class="btn-participar btn-participar--sociedade">
-              Explorar vitrine <i class="bi bi-arrow-right ms-1"></i>
-            </a>
-          </div>
-
+    <!-- Coluna visual — card contagem regressiva -->
+    <div class="pip-award-card">
+      <div class="pip-award-card-header">
+        <i class="bi bi-hourglass-split pip-award-card-icon"></i>
+        <span>Inscrições encerram em</span>
+      </div>
+      <div class="pip-award-countdown" aria-live="polite">
+        <div class="pip-award-cd-unit">
+          <span class="pip-award-cd-num" id="pip-awd-days">--</span>
+          <span class="pip-award-cd-lbl">dias</span>
+        </div>
+        <span class="pip-award-cd-sep">:</span>
+        <div class="pip-award-cd-unit">
+          <span class="pip-award-cd-num" id="pip-awd-hours">--</span>
+          <span class="pip-award-cd-lbl">horas</span>
+        </div>
+        <span class="pip-award-cd-sep">:</span>
+        <div class="pip-award-cd-unit">
+          <span class="pip-award-cd-num" id="pip-awd-mins">--</span>
+          <span class="pip-award-cd-lbl">min</span>
+        </div>
+        <span class="pip-award-cd-sep">:</span>
+        <div class="pip-award-cd-unit">
+          <span class="pip-award-cd-num" id="pip-awd-secs">--</span>
+          <span class="pip-award-cd-lbl">seg</span>
         </div>
       </div>
-
+      <div class="pip-award-card-divider"></div>
+      <p class="pip-award-card-note">
+        Negócios já cadastrados na plataforma têm acesso direto à inscrição.
+      </p>
+      <a href="/premiacao.php" class="pip-award-card-cta">
+        Acessar página da premiação <i class="bi bi-arrow-right ms-1"></i>
+      </a>
     </div>
+
   </div>
-</section> -->
-<!-- ════ FIM: CTA FINAL ════ -->
+</section>
+
+<style>
+/* ── Seção Prêmio Impactos Positivos 2026 ── */
+.pip-award-section {
+  background: linear-gradient(135deg, #072e32 0%, #0c4e54 45%, #093d28 100%);
+  color: #fff;
+  padding: 5rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.pip-award-bg-deco {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(245,200,66,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 10% 80%, rgba(1,105,111,0.35) 0%, transparent 60%),
+    repeating-linear-gradient(
+      -45deg,
+      transparent, transparent 30px,
+      rgba(255,255,255,0.015) 30px, rgba(255,255,255,0.015) 60px
+    );
+  pointer-events: none;
+}
+.pip-award-inner {
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+}
+.pip-award-copy {
+  flex: 1 1 380px;
+}
+.pip-award-kicker {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(245,200,66,0.15);
+  color: #f5c842;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.3rem 0.85rem;
+  border-radius: 20px;
+  border: 1px solid rgba(245,200,66,0.3);
+  margin-bottom: 1.1rem;
+}
+.pip-award-title {
+  font-size: clamp(1.75rem, 3.5vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+.pip-award-sub {
+  font-size: 1rem;
+  line-height: 1.65;
+  opacity: 0.88;
+  margin-bottom: 1.5rem;
+  max-width: 480px;
+}
+.pip-award-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.pip-award-bullets li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+  opacity: 0.9;
+}
+.pip-award-bullets li i {
+  color: #4ade80;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.pip-award-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+.pip-award-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0.65rem 1.35rem;
+  border-radius: 7px;
+  text-decoration: none;
+  transition: all 0.18s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.pip-award-btn--primary {
+  background: #f5c842;
+  color: #0c4e54;
+}
+.pip-award-btn--primary:hover {
+  background: #ffd900;
+  color: #072e32;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245,200,66,0.4);
+}
+.pip-award-btn--outline {
+  background: transparent;
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.4);
+}
+.pip-award-btn--outline:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.7);
+  color: #fff;
+}
+.pip-award-btn--ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.65rem 0.5rem;
+}
+.pip-award-btn--ghost:hover {
+  color: #fff;
+}
+
+/* Card contagem */
+.pip-award-card {
+  flex: 0 0 300px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  align-items: center;
+  text-align: center;
+}
+.pip-award-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0.8;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.pip-award-card-icon {
+  font-size: 2rem;
+  color: #f5c842;
+}
+.pip-award-countdown {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.pip-award-cd-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 8px;
+  padding: 0.5rem 0.4rem 0.35rem;
+}
+.pip-award-cd-num {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: #f5c842;
+}
+.pip-award-cd-lbl {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.6;
+  margin-top: 3px;
+}
+.pip-award-cd-sep {
+  font-size: 1.6rem;
+  font-weight: 800;
+  opacity: 0.4;
+  align-self: flex-start;
+  margin-top: 4px;
+  line-height: 1.1;
+}
+.pip-award-card-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255,255,255,0.12);
+}
+.pip-award-card-note {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  line-height: 1.5;
+  margin: 0;
+}
+.pip-award-card-cta {
+  display: inline-flex;
+  align-items: center;
+  background: #f5c842;
+  color: #0c4e54;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.6rem 1.2rem;
+  border-radius: 7px;
+  text-decoration: none;
+  transition: all 0.18s;
+  width: 100%;
+  justify-content: center;
+}
+.pip-award-card-cta:hover {
+  background: #ffd900;
+  color: #072e32;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 900px) {
+  .pip-award-inner { gap: 2.5rem; }
+  .pip-award-card  { flex: 1 1 100%; max-width: 420px; margin: 0 auto; }
+}
+@media (max-width: 600px) {
+  .pip-award-section { padding: 3.5rem 1rem; }
+  .pip-award-title   { font-size: 1.75rem; }
+  .pip-award-btns    { flex-direction: column; align-items: stretch; }
+  .pip-award-btn     { justify-content: center; }
+  .pip-award-cd-num  { font-size: 1.6rem; }
+  .pip-award-cd-unit { min-width: 42px; }
+}
+</style>
+
+<script>
+(function () {
+  var deadline = new Date('2026-07-31T23:59:59-03:00').getTime();
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function tickAward() {
+    var diff = deadline - Date.now();
+    if (diff <= 0) {
+      ['days','hours','mins','secs'].forEach(function(id) {
+        document.getElementById('pip-awd-' + id).textContent = '00';
+      });
+      return;
+    }
+    document.getElementById('pip-awd-days').textContent  = pad(Math.floor(diff / 86400000));
+    document.getElementById('pip-awd-hours').textContent = pad(Math.floor((diff % 86400000) / 3600000));
+    document.getElementById('pip-awd-mins').textContent  = pad(Math.floor((diff % 3600000)  / 60000));
+    document.getElementById('pip-awd-secs').textContent  = pad(Math.floor((diff % 60000)    / 1000));
+  }
+
+  tickAward();
+  setInterval(tickAward, 1000);
+})();
+</script>
+<!-- ════ FIM: SEÇÃO DESTAQUE PREMIAÇÃO ════ -->
+
 
 <!-- ════════════════════════════════════════════════
      POPUP — PIP Insights
