@@ -522,14 +522,14 @@ include __DIR__ . '/../app/views/admin/header.php';
             </div>
         </div>
 
-        <!-- Empreendedores por estado — linha inteira, barra horizontal compacta -->
+        <!-- Empreendedores por estado — linha inteira, barra vertical compacta -->
         <div class="chart-card mb-4">
             <div class="chart-card-header">
                 <div class="accent-bar green"></div>
                 <h5>Empreendedores ativos por estado</h5>
             </div>
             <div class="chart-card-body">
-                <div class="chart-wrap" id="wrap-graficoEmpEstado">
+                <div class="chart-wrap" style="height:320px;">
                     <canvas id="graficoEmpEstado"></canvas>
                 </div>
             </div>
@@ -822,13 +822,8 @@ include __DIR__ . '/../app/views/admin/header.php';
 </div><!-- /container -->
 
 <script>
-// Altura para gráficos horizontais genéricos (outros)
 function alturaHorizontal(n, minH = 220, porItem = 44) {
     return Math.max(minH, n * porItem);
-}
-// Altura compacta exclusiva do gráfico de estados de empreendedores
-function alturaEstadoEmp(n) {
-    return Math.max(300, n * 28);
 }
 function setAltura(id, h) {
     const el = document.getElementById(id);
@@ -896,10 +891,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const totParSet     = <?= json_encode($totParSet) ?>;
     const dataParODS    = <?= json_encode($parODS,        JSON_UNESCAPED_UNICODE) ?>;
 
-    // Altura do gráfico de estados (horizontal compacto)
-    setAltura('wrap-graficoEmpEstado', alturaEstadoEmp(labEmpEstado.length));
-
-    // Demais gráficos horizontais genéricos
     [
         { id: 'wrap-graficoEmpEtnia',    n: labEmpEtnia.length    },
         { id: 'wrap-graficoEmpFormacao', n: labEmpFormacao.length  },
@@ -929,8 +920,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     criarGraficoLinha('graficoEmpMes', labEmpMes, totEmpMes, 'Ativos cadastrados', '#1a8a4a');
 
-    // Estado: horizontal compacto (linha inteira)
-    criarGraficoBarraHorizontalCompacto('graficoEmpEstado', labEmpEstado, totEmpEstado, 'Ativos');
+    // Estado: barra vertical com valores acima (linha inteira, altura fixa 320px)
+    criarGraficoBarraVerticalEstado('graficoEmpEstado', labEmpEstado, totEmpEstado);
 
     criarGraficoCircular('graficoEmpGenero',  labEmpGenero,  totEmpGenero,  'pie');
     criarGraficoBarra   ('graficoEmpEtnia',    labEmpEtnia,   totEmpEtnia,   'Fundadores ativos', true);
@@ -990,8 +981,29 @@ function criarGraficoLinha(canvasId, labels, data, label, cor) {
     });
 }
 
-// Barra horizontal compacta — para o gráfico de estados (linha inteira)
-function criarGraficoBarraHorizontalCompacto(canvasId, labels, data, label) {
+// Plugin inline para desenhar valores acima das barras verticais
+const valoresAcimaPlugin = {
+    id: 'valoresAcima',
+    afterDatasetsDraw(chart) {
+        const { ctx, data } = chart;
+        const dataset = chart.getDatasetMeta(0);
+        ctx.save();
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillStyle = '#374151';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        dataset.data.forEach((bar, i) => {
+            const value = data.datasets[0].data[i];
+            if (value > 0) {
+                ctx.fillText(value, bar.x, bar.y - 3);
+            }
+        });
+        ctx.restore();
+    }
+};
+
+// Barra vertical com valores acima — exclusivo para graficoEmpEstado
+function criarGraficoBarraVerticalEstado(canvasId, labels, data) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
     const cores = [
@@ -1005,40 +1017,43 @@ function criarGraficoBarraHorizontalCompacto(canvasId, labels, data, label) {
 
     new Chart(ctx, {
         type: 'bar',
+        plugins: [valoresAcimaPlugin],
         data: {
             labels,
             datasets: [{
-                label,
                 data,
                 backgroundColor: bgColors,
                 borderRadius: 4,
-                barThickness: 18
+                barThickness: 22
             }]
         },
         options: {
-            indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ' ' + ctx.parsed.x + ' empreendedores'
+                        label: ctx => ' ' + ctx.parsed.y + ' empreendedores'
                     }
                 }
             },
             scales: {
-                x: {
+                y: {
                     beginAtZero: true,
                     ticks: { precision: 0, font: { size: 11 } },
                     grid: { color: 'rgba(0,0,0,.06)' }
                 },
-                y: {
-                    ticks: { font: { size: 12 } },
+                x: {
+                    ticks: {
+                        font: { size: 11 },
+                        maxRotation: 45,
+                        minRotation: 45
+                    },
                     grid: { display: false }
                 }
             },
-            layout: { padding: { right: 8 } }
+            layout: { padding: { top: 20 } }
         }
     });
 }
