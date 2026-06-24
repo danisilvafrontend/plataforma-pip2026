@@ -148,7 +148,6 @@ include __DIR__ . '/app/views/public/header_public.php';
                       </div>
                     </div>
 
-                    <!-- Sobrenome — preenchido via API, sem name (hidden envia) -->
                     <div class="col-md-6">
                       <label class="form-label" for="sobrenome_display">Sobrenome <span class="text-danger">*</span></label>
                       <input type="text" id="sobrenome_display"
@@ -221,7 +220,7 @@ include __DIR__ . '/app/views/public/header_public.php';
                     <div class="col-md-6">
                       <label class="form-label cadastro-label">Crie uma senha <span class="text-danger">*</span></label>
                       <input type="password" name="senha" class="form-control" minlength="8" required>
-                      <div class="form-text">Mí­nimo de 8 caracteres.</div>
+                      <div class="form-text">Mínimo de 8 caracteres.</div>
                     </div>
 
                     <div class="col-md-6">
@@ -269,7 +268,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 
                         <label class="cadastro-check-card">
                           <input class="form-check-input" type="checkbox" name="identificacoes[]" value="Profissional">
-                          <span>Profissional (CLT, autónomo etc.)</span>
+                          <span>Profissional (CLT, autônomo etc.)</span>
                         </label>
 
                         <label class="cadastro-check-card">
@@ -579,7 +578,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 
                   <fieldset class="cadastro-fieldset">
                     <legend class="cadastro-legend">
-                      Há algum setor especí­fico que você gostaria de acompanhar?
+                      Há algum setor específico que você gostaria de acompanhar?
                     </legend>
 
                     <div class="row g-2">
@@ -739,38 +738,130 @@ include __DIR__ . '/app/views/public/header_public.php';
                   </fieldset>
                 </div>
 
+                <!-- QUESTÃO 1: Tempo disponível para engajamento -->
                 <div class="cadastro-block">
                   <div class="cadastro-block__header">
-                    <h3 class="cadastro-block__title">Alcance preferido</h3>
+                    <h3 class="cadastro-block__title">Disponibilidade de engajamento</h3>
                     <p class="cadastro-block__desc mb-0">
-                      Escolha o tipo de alcance das causas que você prefere acompanhar.
+                      Quanto tempo você tem disponível para se engajar com negócios de impacto?
                     </p>
                   </div>
 
                   <fieldset class="cadastro-fieldset">
                     <legend class="cadastro-legend">
-                      Você prefere causas locais, nacionais ou globais?
+                      Quanto tempo você tem disponível para engajamento?
                     </legend>
 
                     <div class="cadastro-radio-grid">
                       <label class="cadastro-radio-card">
-                        <input class="form-check-input" type="radio" name="alcance" value="Local">
-                        <span>Local</span>
+                        <input class="form-check-input" type="radio" name="engajamento" value="Apenas online">
+                        <span><i class="bi bi-wifi me-2"></i>Apenas online</span>
                       </label>
 
                       <label class="cadastro-radio-card">
-                        <input class="form-check-input" type="radio" name="alcance" value="Nacional">
-                        <span>Nacional</span>
+                        <input class="form-check-input" type="radio" name="engajamento" value="Até 2 horas por mês">
+                        <span><i class="bi bi-clock me-2"></i>Até 2 horas por mês</span>
                       </label>
 
                       <label class="cadastro-radio-card">
-                        <input class="form-check-input" type="radio" name="alcance" value="Global">
-                        <span>Global</span>
+                        <input class="form-check-input" type="radio" name="engajamento" value="Até 5 horas por mês">
+                        <span><i class="bi bi-clock-history me-2"></i>Até 5 horas por mês</span>
                       </label>
 
                       <label class="cadastro-radio-card">
-                        <input class="form-check-input" type="radio" name="alcance" value="Todos">
-                        <span>Todos</span>
+                        <input class="form-check-input" type="radio" name="engajamento" value="Posso participar de eventos presenciais">
+                        <span><i class="bi bi-calendar-event me-2"></i>Posso participar de eventos presenciais</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="engajamento" value="Disponibilidade variável">
+                        <span><i class="bi bi-arrow-left-right me-2"></i>Disponibilidade variável</span>
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
+
+                <!-- QUESTÃO 2: Apoio financeiro -->
+                <div class="cadastro-block">
+                  <div class="cadastro-block__header">
+                    <h3 class="cadastro-block__title">Apoio financeiro a negócios</h3>
+                    <p class="cadastro-block__desc mb-0">
+                      Sua disposição para apoiar financeiramente negócios de impacto nos ajuda a conectar as pessoas certas.
+                    </p>
+                  </div>
+
+                  <fieldset class="cadastro-fieldset">
+                    <legend class="cadastro-legend">
+                      Você estaria disposto(a) a apoiar financeiramente negócios?
+                    </legend>
+
+                    <div class="cadastro-radio-grid">
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="apoio_financeiro" value="Sim – até R$ 100/mês">
+                        <span><i class="bi bi-currency-dollar me-2"></i>Sim – até R$ 100/mês</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="apoio_financeiro" value="Sim – até R$ 500/mês">
+                        <span><i class="bi bi-cash me-2"></i>Sim – até R$ 500/mês</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="apoio_financeiro" value="Sim – acima de R$ 500/mês">
+                        <span><i class="bi bi-cash-stack me-2"></i>Sim – acima de R$ 500/mês</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="apoio_financeiro" value="Apenas compras pontuais">
+                        <span><i class="bi bi-bag-check me-2"></i>Apenas compras pontuais</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="apoio_financeiro" value="Não">
+                        <span><i class="bi bi-x-circle me-2"></i>Não</span>
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
+
+                <!-- QUESTÃO 3: Alcance geográfico (substituindo o bloco anterior) -->
+                <div class="cadastro-block">
+                  <div class="cadastro-block__header">
+                    <h3 class="cadastro-block__title">Alcance preferido</h3>
+                    <p class="cadastro-block__desc mb-0">
+                      Escolha o tipo de alcance das causas que você prefere apoiar.
+                    </p>
+                  </div>
+
+                  <fieldset class="cadastro-fieldset">
+                    <legend class="cadastro-legend">
+                      Você prefere apoiar causas:
+                    </legend>
+
+                    <div class="cadastro-radio-grid">
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="alcance" value="Da minha cidade/região">
+                        <span><i class="bi bi-geo-alt me-2"></i>Da minha cidade/região</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="alcance" value="Do meu estado">
+                        <span><i class="bi bi-map me-2"></i>Do meu estado</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="alcance" value="Nacionais">
+                        <span><i class="bi bi-flag me-2"></i>Nacionais</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="alcance" value="Globais">
+                        <span><i class="bi bi-globe me-2"></i>Globais</span>
+                      </label>
+
+                      <label class="cadastro-radio-card">
+                        <input class="form-check-input" type="radio" name="alcance" value="Não tenho preferência geográfica">
+                        <span><i class="bi bi-compass me-2"></i>Não tenho preferência geográfica</span>
                       </label>
                     </div>
                   </fieldset>

@@ -30,7 +30,7 @@ try {
     $email             = trim($_POST['email'] ?? '');
     $cpf               = preg_replace('/[^0-9]/', '', $_POST['cpf'] ?? '');
     $senha             = $_POST['senha'] ?? '';
-    $senhaConfirmacao  = $_POST['senha_confirmacao'] ?? $_POST['senha_confirmacao'] ?? '';
+    $senhaConfirmacao  = $_POST['senha_confirmacao'] ?? '';
 
     $celular           = trim($_POST['celular'] ?? '');
     $cep               = trim($_POST['cep'] ?? '');
@@ -50,9 +50,19 @@ try {
     $maturidade     = $_POST['maturidade'] ?? [];
     $setores        = $_POST['setores'] ?? [];
     $perfilImpacto  = $_POST['perfil_impacto'] ?? $_POST['perfilimpacto'] ?? [];
+
+    // Alcance geográfico (seleção única via radio)
     $alcanceRaw = trim($_POST['alcance'] ?? '');
     $alcance    = $alcanceRaw !== '' ? json_encode($alcanceRaw, JSON_UNESCAPED_UNICODE) : null;
-    $engajamento    = $_POST['engajamento'] ?? [];
+
+    // Engajamento (seleção única via radio — salvo como string JSON)
+    $engajamentoRaw = trim($_POST['engajamento'] ?? '');
+    $engajamentoJson = $engajamentoRaw !== '' ? json_encode($engajamentoRaw, JSON_UNESCAPED_UNICODE) : null;
+
+    // Apoio financeiro (seleção única via radio — salvo como VARCHAR)
+    $apoioFinanceiro = trim($_POST['apoio_financeiro'] ?? '') ?: null;
+
+    $aceiteTermos = isset($_POST['aceite_termos']) ? 1 : 0;
 
     $errors = [];
 
@@ -80,6 +90,10 @@ try {
         $errors[] = "Selecione no máximo 3 opções em identificação.";
     }
 
+    if ($aceiteTermos !== 1) {
+        $errors[] = "Você precisa aceitar os termos para concluir o cadastro.";
+    }
+
     if (!empty($errors)) {
         $_SESSION['cadastro_errors'] = $errors;
         header("Location: /cadastro.php");
@@ -104,7 +118,6 @@ try {
     $maturidadeJson     = json_encode(array_values($maturidade), JSON_UNESCAPED_UNICODE);
     $setoresJson        = json_encode(array_values($setores), JSON_UNESCAPED_UNICODE);
     $perfilImpactoJson  = json_encode(array_values($perfilImpacto), JSON_UNESCAPED_UNICODE);
-    $engajamentoJson    = json_encode(array_values($engajamento), JSON_UNESCAPED_UNICODE);
 
     $stmt = $pdo->prepare("
         INSERT INTO sociedade_civil (
@@ -129,8 +142,10 @@ try {
             perfil_impacto,
             alcance,
             engajamento,
+            apoio_financeiro,
+            aceite_termos,
             senha_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     $stmt->execute([
@@ -155,18 +170,20 @@ try {
         $perfilImpactoJson,
         $alcance,
         $engajamentoJson,
+        $apoioFinanceiro,
+        $aceiteTermos,
         $senhaHash
     ]);
 
     $usuarioId = (int)$pdo->lastInsertId();
 
-    // login ok
+    // login automático após cadastro
     session_regenerate_id(false);
 
     $_SESSION['logado']        = true;
-    $_SESSION['usuario_id']    = $usuarioId; // ✅ variável correta
-    $_SESSION['usuario_nome']  = $nome;      // ✅
-    $_SESSION['usuario_email'] = $email;     // ✅
+    $_SESSION['usuario_id']    = $usuarioId;
+    $_SESSION['usuario_nome']  = $nome;
+    $_SESSION['usuario_email'] = $email;
     $_SESSION['usuario_tipo']  = 'sociedade_civil';
 
     header("Location: /cadastro_sucesso.php");
