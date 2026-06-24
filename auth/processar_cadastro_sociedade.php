@@ -56,7 +56,7 @@ try {
     $alcance    = $alcanceRaw !== '' ? json_encode($alcanceRaw, JSON_UNESCAPED_UNICODE) : null;
 
     // Engajamento (seleção única via radio — salvo como string JSON)
-    $engajamentoRaw = trim($_POST['engajamento'] ?? '');
+    $engajamentoRaw  = trim($_POST['engajamento'] ?? '');
     $engajamentoJson = $engajamentoRaw !== '' ? json_encode($engajamentoRaw, JSON_UNESCAPED_UNICODE) : null;
 
     // Apoio financeiro (seleção única via radio — salvo como VARCHAR)
@@ -100,11 +100,29 @@ try {
         exit;
     }
 
+    // ── Verifica duplicidade na própria tabela ────────────────────────────
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM sociedade_civil WHERE cpf = ? OR email = ?");
     $stmt->execute([$cpf, $email]);
-
     if ((int)$stmt->fetchColumn() > 0) {
-        $_SESSION['cadastro_errors'] = ["CPF ou email já cadastrado na sociedade civil."];
+        $_SESSION['cadastro_errors'] = ["CPF ou e-mail já cadastrado como Sociedade Civil."];
+        header("Location: /cadastro.php");
+        exit;
+    }
+
+    // ── Verifica se CPF ou e-mail já existe em Empreendedores ────────────
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM empreendedores WHERE cpf = ? OR email = ?");
+    $stmt->execute([$cpf, $email]);
+    if ((int)$stmt->fetchColumn() > 0) {
+        $_SESSION['cadastro_errors'] = ["Este CPF ou e-mail já está cadastrado como Empreendedor. Cada pessoa só pode ter um perfil na plataforma."];
+        header("Location: /cadastro.php");
+        exit;
+    }
+
+    // ── Verifica se CPF ou e-mail já existe em Parceiros ─────────────────
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM parceiros WHERE rep_cpf = ? OR email_login = ?");
+    $stmt->execute([$cpf, $email]);
+    if ((int)$stmt->fetchColumn() > 0) {
+        $_SESSION['cadastro_errors'] = ["Este CPF ou e-mail já está cadastrado como representante de um Parceiro. Cada pessoa só pode ter um perfil na plataforma."];
         header("Location: /cadastro.php");
         exit;
     }
