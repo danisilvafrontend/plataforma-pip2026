@@ -159,8 +159,7 @@ include __DIR__ . '/app/views/public/header_public.php';
 }
 .pip-urgency-bar::before {
   content: '';
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   background: url('/assets/images/aneis.png') no-repeat center/cover;
   opacity: 0.05;
   mix-blend-mode: luminosity;
@@ -185,91 +184,36 @@ include __DIR__ . '/app/views/public/header_public.php';
 }
 .pip-urgency-icon-wrap {
   flex-shrink: 0;
-  width: 52px;
-  height: 52px;
+  width: 52px; height: 52px;
   border-radius: 12px;
-  background: rgba(205, 222, 0, 0.18);
+  background: rgba(205,222,0,.18);
   color: #CDDE00;
   font-size: 1.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   border: 1px solid rgba(205,222,0,.25);
 }
-.pip-urgency-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-.pip-urgency-text strong {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.2;
-}
-.pip-urgency-text span {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.75);
-  line-height: 1.4;
-}
+.pip-urgency-text { display: flex; flex-direction: column; gap: 0.2rem; }
+.pip-urgency-text strong { font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.2; }
+.pip-urgency-text span   { font-size: 0.85rem; color: rgba(255,255,255,.75); line-height: 1.4; }
 .pip-urgency-center { flex-shrink: 0; }
 .pip-countdown {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 12px;
+  display: flex; align-items: center; gap: 0.4rem;
+  background: rgba(0,0,0,.28); border-radius: 12px;
   padding: 0.65rem 1.1rem;
-  border: 1px solid rgba(205, 222, 0, 0.25);
+  border: 1px solid rgba(205,222,0,.25);
 }
-.pip-countdown-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 46px;
-}
+.pip-countdown-unit { display: flex; flex-direction: column; align-items: center; min-width: 46px; }
 .pip-countdown-num {
-  font-size: 1.85rem;
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  font-size: 1.85rem; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
   color: #CDDE00;
 }
-.pip-countdown-label {
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: rgba(255, 255, 255, 0.6);
-  margin-top: 3px;
-}
-.pip-countdown-sep {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: rgba(205, 222, 0, 0.5);
-  align-self: flex-start;
-  margin-top: 2px;
-  line-height: 1.1;
-}
-.pip-urgency-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-.pip-urgency-btn-cta {
-  font-size: 0.9rem !important;
-  padding: 0.65rem 1.35rem !important;
-  border-radius: 999px !important;
-}
+.pip-countdown-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,.6); margin-top: 3px; }
+.pip-countdown-sep  { font-size: 1.6rem; font-weight: 800; color: rgba(205,222,0,.5); align-self: flex-start; margin-top: 2px; line-height: 1.1; }
+.pip-urgency-right  { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; flex-wrap: wrap; }
+.pip-urgency-btn-cta { font-size: 0.9rem !important; padding: 0.65rem 1.35rem !important; border-radius: 999px !important; }
 @media (max-width: 768px) {
-  .pip-urgency-bar {
-    padding-left: calc(50vw - 50% + 1.25rem);
-    padding-right: calc(50vw - 50% + 1.25rem);
-    padding-top: 1.1rem;
-    padding-bottom: 1.1rem;
-  }
+  .pip-urgency-bar { padding-left: calc(50vw - 50% + 1.25rem); padding-right: calc(50vw - 50% + 1.25rem); padding-top: 1.1rem; padding-bottom: 1.1rem; }
   .pip-urgency-inner { flex-direction: column; align-items: flex-start; gap: 1rem; }
   .pip-urgency-center { width: 100%; display: flex; justify-content: center; }
   .pip-urgency-right { width: 100%; justify-content: center; }
@@ -404,7 +348,6 @@ include __DIR__ . '/app/views/public/header_public.php';
 
 <!-- ═══════════════════════════════════════════════
      POPUP — Premiação 2026
-     Layout: 2 colunas — imagem | resumo da premiação
 ════════════════════════════════════════════════ -->
 <div id="pip-insights-popup" role="dialog" aria-modal="true" aria-labelledby="pip-popup-title" style="display:none;">
   <div class="pip-popup-backdrop" id="pip-popup-backdrop"></div>
@@ -414,84 +357,72 @@ include __DIR__ . '/app/views/public/header_public.php';
       <i class="bi bi-x-lg"></i>
     </button>
 
-    <!-- Coluna esquerda: imagem -->
-    <div class="pip-popup-img-col">
-      <img
-        src="/assets/images/insights-09-jun.jfif"
-        alt="Prêmio Impactos Positivos 2026"
-        class="pip-popup-img" width="360" height="480" loading="eager">
+    <div class="pip-popup-kicker">
+      <i class="bi bi-trophy-fill"></i> Premiação 2026
     </div>
 
-    <!-- Coluna direita: conteúdo da premiação -->
-    <div class="pip-popup-content-col">
+    <h2 class="pip-popup-title" id="pip-popup-title">
+      Seu negócio merece<br>reconhecimento nacional.
+    </h2>
 
-      <div class="pip-popup-kicker">
-        <i class="bi bi-trophy-fill"></i> Premiação 2026
+    <p class="pip-popup-sub">
+      O <strong>Prêmio Impactos Positivos 2026</strong> celebra quem gera impacto real — gratuito para negócios cadastrados.
+    </p>
+
+    <!-- Pilares -->
+    <ul class="pip-popup-pilares">
+      <li>
+        <span class="pip-popup-pilar-icon"><i class="bi bi-award-fill"></i></span>
+        <span>Reconhecimento e visibilidade nacional</span>
+      </li>
+      <li>
+        <span class="pip-popup-pilar-icon"><i class="bi bi-people-fill"></i></span>
+        <span>Avaliação por bancas especializadas</span>
+      </li>
+      <li>
+        <span class="pip-popup-pilar-icon"><i class="bi bi-check-circle-fill"></i></span>
+        <span>Inscrições encerram em <strong style="color:#CDDE00;">julho de 2026</strong></span>
+      </li>
+    </ul>
+
+    <!-- Countdown -->
+    <div class="pip-popup-cd" aria-live="polite" aria-label="Contador regressivo">
+      <div class="pip-popup-cd-unit">
+        <span class="pip-popup-cd-num" id="pip-pop-days">--</span>
+        <span class="pip-popup-cd-lbl">dias</span>
       </div>
-
-      <h2 class="pip-popup-title" id="pip-popup-title">
-        Seu negócio merece reconhecimento nacional.
-      </h2>
-
-      <p class="pip-popup-sub">
-        O <strong>Prêmio Impactos Positivos 2026</strong> celebra quem gera impacto real — gratuito para negócios cadastrados.
-      </p>
-
-      <!-- Pilares -->
-      <ul class="pip-popup-pilares">
-        <li>
-          <span class="pip-popup-pilar-icon"><i class="bi bi-award-fill"></i></span>
-          <span>Reconhecimento e visibilidade nacional</span>
-        </li>
-        <li>
-          <span class="pip-popup-pilar-icon"><i class="bi bi-people-fill"></i></span>
-          <span>Avaliação por bancas especializadas</span>
-        </li>
-        <li>
-          <span class="pip-popup-pilar-icon"><i class="bi bi-check-circle-fill"></i></span>
-          <span>Inscrições encerram em <strong style="color:#CDDE00;">julho de 2026</strong></span>
-        </li>
-      </ul>
-
-      <!-- Countdown -->
-      <div class="pip-popup-cd" aria-live="polite" aria-label="Contador regressivo">
-        <div class="pip-popup-cd-unit">
-          <span class="pip-popup-cd-num" id="pip-pop-days">--</span>
-          <span class="pip-popup-cd-lbl">dias</span>
-        </div>
-        <span class="pip-popup-cd-sep" aria-hidden="true">:</span>
-        <div class="pip-popup-cd-unit">
-          <span class="pip-popup-cd-num" id="pip-pop-hours">--</span>
-          <span class="pip-popup-cd-lbl">horas</span>
-        </div>
-        <span class="pip-popup-cd-sep" aria-hidden="true">:</span>
-        <div class="pip-popup-cd-unit">
-          <span class="pip-popup-cd-num" id="pip-pop-mins">--</span>
-          <span class="pip-popup-cd-lbl">min</span>
-        </div>
-        <span class="pip-popup-cd-sep" aria-hidden="true">:</span>
-        <div class="pip-popup-cd-unit">
-          <span class="pip-popup-cd-num" id="pip-pop-secs">--</span>
-          <span class="pip-popup-cd-lbl">seg</span>
-        </div>
+      <span class="pip-popup-cd-sep" aria-hidden="true">:</span>
+      <div class="pip-popup-cd-unit">
+        <span class="pip-popup-cd-num" id="pip-pop-hours">--</span>
+        <span class="pip-popup-cd-lbl">horas</span>
       </div>
-
-      <!-- CTAs -->
-      <div class="pip-popup-btns">
-        <a href="/premiacao.php" class="btn-premiacao-primary">
-          <i class="bi bi-trophy me-1"></i> Quero me inscrever
-        </a>
-        <a href="/empreendedores/register.php" class="btn-premiacao-outline" style="font-size:.8rem; border-color:rgba(255,255,255,.3); color:rgba(255,255,255,.7);">
-          Ainda não tenho conta <i class="bi bi-arrow-right ms-1"></i>
-        </a>
+      <span class="pip-popup-cd-sep" aria-hidden="true">:</span>
+      <div class="pip-popup-cd-unit">
+        <span class="pip-popup-cd-num" id="pip-pop-mins">--</span>
+        <span class="pip-popup-cd-lbl">min</span>
       </div>
-
+      <span class="pip-popup-cd-sep" aria-hidden="true">:</span>
+      <div class="pip-popup-cd-unit">
+        <span class="pip-popup-cd-num" id="pip-pop-secs">--</span>
+        <span class="pip-popup-cd-lbl">seg</span>
+      </div>
     </div>
+
+    <!-- CTAs -->
+    <div class="pip-popup-btns">
+      <a href="/premiacao.php" class="btn-premiacao-primary">
+        <i class="bi bi-trophy me-1"></i> Quero me inscrever
+      </a>
+      <a href="/empreendedores/register.php" class="btn-premiacao-outline" style="font-size:.82rem; border-color:rgba(255,255,255,.3); color:rgba(255,255,255,.7);">
+        Ainda não tenho conta <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+
   </div>
 </div>
 
 <style>
-/* ── Popup Premiação ── */
+/* ── Popup Premiação — coluna única, centralizado ── */
 #pip-insights-popup {
   position: fixed; inset: 0; z-index: 9999;
   display: flex !important; align-items: center; justify-content: center; padding: 1rem;
@@ -505,15 +436,27 @@ include __DIR__ . '/app/views/public/header_public.php';
   cursor: pointer;
 }
 
-/* Box principal: 2 colunas */
 .pip-popup-box {
   position: relative; z-index: 1;
   display: flex;
-  max-width: 780px; width: 100%;
-  border-radius: 16px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 480px; width: 100%;
+  background: #1E3425;
+  border-radius: 20px;
+  padding: 2.5rem 2.25rem 2rem;
+  gap: 1.1rem;
   overflow: hidden;
-  box-shadow: 0 24px 70px rgba(0,0,0,.45);
+  box-shadow: 0 24px 70px rgba(0,0,0,.5);
   animation: pipFadeIn 0.35s cubic-bezier(0.16,1,0.3,1) both;
+}
+.pip-popup-box::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url('/assets/images/aneis.png') no-repeat center/cover;
+  opacity: 0.05;
+  pointer-events: none;
 }
 @keyframes pipFadeIn {
   from { opacity:0; transform: scale(.93) translateY(18px); }
@@ -522,68 +465,44 @@ include __DIR__ . '/app/views/public/header_public.php';
 
 /* Botão fechar */
 .pip-popup-close {
-  position: absolute; top: 12px; right: 12px; z-index: 10;
-  background: rgba(0,0,0,.5); color: #fff; border: none; border-radius: 50%;
+  position: absolute; top: 14px; right: 14px; z-index: 10;
+  background: rgba(255,255,255,.12); color: #fff; border: none; border-radius: 50%;
   width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
   cursor: pointer; font-size: 1rem; transition: background .18s;
 }
-.pip-popup-close:hover { background: rgba(0,0,0,.8); }
+.pip-popup-close:hover { background: rgba(255,255,255,.22); }
 
-/* Coluna imagem */
-.pip-popup-img-col {
-  flex: 0 0 42%;
-  max-width: 42%;
-  overflow: hidden;
-}
-.pip-popup-img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* Coluna conteúdo */
-.pip-popup-content-col {
-  flex: 1;
-  background: #1E3425;
-  padding: 2rem 1.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-  position: relative;
-}
-.pip-popup-content-col::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: url('/assets/images/aneis.png') no-repeat center/cover;
-  opacity: 0.05;
-  pointer-events: none;
-}
-
+/* Kicker */
 .pip-popup-kicker {
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   color: #CDDE00;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
+  position: relative;
 }
 
+/* Título */
 .pip-popup-title {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #fff;
-  line-height: 1.25;
+  line-height: 1.2;
   margin: 0;
+  position: relative;
 }
 
+/* Subtexto */
 .pip-popup-sub {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: rgba(255,255,255,.7);
-  line-height: 1.55;
+  line-height: 1.6;
   margin: 0;
+  position: relative;
 }
 
 /* Pilares */
@@ -592,89 +511,75 @@ include __DIR__ . '/app/views/public/header_public.php';
   padding: 0; margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.55rem;
+  width: 100%;
+  position: relative;
 }
 .pip-popup-pilares li {
   display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  font-size: 0.82rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  font-size: 0.83rem;
   color: rgba(255,255,255,.85);
   line-height: 1.4;
 }
 .pip-popup-pilar-icon {
   flex-shrink: 0;
-  width: 26px; height: 26px;
-  border-radius: 7px;
+  width: 28px; height: 28px;
+  border-radius: 8px;
   background: rgba(205,222,0,.15);
   color: #CDDE00;
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.8rem;
-  margin-top: 1px;
+  font-size: 0.82rem;
 }
 
 /* Countdown */
 .pip-popup-cd {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   background: rgba(0,0,0,.3);
-  border-radius: 10px;
-  padding: 0.6rem 0.85rem;
-  border: 1px solid rgba(205,222,0,.2);
-  align-self: flex-start;
+  border-radius: 12px;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid rgba(205,222,0,.25);
+  position: relative;
 }
-.pip-popup-cd-unit {
-  display: flex; flex-direction: column; align-items: center;
-  min-width: 40px;
-}
+.pip-popup-cd-unit { display: flex; flex-direction: column; align-items: center; min-width: 44px; }
 .pip-popup-cd-num {
-  font-size: 1.65rem;
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -.03em;
+  font-size: 1.8rem; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: -.03em;
   color: #CDDE00;
 }
-.pip-popup-cd-lbl {
-  font-size: 0.55rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: rgba(255,255,255,.5);
-  margin-top: 2px;
-}
-.pip-popup-cd-sep {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: rgba(205,222,0,.4);
-  align-self: flex-start;
-  margin-top: 2px;
-  line-height: 1.1;
-}
+.pip-popup-cd-lbl { font-size: 0.57rem; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(255,255,255,.5); margin-top: 3px; }
+.pip-popup-cd-sep { font-size: 1.5rem; font-weight: 800; color: rgba(205,222,0,.4); align-self: flex-start; margin-top: 2px; line-height: 1.1; }
 
 /* CTAs */
 .pip-popup-btns {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  margin-top: auto;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  position: relative;
+}
+.pip-popup-btns .btn-premiacao-primary,
+.pip-popup-btns .btn-premiacao-outline {
+  width: 100%;
+  justify-content: center;
 }
 
-/* Mobile: empilha as colunas */
-@media (max-width: 600px) {
-  .pip-popup-box { flex-direction: column; max-width: 420px; }
-  .pip-popup-img-col { flex: 0 0 auto; max-width: 100%; max-height: 200px; }
-  .pip-popup-content-col { padding: 1.5rem 1.25rem; }
-  .pip-popup-title { font-size: 1.1rem; }
-  .pip-popup-cd-num { font-size: 1.3rem; }
-  .pip-popup-cd-unit { min-width: 34px; }
+@media (max-width: 520px) {
+  .pip-popup-box { padding: 2rem 1.5rem 1.75rem; max-width: 95vw; }
+  .pip-popup-title { font-size: 1.25rem; }
+  .pip-popup-cd-num { font-size: 1.5rem; }
+  .pip-popup-cd-unit { min-width: 38px; }
 }
 @media (prefers-reduced-motion: reduce) { .pip-popup-box { animation: none; } }
 </style>
 
 <script>
 (function () {
-  /* — Popup: exibe uma vez por sessão — */
   var STORAGE_KEY = 'pip_popup_premiacao_seen';
   var popup    = document.getElementById('pip-insights-popup');
   var closeBtn = document.getElementById('pip-popup-close');
@@ -693,7 +598,7 @@ include __DIR__ . '/app/views/public/header_public.php';
   backdrop.addEventListener('click', closePopup);
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePopup(); });
 
-  /* — Countdown do popup — */
+  /* Countdown do popup */
   var deadline = new Date('2026-07-31T23:59:59-03:00').getTime();
   function pad(n) { return String(n).padStart(2, '0'); }
   function tickPop() {
