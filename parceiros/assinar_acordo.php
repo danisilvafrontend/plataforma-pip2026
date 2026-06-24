@@ -25,9 +25,11 @@ $stmt = $pdo->prepare("
     SELECT p.*, 
            c.tipos_parceria, c.natureza_parceria, c.nivel_engajamento,
            c.escopo_atuacao, c.escopo_outro, c.oferece_premiacao, c.premio_descricao,
-           c.facebook_url, c.instagram_url, c.linkedin_url, c.youtube_url, c.autoriza_marca
+           c.facebook_url, c.instagram_url, c.linkedin_url, c.youtube_url, c.autoriza_marca,
+           ex.interesse_proposta
     FROM parceiros p
-    LEFT JOIN parceiro_contrato c ON p.id = c.parceiro_id
+    LEFT JOIN parceiro_contrato c ON c.parceiro_id = p.id
+    LEFT JOIN parceiro_etapa_extra ex ON ex.parceiro_id = p.id
     WHERE p.id = ?
 ");
 $stmt->execute([$parceiro_id]);
@@ -83,7 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aceito'])) {
         if (!empty($admins)) {
             $subject = "Nova Carta-Acordo Assinada: " . $parceiro['nome_fantasia'];
             $link_admin = get_base_url() . "/admin/parceiros.php";
-                $body = "
+
+            // Campos de contato e interesse
+            $tel_institucional = !empty($parceiro['telefone_intitucional']) ? htmlspecialchars($parceiro['telefone_intitucional']) : '<em style="color:#999;">não informado</em>';
+            $tel_rep           = !empty($parceiro['rep_telefone'])          ? htmlspecialchars($parceiro['rep_telefone'])          : '<em style="color:#999;">não informado</em>';
+            $interesse         = !empty($parceiro['interesse_proposta'])     ? nl2br(htmlspecialchars($parceiro['interesse_proposta'])) : '<em style="color:#999;">não informado</em>';
+
+            $body = "
                 <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 8px; padding: 30px; background-color: #ffffff;'>
                     
                     <h2 style='color: #0d6efd; border-bottom: 2px solid #e9f2ff; padding-bottom: 10px; margin-top: 0;'>
@@ -94,14 +102,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aceito'])) {
                     <p>A organização abaixo acaba de assinar a Carta-Acordo digitalmente e aguarda a ativação da parceria na plataforma.</p>
                     
                     <div style='background-color: #f8f9fa; padding: 20px; border-left: 4px solid #0d6efd; margin: 25px 0; border-radius: 4px;'>
+
                         <h4 style='margin: 0 0 15px 0; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;'>Detalhes do Parceiro</h4>
                         <p style='margin: 0 0 8px 0;'><strong>Organização:</strong> {$parceiro['nome_fantasia']}</p>
                         <p style='margin: 0 0 8px 0;'><strong>CNPJ:</strong> {$parceiro['cnpj']}</p>
-                        
+
+                        <h4 style='margin: 20px 0 10px 0; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;'>Representante &amp; Contato</h4>
+                        <p style='margin: 0 0 8px 0;'><strong>Nome do Representante:</strong> {$parceiro['rep_nome']}</p>
+                        <p style='margin: 0 0 8px 0;'><strong>E-mail do Representante:</strong> <a href='mailto:{$parceiro['rep_email']}'>{$parceiro['rep_email']}</a></p>
+                        <p style='margin: 0 0 8px 0;'><strong>Telefone Institucional:</strong> {$tel_institucional}</p>
+                        <p style='margin: 0 0 8px 0;'><strong>Telefone do Representante:</strong> {$tel_rep}</p>
+
+                        <h4 style='margin: 20px 0 10px 0; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;'>Interesse / Proposta</h4>
+                        <p style='margin: 0 0 8px 0;'>{$interesse}</p>
+
                         <h4 style='margin: 20px 0 10px 0; color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px;'>Dados da Assinatura</h4>
-                        <p style='margin: 0 0 8px 0;'><strong>Representante Legal:</strong> {$parceiro['rep_nome']}</p>
                         <p style='margin: 0 0 8px 0;'><strong>Data e Hora:</strong> " . date('d/m/Y \à\s H:i:s') . "</p>
                         <p style='margin: 0 0 0 0;'><strong>IP Registrado:</strong> {$_SERVER['REMOTE_ADDR']}</p>
+
                     </div>
 
                     <div style='background-color: #fff3cd; color: #842029; padding: 12px 15px; border: 1px solid #f5c2c7; border-radius: 5px; font-size: 14px; margin-bottom: 25px;'>
@@ -128,7 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aceito'])) {
             $headers .= "From: Plataforma Impactos Positivos <nao-responda@dscriacaoweb.com.br>\r\n";
 
             foreach ($admins as $admin) {
-                // Usa a função send_mail com o nome correto do admin vindo do banco
                 send_mail($admin['email'], $admin['nome'], $subject, $body, $headers);
             }
         }
@@ -394,4 +411,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <?php include __DIR__ . '/../app/views/public/footer_public.php'; ?>
-
