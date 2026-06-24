@@ -96,7 +96,7 @@ include __DIR__ . '/../app/views/public/header_public.php';
                         <?php unset($_SESSION['erro_etapa1']); ?>
                     <?php endif; ?>
 
-                    <form method="POST" action="processar_etapa1.php">
+                    <form method="POST" action="processar_etapa1.php" novalidate>
                         <input type="hidden" name="from" value="<?= htmlspecialchars($_GET['from'] ?? '') ?>">
 
                         <section class="parceiro-step-section">
@@ -134,8 +134,10 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                 </div>
 
                                 <div class="col-md-4">
-                                    <label class="form-label parceiro-step-label">Telefone Institucional</label>
-                                    <input type="text" name="telefone_institucional" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['telefone_institucional'] ?? '') ?>">
+                                    <label class="form-label parceiro-step-label">
+                                        Telefone Institucional <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" name="telefone_institucional" id="telefone_institucional" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['telefone_institucional'] ?? '') ?>" required>
                                 </div>
 
                                 <div class="col-md-4">
@@ -160,8 +162,10 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                 </div>
 
                                 <div class="col-md-4">
-                                    <label class="form-label parceiro-step-label">E-mail do Representante</label>
-                                    <input type="email" name="rep_email" class="form-control" value="<?= htmlspecialchars($parceiro['rep_email'] ?? '') ?>">
+                                    <label class="form-label parceiro-step-label">
+                                        E-mail do Representante <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" name="rep_email" id="rep_email" class="form-control" value="<?= htmlspecialchars($parceiro['rep_email'] ?? '') ?>" required>
                                     <div class="form-check parceiro-step-check mt-2">
                                         <input class="form-check-input" type="checkbox" id="rep_email_optin" name="rep_email_optin" value="1" <?= (!empty($parceiro['rep_email_optin'])) ? 'checked' : '' ?>>
                                         <label class="form-check-label small text-muted" for="rep_email_optin">Aceito receber atualizações via e-mail</label>
@@ -169,8 +173,10 @@ include __DIR__ . '/../app/views/public/header_public.php';
                                 </div>
 
                                 <div class="col-md-4">
-                                    <label class="form-label parceiro-step-label">Telefone / Celular</label>
-                                    <input type="text" name="rep_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?>">
+                                    <label class="form-label parceiro-step-label">
+                                        Telefone / Celular <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" name="rep_telefone" id="rep_telefone" class="form-control phone_mask" value="<?= htmlspecialchars($parceiro['rep_telefone'] ?? '') ?>" required>
                                     <div class="form-check parceiro-step-check mt-2">
                                         <input class="form-check-input" type="checkbox" id="rep_whatsapp_optin" name="rep_whatsapp_optin" value="1" <?= (!empty($parceiro['rep_whatsapp_optin'])) ? 'checked' : '' ?>>
                                         <label class="form-check-label small text-muted" for="rep_whatsapp_optin">Aceito receber novidades via WhatsApp</label>
@@ -261,6 +267,28 @@ include __DIR__ . '/../app/views/public/header_public.php';
             }
         };
         $('.phone_mask').mask(SPMaskBehavior, spOptions);
+
+        // Validação client-side dos campos obrigatórios antes do submit
+        $('form').on('submit', function(e) {
+            var ok = true;
+            var campos = [
+                { id: 'rep_email',             label: 'E-mail do Representante' },
+                { id: 'rep_telefone',          label: 'Telefone / Celular do Representante' },
+                { id: 'telefone_institucional', label: 'Telefone Institucional' }
+            ];
+            campos.forEach(function(c) {
+                var $el = $('#' + c.id);
+                $el.removeClass('is-invalid');
+                if (!$.trim($el.val())) {
+                    $el.addClass('is-invalid');
+                    ok = false;
+                }
+            });
+            if (!ok) {
+                e.preventDefault();
+                $('html, body').animate({ scrollTop: $('.is-invalid').first().offset().top - 120 }, 300);
+            }
+        });
 
         // Copiar dados do Representante para Operacional
         $('#mesmo_contato').change(function() {

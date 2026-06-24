@@ -41,9 +41,23 @@ $op_telefone = trim($_POST['op_telefone'] ?? '');
 $op_email_optin = isset($_POST['op_email_optin']) ? 1 : 0;
 $op_whatsapp_optin = isset($_POST['op_whatsapp_optin']) ? 1 : 0;
 
-// Validação simples (exige pelo menos o email do representante, que é crucial pro contrato)
+// Validação server-side dos campos obrigatórios
+$erros = [];
+
 if (empty($rep_email)) {
-    $_SESSION['erro_etapa1'] = "O E-mail do Representante Legal é obrigatório.";
+    $erros[] = 'O E-mail do Representante Legal é obrigatório.';
+}
+
+if (empty($rep_telefone)) {
+    $erros[] = 'O Telefone / Celular do Representante é obrigatório.';
+}
+
+if (empty($telefone_institucional)) {
+    $erros[] = 'O Telefone Institucional é obrigatório.';
+}
+
+if (!empty($erros)) {
+    $_SESSION['erro_etapa1'] = implode(' ', $erros);
     header("Location: etapa1_dados.php");
     exit;
 }
