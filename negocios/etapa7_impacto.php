@@ -53,6 +53,13 @@ if (!empty($impacto['beneficiarios'])) {
     $impacto['beneficiarios'] = [];
 }
 
+// FIX: Decodifica formas_medicao do JSON para pré-popular checkboxes ao editar
+if (!empty($impacto['formas_medicao'])) {
+    $impacto['formas_medicao'] = json_decode($impacto['formas_medicao'], true) ?: [];
+} else {
+    $impacto['formas_medicao'] = [];
+}
+
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
@@ -116,6 +123,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <div class="mb-0">
                 <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como você classificaria o tipo de impacto que seu negócio gera hoje? *</label>
                 <select name="tipo_impacto" class="form-select" required>
+                    <option value="" disabled <?= empty($impacto['tipo_impacto']) ? 'selected' : '' ?>>Selecione...</option>
                     <?php
                     $opcoesTipoImpacto = [
                         "Impacto direto – atinge beneficiários de forma imediata e mensurável.",
@@ -125,7 +133,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     ];
                     foreach ($opcoesTipoImpacto as $op) {
                         $sel = ($impacto['tipo_impacto'] ?? '') === $op ? 'selected' : '';
-                        echo "<option $sel>$op</option>";
+                        echo "<option value=\"" . htmlspecialchars($op) . "\" $sel>" . htmlspecialchars($op) . "</option>";
                     }
                     ?>
                 </select>
@@ -166,11 +174,12 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             <div class="mb-0">
                 <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Alcance do impacto – beneficiários diretos nos últimos 2 anos *</label>
                 <select name="alcance" class="form-select" required>
+                    <option value="" disabled <?= empty($impacto['alcance']) ? 'selected' : '' ?>>Selecione...</option>
                     <?php
                     $opcoesAlcance = ["1 a 50","51 a 100","101 a 200","201 a 500","Acima de 500"];
                     foreach ($opcoesAlcance as $op) {
                         $sel = ($impacto['alcance'] ?? '') === $op ? 'selected' : '';
-                        echo "<option $sel>$op</option>";
+                        echo "<option value=\"" . htmlspecialchars($op) . "\" $sel>" . htmlspecialchars($op) . "</option>";
                     }
                     ?>
                 </select>
@@ -217,8 +226,9 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
             </div>
 
             <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> A empresa mede seu impacto socioambiental? *</label>
+                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> A empresa mede seu impacto socioambiental? *</label>
                 <select name="medicao" class="form-select" required>
+                    <option value="" disabled <?= empty($impacto['medicao']) ? 'selected' : '' ?>>Selecione...</option>
                     <?php
                     $opcoesMedicao = [
                         "Sim – utilizamos auditoria ou certificação externa",
@@ -228,15 +238,48 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     ];
                     foreach ($opcoesMedicao as $op) {
                         $sel = ($impacto['medicao'] ?? '') === $op ? 'selected' : '';
-                        echo "<option $sel>$op</option>";
+                        echo "<option value=\"" . htmlspecialchars($op) . "\" $sel>" . htmlspecialchars($op) . "</option>";
                     }
                     ?>
                 </select>
             </div>
 
+            <!-- FIX: Campo formas_medicao[] estava completamente ausente — causa do erro de validação -->
+            <div class="mb-4">
+                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como vocês medem ou monitoram o impacto? *</label>
+                <small class="text-muted d-block mb-2">Selecione todas as formas que se aplicam (máx. 4).</small>
+                <?php
+                $listaFormasMedicao = [
+                    "Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)",
+                    "Relatórios internos manuais ou dashboards próprios",
+                    "Pesquisas e surveys com beneficiários",
+                    "Avaliações externas ou auditorias de impacto",
+                    "Não fazemos medição formal ainda",
+                    "Outro"
+                ];
+                $selecionadosFM = $impacto['formas_medicao'];
+                foreach ($listaFormasMedicao as $fm): ?>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="formas_medicao[]"
+                            value="<?= htmlspecialchars($fm) ?>"
+                            id="fm_<?= md5($fm) ?>"
+                            <?= in_array($fm, $selecionadosFM) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="fm_<?= md5($fm) ?>"><?= htmlspecialchars($fm) ?></label>
+                    </div>
+                <?php endforeach; ?>
+
+                <input type="text" name="forma_outro" id="forma_outro"
+                    class="form-control mt-2 <?= in_array('Outro', $selecionadosFM) ? '' : 'd-none' ?>"
+                    value="<?= htmlspecialchars($impacto['forma_outro'] ?? '') ?>"
+                    placeholder="Se marcou 'Outro', especifique aqui"
+                    maxlength="120"
+                    <?= in_array('Outro', $selecionadosFM) ? 'required' : '' ?>>
+            </div>
+
             <div class="mb-0">
-                <label class="form-label"><i class="bi bi-eye-slash text-danger-emphasis me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto? *</label>
+                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto? *</label>
                 <select name="reporte" class="form-select" required>
+                    <option value="" disabled <?= empty($impacto['reporte']) ? 'selected' : '' ?>>Selecione...</option>
                     <?php
                     $opcoesReporte = [
                         "Sim – relatórios regulares para investidores, apoiadores ou público geral",
@@ -246,7 +289,7 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                     ];
                     foreach ($opcoesReporte as $op) {
                         $sel = ($impacto['reporte'] ?? '') === $op ? 'selected' : '';
-                        echo "<option $sel>$op</option>";
+                        echo "<option value=\"" . htmlspecialchars($op) . "\" $sel>" . htmlspecialchars($op) . "</option>";
                     }
                     ?>
                 </select>
@@ -331,6 +374,7 @@ function addPdf() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Toggle campo "Outro" — Beneficiários
     const outrosBenef = document.querySelector("input[name='beneficiarios[]'][value='Outro']");
     const inputBenefOutro = document.getElementById('beneficiario_outro');
     if (outrosBenef && inputBenefOutro) {
@@ -341,6 +385,29 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Toggle campo "Outro" — Formas de medição
+    const outrosFormaMed = document.querySelector("input[name='formas_medicao[]'][value='Outro']");
+    const inputFormaOutro = document.getElementById('forma_outro');
+    if (outrosFormaMed && inputFormaOutro) {
+        outrosFormaMed.addEventListener('change', function() {
+            inputFormaOutro.classList.toggle('d-none', !this.checked);
+            inputFormaOutro.required = this.checked;
+            if (!this.checked) inputFormaOutro.value = '';
+        });
+    }
+
+    // Limite de 4 checkboxes em formas_medicao
+    const checkboxesFormas = document.querySelectorAll("input[name='formas_medicao[]']");
+    checkboxesFormas.forEach(cb => {
+        cb.addEventListener('change', function() {
+            const marcados = document.querySelectorAll("input[name='formas_medicao[]']:checked").length;
+            checkboxesFormas.forEach(c => {
+                if (!c.checked) c.disabled = marcados >= 4;
+            });
+        });
+    });
+
+    // Validação de texto mínimo (5 letras reais)
     document.querySelectorAll("input[type='text'], textarea").forEach(campo => {
         campo.addEventListener('input', function() {
             const letras = (this.value.match(/[a-zA-ZÀ-ÿ]/g) || []).length;
