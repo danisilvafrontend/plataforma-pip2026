@@ -188,6 +188,7 @@ $descricao_inovacao = mb_substr(trim($_POST['descricao_inovacao'] ?? ''), 0, 300
 $tipo_solucao       = $_POST['tipo_solucao']   ?? null;
 $modelo_negocio     = $_POST['modelo_negocio'] ?? null;
 $colaboradores      = $_POST['colaboradores']  ?? null;
+$replicabilidade    = $_POST['replicabilidade'] ?? null;
 $apoio              = $_POST['apoio']          ?? null;
 $programas          = trim($_POST['programas'] ?? '');
 $info_adicionais    = trim($_POST['info_adicionais'] ?? '');
@@ -269,6 +270,11 @@ if (empty($colaboradores)) {
     $_SESSION['errors_etapa5'][] = "Informe o número de colaboradores.";
 }
 
+$opcoesReplicabilidade = ['digital_escalavel', 'replicavel_baixa_adaptacao', 'replicavel_alta_adaptacao', 'dificil_replicacao'];
+if (empty($replicabilidade) || !in_array($replicabilidade, $opcoesReplicabilidade)) {
+    $_SESSION['errors_etapa5'][] = "Informe a replicabilidade do modelo de negócio.";
+}
+
 if (empty($apoio)) {
     $_SESSION['errors_etapa5'][] = "Informe se o negócio teve apoio de aceleradora ou programa de fomento.";
 }
@@ -315,7 +321,7 @@ $sql = "
         inovacao_tecnologica, inovacao_produto, inovacao_servico, inovacao_modelo,
         inovacao_social, inovacao_ambiental, inovacao_cadeia_valor,
         inovacao_governanca, inovacao_impacto, inovacao_financiamento,
-        tipo_solucao, modelo_negocio, colaboradores,
+        tipo_solucao, modelo_negocio, colaboradores, replicabilidade,
         apoio, programas,
         $desafiosCols,
         info_adicionais, info_adicionais_links,
@@ -327,7 +333,7 @@ $sql = "
         :inovacao_tecnologica, :inovacao_produto, :inovacao_servico, :inovacao_modelo,
         :inovacao_social, :inovacao_ambiental, :inovacao_cadeia_valor,
         :inovacao_governanca, :inovacao_impacto, :inovacao_financiamento,
-        :tipo_solucao, :modelo_negocio, :colaboradores,
+        :tipo_solucao, :modelo_negocio, :colaboradores, :replicabilidade,
         :apoio, :programas,
         $desafiosVals,
         :info_adicionais, :links,
@@ -358,6 +364,7 @@ $sql = "
         tipo_solucao            = VALUES(tipo_solucao),
         modelo_negocio          = VALUES(modelo_negocio),
         colaboradores           = VALUES(colaboradores),
+        replicabilidade         = VALUES(replicabilidade),
         apoio                   = VALUES(apoio),
         programas               = VALUES(programas),
         info_adicionais         = VALUES(info_adicionais),
@@ -394,6 +401,7 @@ $params = [
     'tipo_solucao'           => $tipo_solucao,
     'modelo_negocio'         => $modelo_negocio,
     'colaboradores'          => $colaboradores,
+    'replicabilidade'        => $replicabilidade,
     'apoio'                  => $apoio,
     'programas'              => $programas ?: null,
     'info_adicionais'        => $info_adicionais ?: null,
