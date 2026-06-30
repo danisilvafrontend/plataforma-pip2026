@@ -22,7 +22,7 @@ if (!$negocio_id) {
     die('Negócio inválido.');
 }
 
-$stmt = $pdo->prepare("SELECT id, user_id FROM negocios WHERE id = :id AND user_id = :user_id LIMIT 1");
+$stmt = $pdo->prepare("SELECT id FROM negocios WHERE id = :id AND empreendedor_id = :user_id LIMIT 1");
 $stmt->execute([
     'id' => $negocio_id,
     'user_id' => $user_id
@@ -108,9 +108,15 @@ $opcoes_nivel_tec = ['tecnologia_propria', 'tecnologia_adaptada', 'modelo_manual
 $apoio                  = $_POST['apoio'] ?? 'nao';
 $programas              = trim($_POST['programas'] ?? '');
 $info_adicionais        = trim($_POST['info_adicionais'] ?? '');
-$linksRaw               = trim($_POST['info_adicionais_links'] ?? '');
 
-$linksArray = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $linksRaw)));
+// Aceita links tanto como array (editar_etapa5: name="info_adicionais_link[]")
+// quanto como string textarea com quebras de linha (etapa5_apresentacao: name="info_adicionais_links")
+if (!empty($_POST['info_adicionais_link']) && is_array($_POST['info_adicionais_link'])) {
+    $linksArray = array_filter(array_map('trim', $_POST['info_adicionais_link']));
+} else {
+    $linksRaw   = trim($_POST['info_adicionais_links'] ?? '');
+    $linksArray = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $linksRaw)));
+}
 $linksJson = json_encode(array_values($linksArray), JSON_UNESCAPED_UNICODE);
 
 $desafios = $_POST['desafios'] ?? [];
@@ -187,7 +193,12 @@ foreach ($linksArray as $link) {
 }
 
 if (!empty($_SESSION['errors_etapa5'])) {
-    header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
+    $modo = $_POST['modo'] ?? 'cadastro';
+    if ($modo === 'editar') {
+        header("Location: /negocios/editar_etapa5.php?id=" . $negocio_id);
+    } else {
+        header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
+    }
     exit;
 }
 
@@ -252,9 +263,9 @@ $sql = "
         nivel_tecnologia        = VALUES(nivel_tecnologia),
         apoio                   = VALUES(apoio),
         programas               = VALUES(programas),
+        $desafiosUpdate,
         info_adicionais         = VALUES(info_adicionais),
         info_adicionais_links   = VALUES(info_adicionais_links),
-        $desafiosUpdate,
         atualizado_em           = NOW()
 ";
 
@@ -267,7 +278,7 @@ $params = [
     'frase'                  => $frase_negocio,
     'problema_resolvido'     => $problema_resolvido,
     'solucao_oferecida'      => $solucao_oferecida,
-    'video_pitch'            => $video_pitch_url,
+    'video_pitch'            => $video_pitch_url ?: null,
     'pdf'                    => $pdfUrl,
     'video_inst'             => $apresentacao_video,
     'galeria'                => json_encode($galeriaAtual),
@@ -315,17 +326,27 @@ try {
     $stmt = $pdo->prepare("
         UPDATE negocios 
         SET etapa_atual = 6, updated_at = NOW() 
-        WHERE id = :id AND user_id = :user_id
+        WHERE id = :id AND empreendedor_id = :user_id
     ");
     $stmt->execute([
         'id' => $negocio_id,
         'user_id' => $user_id
     ]);
 
-    header("Location: /negocios/etapa6_financeiro.php?id=" . $negocio_id);
+    $modo = $_POST['modo'] ?? 'cadastro';
+    if ($modo === 'editar') {
+        header("Location: /negocios/editar_etapa5.php?id=" . $negocio_id);
+    } else {
+        header("Location: /negocios/etapa6_financeiro.php?id=" . $negocio_id);
+    }
     exit;
 } catch (Throwable $e) {
     $_SESSION['errors_etapa5'][] = 'Erro ao salvar os dados da etapa 5.';
-    header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
+    $modo = $_POST['modo'] ?? 'cadastro';
+    if ($modo === 'editar') {
+        header("Location: /negocios/editar_etapa5.php?id=" . $negocio_id);
+    } else {
+        header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
+    }
     exit;
 }
