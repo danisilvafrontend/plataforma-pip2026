@@ -53,13 +53,6 @@ if (!empty($impacto['beneficiarios'])) {
     $impacto['beneficiarios'] = [];
 }
 
-// FIX: Decodifica formas_medicao do JSON para pré-popular checkboxes ao editar
-if (!empty($impacto['formas_medicao'])) {
-    $impacto['formas_medicao'] = json_decode($impacto['formas_medicao'], true) ?: [];
-} else {
-    $impacto['formas_medicao'] = [];
-}
-
 include __DIR__ . '/../app/views/empreendedor/header.php';
 ?>
 
@@ -244,38 +237,6 @@ include __DIR__ . '/../app/views/empreendedor/header.php';
                 </select>
             </div>
 
-            <!-- FIX: Campo formas_medicao[] estava completamente ausente — causa do erro de validação -->
-            <div class="mb-4">
-                <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Como vocês medem ou monitoram o impacto? *</label>
-                <small class="text-muted d-block mb-2">Selecione todas as formas que se aplicam (máx. 4).</small>
-                <?php
-                $listaFormasMedicao = [
-                    "Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)",
-                    "Relatórios internos manuais ou dashboards próprios",
-                    "Pesquisas e surveys com beneficiários",
-                    "Avaliações externas ou auditorias de impacto",
-                    "Não fazemos medição formal ainda",
-                    "Outro"
-                ];
-                $selecionadosFM = $impacto['formas_medicao'];
-                foreach ($listaFormasMedicao as $fm): ?>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="formas_medicao[]"
-                            value="<?= htmlspecialchars($fm) ?>"
-                            id="fm_<?= md5($fm) ?>"
-                            <?= in_array($fm, $selecionadosFM) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="fm_<?= md5($fm) ?>"><?= htmlspecialchars($fm) ?></label>
-                    </div>
-                <?php endforeach; ?>
-
-                <input type="text" name="forma_outro" id="forma_outro"
-                    class="form-control mt-2 <?= in_array('Outro', $selecionadosFM) ? '' : 'd-none' ?>"
-                    value="<?= htmlspecialchars($impacto['forma_outro'] ?? '') ?>"
-                    placeholder="Se marcou 'Outro', especifique aqui"
-                    maxlength="120"
-                    <?= in_array('Outro', $selecionadosFM) ? 'required' : '' ?>>
-            </div>
-
             <div class="mb-0">
                 <label class="form-label"><i class="bi bi-eye text-secondary me-1"></i> Existe algum tipo de reporte ou prestação de contas do impacto? *</label>
                 <select name="reporte" class="form-select" required>
@@ -384,28 +345,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!this.checked) inputBenefOutro.value = '';
         });
     }
-
-    // Toggle campo "Outro" — Formas de medição
-    const outrosFormaMed = document.querySelector("input[name='formas_medicao[]'][value='Outro']");
-    const inputFormaOutro = document.getElementById('forma_outro');
-    if (outrosFormaMed && inputFormaOutro) {
-        outrosFormaMed.addEventListener('change', function() {
-            inputFormaOutro.classList.toggle('d-none', !this.checked);
-            inputFormaOutro.required = this.checked;
-            if (!this.checked) inputFormaOutro.value = '';
-        });
-    }
-
-    // Limite de 4 checkboxes em formas_medicao
-    const checkboxesFormas = document.querySelectorAll("input[name='formas_medicao[]']");
-    checkboxesFormas.forEach(cb => {
-        cb.addEventListener('change', function() {
-            const marcados = document.querySelectorAll("input[name='formas_medicao[]']:checked").length;
-            checkboxesFormas.forEach(c => {
-                if (!c.checked) c.disabled = marcados >= 4;
-            });
-        });
-    });
 
     // Validação de texto mínimo (5 letras reais)
     document.querySelectorAll("input[type='text'], textarea").forEach(campo => {

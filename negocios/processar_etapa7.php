@@ -30,15 +30,12 @@ $indicador_ambiental = mb_substr(trim($_POST['indicador_ambiental'] ?? ''), 0, 3
 $indicador_social    = mb_substr(trim($_POST['indicador_social'] ?? ''), 0, 300);
 $indicador_governanca= mb_substr(trim($_POST['indicador_governanca'] ?? ''), 0, 300);
 $medicao             = $_POST['medicao'] ?? null;
-$formas_medicao      = $_POST['formas_medicao'] ?? [];
-$forma_outro         = trim($_POST['forma_outro'] ?? '');
 $reporte             = $_POST['reporte'] ?? null;
 $resultados          = $_POST['resultados'] ?? null;
 $proximos_passos     = $_POST['proximos_passos'] ?? null;
 
 // Limites de arrays
-$beneficiarios  = array_slice($beneficiarios, 0, 3);
-$formas_medicao = array_slice($formas_medicao, 0, 4);
+$beneficiarios = array_slice($beneficiarios, 0, 3);
 
 // Links externos (até 4)
 $links = $_POST['resultados_link'] ?? [];
@@ -102,19 +99,8 @@ if (in_array('Outro', $beneficiarios)) {
     }
 }
 
-if (in_array('Outro', $formas_medicao)) {
-    if ($forma_outro === '') {
-        $_SESSION['errors_etapa7'][] = "Você marcou 'Outro' em formas de medição, mas não especificou.";
-    } elseif (mb_strlen($forma_outro) > 120) {
-        $_SESSION['errors_etapa7'][] = "O campo 'Outro' em formas de medição deve ter no máximo 120 caracteres.";
-    }
-}
-
 if ($beneficiario_outro && !textoValido($beneficiario_outro)) {
     $_SESSION['errors_etapa7'][] = "O campo 'Outro' em Beneficiários deve conter texto válido.";
-}
-if ($forma_outro && !textoValido($forma_outro)) {
-    $_SESSION['errors_etapa7'][] = "O campo 'Outro' em Formas de Medição deve conter texto válido.";
 }
 if ($resultados && !textoValido($resultados)) {
     $_SESSION['errors_etapa7'][] = "O campo 'Resultados' deve conter texto válido.";
@@ -131,7 +117,6 @@ if (empty($alcance))           $_SESSION['errors_etapa7'][] = "Informe o alcance
 if (empty($medicao))           $_SESSION['errors_etapa7'][] = "Informe a forma de medição.";
 if (empty($reporte))           $_SESSION['errors_etapa7'][] = "Informe a frequência de reporte.";
 if (empty($proximos_passos))   $_SESSION['errors_etapa7'][] = "O campo 'Próximos Passos' é obrigatório.";
-if (empty($formas_medicao))    $_SESSION['errors_etapa7'][] = "Selecione pelo menos uma forma de medição do impacto.";
 
 if (!empty($_SESSION['errors_etapa7'])) {
     header("Location: /negocios/etapa7_impacto.php?id=" . $negocio_id);
@@ -163,8 +148,6 @@ $stmt = $pdo->prepare("
         indicador_social      = VALUES(indicador_social),
         indicador_governanca  = VALUES(indicador_governanca),
         medicao               = VALUES(medicao),
-        formas_medicao        = VALUES(formas_medicao),
-        forma_outro           = VALUES(forma_outro),
         reporte               = VALUES(reporte),
         resultados            = VALUES(resultados),
         resultados_links      = VALUES(resultados_links),
@@ -176,7 +159,7 @@ $stmt = $pdo->prepare("
 $params = [
     'negocio_id'           => $negocio_id,
     'intencionalidade'     => $intencionalidade,
-        'tipo_impacto'         => $tipo_impacto,
+    'tipo_impacto'         => $tipo_impacto,
     'beneficiarios'        => json_encode($beneficiarios),
     'beneficiario_outro'   => $beneficiario_outro,
     'alcance'              => $alcance,
@@ -184,8 +167,8 @@ $params = [
     'indicador_social'     => $indicador_social,
     'indicador_governanca' => $indicador_governanca,
     'medicao'              => $medicao,
-    'formas_medicao'       => json_encode($formas_medicao),
-    'forma_outro'          => $forma_outro,
+    'formas_medicao'       => json_encode([]),
+    'forma_outro'          => '',
     'reporte'              => $reporte,
     'resultados'           => $resultados,
     'resultados_links'     => json_encode($links),
@@ -231,14 +214,12 @@ foreach ($pesos as $p) {
 
         case 'mensuracao':
             if ($medicao && strpos($medicao, 'auditoria') !== false) $opcao = 'auditoria_framework';
-            elseif (in_array('Ferramentas e frameworks reconhecidos (ex: GRI, IRIS+, SDG Compass, GIIRS, SROI etc.)', $formas_medicao)) $opcao = 'framework_reconhecido';
-            elseif (in_array('Relatórios internos manuais ou dashboards próprios', $formas_medicao)) $opcao = 'dashboard_interno';
-            elseif (in_array('Não fazemos medição formal ainda', $formas_medicao)) $opcao = 'nao_mede';
-            else $opcao = 'relatorio_manual';
+            elseif ($medicao && strpos($medicao, 'internamente') !== false) $opcao = 'dashboard_interno';
+            elseif ($medicao && strpos($medicao, 'indicadores definidos') !== false) $opcao = 'relatorio_manual';
+            else $opcao = 'nao_mede';
             break;
 
         case 'indicadores_esg':
-            // Pontuação ESG: Ambiental=3, Social=3, Governança=4
             $pts = 0;
             if (!empty($indicador_ambiental))  $pts += 3;
             if (!empty($indicador_social))     $pts += 3;
