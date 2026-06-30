@@ -4,196 +4,118 @@ session_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
+
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/upload_helper.php';
+
 if (!isset($_SESSION['user_id'])) {
-    header("Location: /login.php");
+    header("Location: /auth/login.php");
     exit;
 }
 
-$config = require __DIR__ . '/../app/config/db.php';
-$pdo = new PDO(
-    "mysql:host={$config['host']};dbname={$config['dbname']};port={$config['port']};charset={$config['charset']}",
-    $config['user'],
-    $config['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+$pdo = getPDO();
+$user_id = $_SESSION['user_id'];
+$negocio_id = (int) ($_POST['negocio_id'] ?? 0);
 
-$negocio_id = (int)($_POST['negocio_id'] ?? 0);
-
-// Proteção: POST vazio pode acontecer quando o upload ultrapassa post_max_size
-if (empty($_POST) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $_SESSION['errors_etapa5'][] = "O arquivo enviado é muito grande. Verifique o tamanho dos arquivos e tente novamente.";
-    // Tenta extrair negocio_id da query string como fallback
-    $negocio_id_qs = (int)($_GET['id'] ?? 0);
-    header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id_qs);
-    exit;
+if (!$negocio_id) {
+    die('Negócio inválido.');
 }
 
-if ($negocio_id === 0) {
-    $_SESSION['errors_etapa5'][] = "Negócio inválido.";
-    header("Location: /empreendedores/meus-negocios.php");
-    exit;
-}
-if (!isset($_SESSION['errors_etapa5'])) {
-    $_SESSION['errors_etapa5'] = [];
-}
+$stmt = $pdo->prepare("SELECT id, user_id FROM negocios WHERE id = :id AND user_id = :user_id LIMIT 1");
+$stmt->execute([
+    'id' => $negocio_id,
+    'user_id' => $user_id
+]);
+$negocio = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Busca dados atuais da apresentação
-$stmt = $pdo->prepare("SELECT * FROM negocio_apresentacao WHERE negocio_id = ?");
-$stmt->execute([$negocio_id]);
-$apresentacao = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-// ====== Upload Logotipo ======
-$logoUrl = $apresentacao['logo_negocio'] ?? null;
-
-if (!empty($_POST['remover_logo'])) {
-    $logoUrl = null;
+if (!$negocio) {
+    die('Acesso negado.');
 }
 
-if (!empty($_FILES['logo_negocio']['name']) && !empty($_FILES['logo_negocio']['tmp_name']) && is_uploaded_file($_FILES['logo_negocio']['tmp_name'])) {
-    $fileTmp  = $_FILES['logo_negocio']['tmp_name'];
-    $fileSize = $_FILES['logo_negocio']['size'];
-    $fileType = mime_content_type($fileTmp);
+function textoValido($texto) {
+    $texto = trim((string) $texto);
+    return preg_match_all('/[a-zA-ZÀ-ÿ]/u', $texto) >= 5;
+}
 
-    if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp'])
-    && $fileSize <= 50 * 1024 * 1024) {
-        $logoName   = uniqid('logo_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['logo_negocio']['name']);
-        $targetLogo = __DIR__ . '/../uploads/negocios/logos/' . $logoName;
-        if (!is_dir(__DIR__ . '/../uploads/negocios/logos/')) {
-            mkdir(__DIR__ . '/../uploads/negocios/logos/', 0755, true);
-        }
-        if (move_uploaded_file($fileTmp, $targetLogo)) {
-            $logoUrl = '/uploads/negocios/logos/' . $logoName;
-        }
-    } else {
-        $_SESSION['errors_etapa5'][] = "O logotipo deve ser PNG, JPG, JPEG ou WebP e ter no máximo 50MB.";
+$_SESSION['errors_etapa5'] = [];
+
+// Uploads
+$logoUrl = null;
+$imagemDestaqueUrl = null;
+$pdfUrl = null;
+$galeriaAtual = [];
+
+$stmt = $pdo->prepare("SELECT logo_negocio, imagem_destaque, apresentacao_pdf, galeria_imagens FROM negocio_apresentacao WHERE negocio_id = :id LIMIT 1");
+$stmt->execute(['id' => $negocio_id]);
+$existente = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+$logoUrl = $existente['logo_negocio'] ?? null;
+$imagemDestaqueUrl = $existente['imagem_destaque'] ?? null;
+$pdfUrl = $existente['apresentacao_pdf'] ?? null;
+
+if (!empty($existente['galeria_imagens'])) {
+    $decoded = json_decode($existente['galeria_imagens'], true);
+    if (is_array($decoded)) {
+        $galeriaAtual = $decoded;
     }
 }
 
-// ====== Upload Imagem de Destaque ======
-$imagemDestaqueUrl = $apresentacao['imagem_destaque'] ?? null;
-
-if (!empty($_POST['remover_imagem_destaque'])) {
-    $imagemDestaqueUrl = null;
-}
-
-if (!empty($_FILES['imagem_destaque']['name']) && !empty($_FILES['imagem_destaque']['tmp_name']) && is_uploaded_file($_FILES['imagem_destaque']['tmp_name'])) {
-    $fileTmp  = $_FILES['imagem_destaque']['tmp_name'];
-    $fileSize = $_FILES['imagem_destaque']['size'];
-    $fileType = mime_content_type($fileTmp);
-
-    if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp'])
-        && $fileSize <= 5 * 1024 * 1024) {
-        $destName   = uniqid('capa_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['imagem_destaque']['name']);
-        $targetDest = __DIR__ . '/../uploads/negocios/capas/' . $destName;
-        if (!is_dir(__DIR__ . '/../uploads/negocios/capas/')) {
-            mkdir(__DIR__ . '/../uploads/negocios/capas/', 0755, true);
-        }
-        if (move_uploaded_file($fileTmp, $targetDest)) {
-            $imagemDestaqueUrl = '/uploads/negocios/capas/' . $destName;
-        }
-    } else {
-        $_SESSION['errors_etapa5'][] = "A imagem de destaque deve ser JPG, PNG ou WebP e ter no máximo 5MB.";
+try {
+    if (!empty($_FILES['logo_negocio']['name'])) {
+        $logoUrl = uploadArquivo($_FILES['logo_negocio'], 'negocios/logos');
     }
-}
+    if (!empty($_FILES['imagem_destaque']['name'])) {
+        $imagemDestaqueUrl = uploadArquivo($_FILES['imagem_destaque'], 'negocios/destaques');
+    }
+    if (!empty($_FILES['apresentacao_pdf']['name'])) {
+        $pdfUrl = uploadArquivo($_FILES['apresentacao_pdf'], 'negocios/pdfs');
+    }
 
-// ====== Upload PDF ======
-$pdfUrl = $apresentacao['apresentacao_pdf'] ?? null;
-
-if (!empty($_POST['remover_pdf'])) {
-    $pdfUrl = null;
-}
-
-if (!empty($_FILES['apresentacao_pdf']['name']) && !empty($_FILES['apresentacao_pdf']['tmp_name']) && is_uploaded_file($_FILES['apresentacao_pdf']['tmp_name'])) {
-    $fileTmp  = $_FILES['apresentacao_pdf']['tmp_name'];
-    $fileSize = $_FILES['apresentacao_pdf']['size'];
-    $fileType = mime_content_type($fileTmp);
-
-    if (strpos($fileType, 'pdf') === false) {
-        $_SESSION['errors_etapa5'][] = "O arquivo enviado não é um PDF válido.";
-    } elseif ($fileSize > 5 * 1024 * 1024) {
-        $_SESSION['errors_etapa5'][] = "O PDF excede 5MB.";
-    } else {
-        $pdfName   = uniqid('pdf_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $_FILES['apresentacao_pdf']['name']);
-        $targetPdf = __DIR__ . '/../uploads/negocios/documentos/' . $pdfName;
-        if (!is_dir(__DIR__ . '/../uploads/negocios/documentos/')) {
-            mkdir(__DIR__ . '/../uploads/negocios/documentos/', 0755, true);
-        }
-        if (move_uploaded_file($fileTmp, $targetPdf)) {
-            $pdfUrl = '/uploads/negocios/documentos/' . $pdfName;
+    if (!empty($_FILES['galeria_imagens']['name'][0])) {
+        foreach ($_FILES['galeria_imagens']['name'] as $i => $nome) {
+            if (!$nome) continue;
+            $file = [
+                'name' => $_FILES['galeria_imagens']['name'][$i],
+                'type' => $_FILES['galeria_imagens']['type'][$i],
+                'tmp_name' => $_FILES['galeria_imagens']['tmp_name'][$i],
+                'error' => $_FILES['galeria_imagens']['error'][$i],
+                'size' => $_FILES['galeria_imagens']['size'][$i],
+            ];
+            $galeriaAtual[] = uploadArquivo($file, 'negocios/galeria');
         }
     }
+} catch (Throwable $e) {
+    $_SESSION['errors_etapa5'][] = 'Erro ao fazer upload de arquivos.';
 }
 
-// ====== Galeria de imagens ======
-$galeriaAtual = json_decode($apresentacao['galeria_imagens'] ?? '[]', true);
-if (!is_array($galeriaAtual)) {
-    $galeriaAtual = [];
-}
+// Campos de texto
+$frase_negocio          = trim($_POST['frase_negocio'] ?? '');
+$problema_resolvido     = trim($_POST['problema_resolvido'] ?? '');
+$solucao_oferecida      = trim($_POST['solucao_oferecida'] ?? '');
+$video_pitch_url        = trim($_POST['video_pitch_url'] ?? '');
+$apresentacao_video     = trim($_POST['apresentacao_video_url'] ?? '');
+$descricao_inovacao     = trim($_POST['descricao_inovacao'] ?? '');
+$tipo_solucao           = $_POST['tipo_solucao'] ?? null;
+$modelo_negocio         = trim($_POST['modelo_negocio'] ?? '');
+$colaboradores          = $_POST['colaboradores'] !== '' ? (int) $_POST['colaboradores'] : null;
+$replicabilidade        = $_POST['replicabilidade'] ?? null;
+$nivel_tecnologia       = $_POST['nivel_tecnologia'] ?? null;
 
-if (!empty($_POST['remover_imagem'])) {
-    foreach ($_POST['remover_imagem'] as $index) {
-        unset($galeriaAtual[$index]);
-    }
-    $galeriaAtual = array_values($galeriaAtual);
-}
+$opcoesReplicabilidade = ['digital_escalavel', 'replicavel_baixa_adaptacao', 'replicavel_alta_adaptacao', 'dificil_replicacao'];
+$opcoes_nivel_tec = ['tecnologia_propria', 'tecnologia_adaptada', 'modelo_manual'];
 
-if (!empty($_FILES['substituir_imagem']['name'])) {
-    foreach ($_FILES['substituir_imagem']['name'] as $index => $name) {
-        if (!empty($name)) {
-            $fileTmp  = $_FILES['substituir_imagem']['tmp_name'][$index];
-            $fileSize = $_FILES['substituir_imagem']['size'][$index];
-            $fileType = mime_content_type($fileTmp);
+$apoio                  = $_POST['apoio'] ?? 'nao';
+$programas              = trim($_POST['programas'] ?? '');
+$info_adicionais        = trim($_POST['info_adicionais'] ?? '');
+$linksRaw               = trim($_POST['info_adicionais_links'] ?? '');
 
-            if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp']) && $fileSize <= 50*1024*1024) {
-                $imgName   = uniqid('img_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $name);
-                $targetImg = __DIR__ . '/../uploads/negocios/galeria/' . $imgName;
-                if (!is_dir(__DIR__ . '/../uploads/negocios/galeria/')) {
-                    mkdir(__DIR__ . '/../uploads/negocios/galeria/', 0755, true);
-                }
-                if (move_uploaded_file($fileTmp, $targetImg)) {
-                    $galeriaAtual[$index] = '/uploads/negocios/galeria/' . $imgName;
-                }
-            }
-        }
-    }
-}
+$linksArray = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $linksRaw)));
+$linksJson = json_encode(array_values($linksArray), JSON_UNESCAPED_UNICODE);
 
-if (!empty($_FILES['galeria_imagens']['name'][0])) {
-    foreach ($_FILES['galeria_imagens']['name'] as $index => $name) {
-        if (count($galeriaAtual) >= 10) break;
-        $fileTmp  = $_FILES['galeria_imagens']['tmp_name'][$index];
-        $fileSize = $_FILES['galeria_imagens']['size'][$index];
-        $fileType = mime_content_type($fileTmp);
-
-        if (in_array($fileType, ['image/png','image/jpeg','image/jpg','image/webp']) && $fileSize <= 50*1024*1024) {
-            $imgName   = uniqid('img_') . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $name);
-            $targetImg = __DIR__ . '/../uploads/negocios/galeria/' . $imgName;
-            if (!is_dir(__DIR__ . '/../uploads/negocios/galeria/')) {
-                mkdir(__DIR__ . '/../uploads/negocios/galeria/', 0755, true);
-            }
-            if (move_uploaded_file($fileTmp, $targetImg)) {
-                $galeriaAtual[] = '/uploads/negocios/galeria/' . $imgName;
-            }
-        }
-    }
-}
-
-// ====== Captura dos campos ======
-$frase_negocio      = trim($_POST['frase_negocio']      ?? '');
-$problema_resolvido = trim($_POST['problema_resolvido'] ?? '');
-$solucao_oferecida  = trim($_POST['solucao_oferecida']  ?? '');
-$video_pitch_url    = trim($_POST['video_pitch_url']    ?? '');
-$apresentacao_video = trim($_POST['apresentacao_video_url'] ?? '');
-$descricao_inovacao = mb_substr(trim($_POST['descricao_inovacao'] ?? ''), 0, 300);
-$tipo_solucao       = $_POST['tipo_solucao']   ?? null;
-$modelo_negocio     = $_POST['modelo_negocio'] ?? null;
-$colaboradores      = $_POST['colaboradores']  ?? null;
-$replicabilidade    = $_POST['replicabilidade'] ?? null;
-$apoio              = $_POST['apoio']          ?? null;
-$programas          = trim($_POST['programas'] ?? '');
-$info_adicionais    = trim($_POST['info_adicionais'] ?? '');
-$links              = $_POST['info_adicionais_link'] ?? [];
-$linksJson          = json_encode(array_values(array_filter($links)));
+$desafios = $_POST['desafios'] ?? [];
+if (!is_array($desafios)) $desafios = [];
+$desafios = array_values(array_unique(array_slice($desafios, 0, 10)));
 
 $inovacao_tecnologica   = ($_POST['inovacao_tecnologica']   ?? 'nao') === 'sim' ? 1 : 0;
 $inovacao_produto       = ($_POST['inovacao_produto']       ?? 'nao') === 'sim' ? 1 : 0;
@@ -209,109 +131,71 @@ $inovacao_financiamento = ($_POST['inovacao_financiamento'] ?? 'nao') === 'sim' 
 $inovacao = (
     $inovacao_tecnologica || $inovacao_produto    || $inovacao_servico  ||
     $inovacao_modelo      || $inovacao_social     || $inovacao_ambiental ||
-    $inovacao_cadeia_valor|| $inovacao_governanca || $inovacao_impacto  ||
+    $inovacao_cadeia_valor|| $inovacao_governanca || $inovacao_impacto   ||
     $inovacao_financiamento
 ) ? 'sim' : 'nao';
 
-// ====== Desafios ======
-$desafios = [
-    "desafio_acessar_capital", "desafio_fluxo_caixa", "desafio_melhorar_gestao",
-    "desafio_estruturar_equipe", "desafio_falta_conselho_mentoria", "desafio_escassez_tecnico",
-    "desafio_marketing_posicionamento", "desafio_baixa_demanda_vendas",
-    "desafio_falta_entendimento_publico", "desafio_parcerias_networking",
-    "desafio_acesso_mentoria_especializada", "desafio_falta_entendimento_bancos",
-    "desafio_relacionamento_governo", "desafio_acesso_mercado_distribuicao",
-    "desafio_logistica_cara_ineficiente", "desafio_baixa_capacidade_entrega",
-    "desafio_infraestrutura_limitada_cara", "desafio_internacionalizacao",
-    "desafio_instabilidade_economica", "desafio_carga_tributaria_burocracia",
-    "desafio_regulacao_desfavoravel"
-];
-
-$valoresDesafios = [];
-foreach ($desafios as $d) {
-    $valoresDesafios[$d] = isset($_POST[$d]) ? (int)$_POST[$d] : 0;
+// Validações
+if ($frase_negocio === '' || !textoValido($frase_negocio)) {
+    $_SESSION['errors_etapa5'][] = "Informe uma frase de apresentação válida.";
 }
-
-// ====== Função de validação de texto ======
-function textoValido($texto) {
-    return preg_match_all('/[a-zA-ZÀ-ÿ]/', trim($texto)) >= 5;
+if ($problema_resolvido === '' || !textoValido($problema_resolvido)) {
+    $_SESSION['errors_etapa5'][] = "Descreva validamente o problema que o negócio resolve.";
 }
-
-// ====== Validações ======
-
-// Logo obrigatório apenas no primeiro envio
-$logoJaSalvo = !empty($apresentacao['logo_negocio'] ?? null);
-if (!$logoJaSalvo && empty($logoUrl)) {
-    $_SESSION['errors_etapa5'][] = "O logo do negócio é obrigatório.";
+if ($solucao_oferecida === '' || !textoValido($solucao_oferecida)) {
+    $_SESSION['errors_etapa5'][] = "Descreva validamente como sua solução funciona.";
 }
-
-if (empty($frase_negocio) || !textoValido($frase_negocio)) {
-    $_SESSION['errors_etapa5'][] = "O campo 'Frase do Negócio' deve conter texto válido.";
+if ($video_pitch_url && !filter_var($video_pitch_url, FILTER_VALIDATE_URL)) {
+    $_SESSION['errors_etapa5'][] = "A URL do vídeo pitch é inválida.";
 }
-
-if (empty($problema_resolvido) || !textoValido($problema_resolvido)) {
-    $_SESSION['errors_etapa5'][] = "O campo 'Qual problema você resolve?' deve conter texto válido.";
+if ($apresentacao_video && !filter_var($apresentacao_video, FILTER_VALIDATE_URL)) {
+    $_SESSION['errors_etapa5'][] = "A URL do vídeo adicional é inválida.";
 }
-
-if (empty($solucao_oferecida) || !textoValido($solucao_oferecida)) {
-    $_SESSION['errors_etapa5'][] = "O campo 'Qual solução você oferece?' deve conter texto válido.";
+if ($descricao_inovacao && !textoValido($descricao_inovacao)) {
+    $_SESSION['errors_etapa5'][] = "A descrição da inovação deve conter texto válido.";
 }
-
 if (empty($tipo_solucao)) {
-    $_SESSION['errors_etapa5'][] = "Informe o tipo de solução.";
+    $_SESSION['errors_etapa5'][] = "Informe o tipo de solução oferecida.";
 }
-
-// ── Novos obrigatórios ──────────────────────────────────────
-if (empty($modelo_negocio)) {
-    $_SESSION['errors_etapa5'][] = "Informe o modelo de negócio (B2B, B2C etc.).";
+if ($modelo_negocio === '' || !textoValido($modelo_negocio)) {
+    $_SESSION['errors_etapa5'][] = "Informe validamente o modelo de negócio.";
 }
-
-if (empty($colaboradores)) {
-    $_SESSION['errors_etapa5'][] = "Informe o número de colaboradores.";
+if ($colaboradores !== null && ($colaboradores < 0 || $colaboradores > 9999)) {
+    $_SESSION['errors_etapa5'][] = "Número de colaboradores inválido.";
 }
-
-$opcoesReplicabilidade = ['digital_escalavel', 'replicavel_baixa_adaptacao', 'replicavel_alta_adaptacao', 'dificil_replicacao'];
 if (empty($replicabilidade) || !in_array($replicabilidade, $opcoesReplicabilidade)) {
     $_SESSION['errors_etapa5'][] = "Informe a replicabilidade do modelo de negócio.";
 }
-
-if (empty($apoio)) {
-    $_SESSION['errors_etapa5'][] = "Informe se o negócio teve apoio de aceleradora ou programa de fomento.";
+if (empty($nivel_tecnologia) || !in_array($nivel_tecnologia, $opcoes_nivel_tec)) {
+    $_SESSION['errors_etapa5'][] = "Informe o papel da tecnologia no seu modelo de negócio.";
+}
+if (!in_array($apoio, ['sim', 'nao'], true)) {
+    $_SESSION['errors_etapa5'][] = "Informe corretamente se houve apoio de aceleradora ou programa.";
+}
+if ($apoio === 'sim' && $programas !== '' && !textoValido($programas)) {
+    $_SESSION['errors_etapa5'][] = "Informe validamente os programas ou aceleradoras.";
+}
+if ($info_adicionais && !textoValido($info_adicionais)) {
+    $_SESSION['errors_etapa5'][] = "As informações adicionais devem conter texto válido.";
 }
 
-$temDesafio = false;
-foreach ($valoresDesafios as $valor) {
-    if ($valor > 0) { $temDesafio = true; break; }
-}
-if (!$temDesafio) {
-    $_SESSION['errors_etapa5'][] = "Selecione e classifique pelo menos um desafio do negócio.";
-}
-// ────────────────────────────────────────────────────────────
-
-if ($inovacao === 'sim' && empty($descricao_inovacao)) {
-    $_SESSION['errors_etapa5'][] = "Descreva brevemente as principais inovações do seu negócio.";
-} elseif (!empty($descricao_inovacao) && !textoValido($descricao_inovacao)) {
-    $_SESSION['errors_etapa5'][] = "A descrição da inovação deve conter texto válido.";
+foreach ($linksArray as $link) {
+    if (!filter_var($link, FILTER_VALIDATE_URL)) {
+        $_SESSION['errors_etapa5'][] = "Há link adicional inválido informado.";
+        break;
+    }
 }
 
-if (!empty($programas) && !textoValido($programas)) {
-    $_SESSION['errors_etapa5'][] = "O campo 'Programas de Fomento' deve conter texto válido.";
-}
-
-if (!empty($info_adicionais) && !textoValido($info_adicionais)) {
-    $_SESSION['errors_etapa5'][] = "O campo 'Informações Adicionais' deve conter texto válido.";
-}
-
-// Se houver erros, volta ANTES de salvar qualquer coisa
 if (!empty($_SESSION['errors_etapa5'])) {
     header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
     exit;
 }
 
-// ====== ✅ CORRIGIDO: montagem segura do SQL dinâmico ======
-$desafiosCols   = implode(",\n        ", array_keys($valoresDesafios));
-$desafiosVals   = implode(",\n        ", array_map(fn($d) => ":$d", array_keys($valoresDesafios)));
-$desafiosUpdate = implode(",\n        ", array_map(fn($d) => "$d = VALUES($d)", array_keys($valoresDesafios)));
+$desafiosJson = json_encode($desafios, JSON_UNESCAPED_UNICODE);
+$desafiosCols = "desafios";
+$desafiosVals = ":desafios";
+$desafiosUpdate = "desafios = VALUES(desafios)";
+$valoresDesafios = ['desafios' => $desafiosJson];
 
 $sql = "
     INSERT INTO negocio_apresentacao (
@@ -321,7 +205,7 @@ $sql = "
         inovacao_tecnologica, inovacao_produto, inovacao_servico, inovacao_modelo,
         inovacao_social, inovacao_ambiental, inovacao_cadeia_valor,
         inovacao_governanca, inovacao_impacto, inovacao_financiamento,
-        tipo_solucao, modelo_negocio, colaboradores, replicabilidade,
+        tipo_solucao, modelo_negocio, colaboradores, replicabilidade, nivel_tecnologia,
         apoio, programas,
         $desafiosCols,
         info_adicionais, info_adicionais_links,
@@ -333,7 +217,7 @@ $sql = "
         :inovacao_tecnologica, :inovacao_produto, :inovacao_servico, :inovacao_modelo,
         :inovacao_social, :inovacao_ambiental, :inovacao_cadeia_valor,
         :inovacao_governanca, :inovacao_impacto, :inovacao_financiamento,
-        :tipo_solucao, :modelo_negocio, :colaboradores, :replicabilidade,
+        :tipo_solucao, :modelo_negocio, :colaboradores, :replicabilidade, :nivel_tecnologia,
         :apoio, :programas,
         $desafiosVals,
         :info_adicionais, :links,
@@ -365,6 +249,7 @@ $sql = "
         modelo_negocio          = VALUES(modelo_negocio),
         colaboradores           = VALUES(colaboradores),
         replicabilidade         = VALUES(replicabilidade),
+        nivel_tecnologia        = VALUES(nivel_tecnologia),
         apoio                   = VALUES(apoio),
         programas               = VALUES(programas),
         info_adicionais         = VALUES(info_adicionais),
@@ -402,6 +287,7 @@ $params = [
     'modelo_negocio'         => $modelo_negocio,
     'colaboradores'          => $colaboradores,
     'replicabilidade'        => $replicabilidade,
+    'nivel_tecnologia'       => $nivel_tecnologia,
     'apoio'                  => $apoio,
     'programas'              => $programas ?: null,
     'info_adicionais'        => $info_adicionais ?: null,
@@ -414,97 +300,32 @@ foreach ($valoresDesafios as $campo => $valor) {
 
 try {
     $stmt->execute($params);
-} catch (PDOException $e) {
-    error_log("processar_etapa5 - erro ao salvar negocio_id=$negocio_id: " . $e->getMessage());
-    $_SESSION['errors_etapa5'][] = "Ocorreu um erro ao salvar as informações. Tente novamente.";
-    header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
-    exit;
-}
 
-// ====== Cálculo do Score Impacto ======
-try {
-    $stmt = $pdo->prepare("SELECT componente, peso FROM pesos_scores WHERE tipo_score='IMPACTO'");
-    $stmt->execute();
-    $pesos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $scoreImpacto = 0;
-    foreach ($pesos as $p) {
-        $componente = $p['componente'];
-        $peso = (float)$p['peso'];
-
-        switch ($componente) {
-            case 'intencionalidade':
-                $opcao = ($inovacao === 'sim') ? 'lucro_com_impacto_integrado' : 'impacto_secundario';
-                break;
-            case 'evidencias':
-                $opcao = (!empty($info_adicionais) || !empty($links)) ? 'documentado_com_links' : 'vazio';
-                break;
-            default:
-                $opcao = 'nao_informado';
-        }
-
-        $stmt2 = $pdo->prepare("SELECT valor FROM lookup_scores WHERE componente=? AND opcao=?");
-        $stmt2->execute([$componente, $opcao]);
-        $valor = (int)($stmt2->fetchColumn() ?: 0);
-        $scoreImpacto += $valor * $peso;
+    try {
+        $stmtScore = $pdo->prepare("
+            INSERT INTO scores_negocios (negocio_id, score_impacto, atualizado_em)
+            VALUES (:negocio_id, 0, NOW())
+            ON DUPLICATE KEY UPDATE score_impacto = VALUES(score_impacto), atualizado_em = NOW()
+        ");
+        $stmtScore->execute(['negocio_id' => $negocio_id]);
+    } catch (Throwable $e) {
+        // score opcional
     }
-
-    $penalty = 0;
-    if ($inovacao === 'nao' && empty($info_adicionais)) {
-        $penalty += 5;
-    }
-    $scoreImpacto = max(0, min(100, round($scoreImpacto - $penalty)));
 
     $stmt = $pdo->prepare("
-        INSERT INTO scores_negocios (negocio_id, score_impacto, atualizado_em)
-        VALUES (?, ?, NOW())
-        ON DUPLICATE KEY UPDATE score_impacto = VALUES(score_impacto), atualizado_em = NOW()
+        UPDATE negocios 
+        SET etapa_atual = 6, updated_at = NOW() 
+        WHERE id = :id AND user_id = :user_id
     ");
-    $stmt->execute([$negocio_id, $scoreImpacto]);
-} catch (PDOException $e) {
-    // Score não é crítico — apenas loga o erro e continua o fluxo
-    error_log("processar_etapa5 - erro ao calcular score negocio_id=$negocio_id: " . $e->getMessage());
-}
+    $stmt->execute([
+        'id' => $negocio_id,
+        'user_id' => $user_id
+    ]);
 
-// ====== Redirecionamento Inteligente ======
-$modo = $_POST['modo'] ?? 'cadastro';
-
-$stmtProgresso = $pdo->prepare("SELECT etapa_atual, inscricao_completa FROM negocios WHERE id = ?");
-$stmtProgresso->execute([$negocio_id]);
-$progresso = $stmtProgresso->fetch(PDO::FETCH_ASSOC);
-
-if ($modo === 'cadastro') {
-    $etapaAtualNoBanco = (int)($progresso['etapa_atual'] ?? 1);
-    if ($etapaAtualNoBanco < 6) {
-        $stmtUpdate = $pdo->prepare("
-            UPDATE negocios 
-            SET etapa_atual = 6, updated_at = NOW() 
-            WHERE id = ? AND empreendedor_id = ?
-        ");
-        $stmtUpdate->execute([$negocio_id, $_SESSION['user_id']]);
-    }
     header("Location: /negocios/etapa6_financeiro.php?id=" . $negocio_id);
     exit;
-
-} else {
-    if (!empty($progresso['inscricao_completa'])) {
-        header("Location: /negocios/confirmacao.php?id=" . $negocio_id);
-        exit;
-    } else {
-        $rotas_etapas = [
-            1  => '/negocios/etapa1_dados_negocio.php',
-            2  => '/negocios/etapa2_fundadores.php',
-            3  => '/negocios/etapa3_eixo_tematico.php',
-            4  => '/negocios/etapa4_ods.php',
-            8  => '/negocios/etapa5_apresentacao.php',
-            5  => '/negocios/etapa6_financeiro.php',
-            6  => '/negocios/etapa7_impacto.php',
-            7  => '/negocios/etapa8_visao.php',
-            9  => '/negocios/etapa9_documentacao.php',
-            10 => '/negocios/confirmacao.php',
-        ];
-        $etapaParada = (int)($progresso['etapa_atual'] ?? 1);
-        header("Location: " . ($rotas_etapas[$etapaParada] ?? '/empreendedores/meus-negocios.php') . "?id=" . $negocio_id);
-        exit;
-    }
+} catch (Throwable $e) {
+    $_SESSION['errors_etapa5'][] = 'Erro ao salvar os dados da etapa 5.';
+    header("Location: /negocios/etapa5_apresentacao.php?id=" . $negocio_id);
+    exit;
 }
